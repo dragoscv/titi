@@ -120,4 +120,4 @@ val uniffiBindgen = tasks.register<Exec>("uniffiBindgen") {
 // same invocation; wire each variant's merge task to its own cargo task.
 tasks.matching { it.name == "mergeDebugJniLibFolders" }.configureEach { dependsOn(cargoNdkDebug) }
 tasks.matching { it.name == "mergeReleaseJniLibFolders" }.configureEach { dependsOn(cargoNdkRelease) }
-tasks.matching { it.name.startsWith("compile") && it.name.contains("Kotlin") }.configureEach { dependsOn(uniffiBindgen) }
+tasks.matching { (it.name.startsWith("compile") && it.name.contains("Kotlin")) || it.name.startsWith("extract") && it.name.endsWith("Annotations") }.configureEach { dependsOn(uniffiBindgen) }

@@ -116,6 +116,14 @@ dependencies {
     "gmsImplementation"(libs.play.services.nearby)
     "gmsImplementation"(libs.kotlinx.coroutines.play.services)
 
+    // Glance/ML Kit drag in work-runtime 2.7.1 + room 2.2.5, which crash under
+    // R8 full mode ("Failed to create an instance of WorkDatabase"). Pin current.
+    constraints {
+        implementation("androidx.work:work-runtime:2.11.2")
+        implementation("androidx.work:work-runtime-ktx:2.11.2")
+        implementation("androidx.room:room-runtime:2.8.5")
+    }
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso)
