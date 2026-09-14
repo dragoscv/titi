@@ -126,7 +126,7 @@ Legend of surfaces: **C** core (Rust) · **B** backend · **A** Android ·
 | W-09 | Text chat + voice notes | partial | text chat done; voice notes in web todo |
 | W-10 | LAN mode: WebRTC DataChannel to phone host, QR offer/answer, LNA long-poll | todo | |
 | W-11 | i18n EN + RO (next-intl) | todo | strings currently EN inline |
-| W-12 | PWA manifest, offline shell, icons | done | `manifest.ts`; `@serwist/turbopack` route `/serwist/sw.js` (22 precache entries incl. wasm, all URLs 200 live); icons via `scripts/gen-icons.mjs`. SW activation on a real device still to observe (headless harness never reports an active worker) |
+| W-12 | PWA manifest, offline shell, icons | done | `manifest.ts`; `@serwist/turbopack` route `/serwist/sw.js` (22 precache entries incl. wasm, all URLs 200 live); icons via `scripts/gen-icons.mjs`. Verified on A51 Chrome via CDP 2026-09-14: SW `activated`, controller present, 1 cache; page loads in airplane mode |
 | W-13 | Vitest (vectors) + Playwright smoke | todo | |
 | W-14 | Deployed (Vercel), live URL verified | done | https://titi-dragos-projects-aeb8856e.vercel.app — `/`, `/j/[token]`, `/~offline`, manifest, assetlinks, sw all 200; joined A51's group by code from the live site (5 members) |
 
