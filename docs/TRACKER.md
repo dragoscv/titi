@@ -150,13 +150,13 @@ Legend of surfaces: **C** core (Rust) · **B** backend · **A** Android ·
 
 | ID | Item | Status | Evidence |
 |---|---|---|---|
-| O-01 | Privacy policy page (web) EN/RO | todo | |
-| O-02 | Play listing assets: icon, feature graphic, screenshots, descriptions EN/RO | todo | |
-| O-03 | Play Console: app created, Data safety, content rating, FGS + BT declarations | todo | |
-| O-04 | Internal testing track upload | todo | |
-| O-05 | Closed testing 12 testers × 14 days (new-account rule) | todo | |
-| O-06 | Production rollout | todo | |
-| O-07 | Backend Cloud Run live; web live | todo | |
+| O-01 | Privacy policy page (web) EN/RO | done | `apps/web/src/app/privacy/page.tsx`, live `/privacy` 200 |
+| O-02 | Play listing assets: icon, feature graphic, screenshots, descriptions EN/RO | done | `docs/store/LISTING.md`, `docs/store/*.png`, `docs/store/screenshots/01–05.png` (S25 captures); uploaded to Console (phone/7"/10") |
+| O-03 | Play Console: app created, Data safety, content rating, FGS + BT declarations | done | app id 4975577701631730555; all 11 App content declarations saved; store settings (Communication, contact) published |
+| O-04 | Internal testing track upload | done | release 1 (0.1.0) Active, opt-in https://play.google.com/apps/internaltest/4701032077694258196 |
+| O-05 | Closed testing 12 testers × 14 days (new-account rule) | in progress | track "Alpha" 4698786537336980903, release 1 (0.1.0), list "Titi friends"; **sent for review 2026-09-14** (14 changes). Need ≥12 opted-in testers for 14 days before production |
+| O-06 | Production rollout | blocked | gated by O-05 (Play new-account rule) |
+| O-07 | Backend Cloud Run live; web live | done | relay https://titi-relay-x3clqgvrdq-ew.a.run.app; web https://titi-dragos-projects-aeb8856e.vercel.app |
 
 ## 8. Reality check (final)
 

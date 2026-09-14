@@ -6,6 +6,13 @@ Upload key SHA-256: `30:E9:2B:32:BE:AA:11:91:56:B5:85:F5:47:F4:1A:F9:1B:07:0A:CC
 Play app-signing SHA-256: `B6:F1:C8:51:9B:0B:0A:CE:55:4B:4E:DB:48:EC:D4:1B:9B:5B:B0:67:96:59:DA:BE:98:A5:78:B3:DE:4B:68:FB`  
 Play app id 4975577701631730555 · internal track 4701032077694258196 · opt-in https://play.google.com/apps/internaltest/4701032077694258196
 
+## Publishing status (2026-09-14)
+- Internal testing: release 1 (0.1.0) **Active** — opt-in link above works now, no review needed.
+- Closed testing "Alpha" (track 4698786537336980903): release 1 (0.1.0), all 176 countries + rest of world, testers = email list **"Titi friends"** (account-wide list; add friends' Gmail addresses there). Opt-in links appear in Console → Testing → Closed testing → Testers once the review passes.
+- **Sent for review** (14 changes: store listing, all App content declarations, store settings, closed release). Typical review ≤ 7 days. Until then the app name shows as `ro.titi.app (unreviewed)` in test tracks.
+- Store settings: category Communication, contact vladulescu.catalin@gmail.com, website https://titi-dragos-projects-aeb8856e.vercel.app.
+- Assets uploaded: icon 512, feature graphic, 5 phone + 5×7" + 5×10" screenshots (`docs/store/screenshots/`).
+
 ## App name (30)
 EN: `Titi – Offline Walkie Talkie`
 RO: `Titi – Walkie Talkie offline`
