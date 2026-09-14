@@ -1,0 +1,52 @@
+# Node
+node_modules/
+.next/
+dist/
+out/
+.turbo/
+*.tsbuildinfo
+.vercel/
+
+# Rust
+core/target/
+target/
+packages/core-wasm/pkg/
+
+# Android
+android/.gradle/
+android/build/
+android/**/build/
+android/local.properties
+android/.idea/
+android/*.iml
+android/**/*.iml
+android/**/jniLibs/
+android/core-ffi/src/main/java/uniffi/
+*.jks
+*.keystore
+!debug.keystore
+
+# iOS
+ios/*.xcodeproj/
+ios/*.xcworkspace/
+ios/DerivedData/
+ios/TitiCore/Sources/TitiCore/Generated/
+ios/TitiCore/TitiCore.xcframework/
+ios/Pods/
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+service-account*.json
+
+# Scratch
+.copilot-tmp/
+*.log
+.DS_Store
+Thumbs.db
+
+.pnpm-cache/
+

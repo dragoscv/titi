@@ -1,0 +1,50 @@
+[package]
+name = "titi-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Titi protocol core: framing, crypto, mesh, floor control, audio"
+
+[lib]
+crate-type = ["rlib"]
+
+[features]
+default = ["opus"]
+opus = ["dep:opus"]
+vectors = ["serde", "serde_json", "hex"]
+
+[dependencies]
+snow = { workspace = true, features = ["use-chacha20poly1305", "use-sha2", "use-curve25519", "use-getrandom"] }
+chacha20poly1305 = { workspace = true }
+x25519-dalek = { workspace = true }
+ed25519-dalek = { workspace = true }
+argon2 = { workspace = true }
+blake2 = { workspace = true }
+hkdf = { workspace = true }
+sha2 = { workspace = true }
+hmac = { workspace = true }
+digest = { workspace = true }
+rand_core = { workspace = true }
+getrandom = { workspace = true }
+lru = { workspace = true }
+prost = { workspace = true }
+thiserror = { workspace = true }
+opus = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+hex = { workspace = true, optional = true }
+
+[build-dependencies]
+prost-build = { workspace = true }
+protoc-bin-vendored = "3.2.0"
+
+[dev-dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+hex = { workspace = true }
+
+[[bin]]
+name = "gen-vectors"
+path = "src/bin/gen_vectors.rs"
+required-features = ["vectors"]

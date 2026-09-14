@@ -1,0 +1,16 @@
+version: v2
+clean: true
+plugins:
+  - remote: buf.build/bufbuild/es:v2.15.0
+    out: ../packages/protocol/src/gen
+    opt:
+      - target=ts
+      - import_extension=js
+  - remote: buf.build/squareup/wire:v5.4.0
+    out: ../android/app/src/main/kotlin
+    opt:
+      - kotlin
+  - remote: buf.build/apple/swift:v1.32.0
+    out: ../ios/TitiCore/Sources/TitiProto
+    opt:
+      - Visibility=Public

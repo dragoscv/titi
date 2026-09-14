@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package titi.v1;
+
+import "titi/v1/common.proto";
+
+// Host -> discovered device (tap-to-invite). Inside a Noise XX session.
+message InviteOffer {
+  bytes group_uuid = 1;   // 16 bytes
+  string group_name = 2;
+  NodeRef host = 3;
+  bytes k_join = 4;       // 32 bytes one-time join key
+  uint64 expires_ms = 5;
+  uint32 member_count = 6;
+}
+
+message InviteAccept {
+  bytes group_uuid = 1;
+  NodeRef member = 2;
+  bool accepted = 3;
+}
+
+// Joiner -> any member, proving the rotating code via Noise_XXpsk3.
+message JoinRequest {
+  bytes group_hash = 1;   // 4 bytes, from HELLO
+  NodeRef member = 2;
+  int32 slot_delta = 3;   // -1, 0, +1 relative to joiner's clock
+}
+
+message JoinResponse {
+  bool ok = 1;
+  bytes group_uuid = 2;
+  string group_name = 3;
+  bytes k_epoch = 4;      // current group epoch key, 32 bytes
+  uint32 epoch = 5;
+  repeated NodeRef members = 6;
+  string reason = 7;
+}
+
+message Leave {
+  bytes group_uuid = 1;
+  bytes node_id = 2;
+}
+
+// Signed by the group creator; new key delivered per member inside Noise.
+message KeyRotate {
+  bytes group_uuid = 1;
+  uint32 epoch = 2;
+  bytes k_epoch = 3;
+  uint64 ts_ms = 4;
+  bytes signature = 5;
+}
+
+message RevokeInvite {
+  bytes group_uuid = 1;
+  uint64 ts_ms = 2;
+  bytes signature = 3;
+}
+
+message GroupInfo {
+  bytes group_uuid = 1;
+  string group_name = 2;
+  bytes creator_id = 3;
+  uint32 epoch = 4;
+  bool full_duplex = 5;
+  repeated NodeRef members = 6;
+}

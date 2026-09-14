@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package titi.v1;
+
+import "titi/v1/common.proto";
+
+// Backend WebSocket protocol. Binary frames: first byte 0x00 = Signal
+// (protobuf), 0x01 = Titi radio envelope forwarded as-is.
+
+message Signal {
+  oneof kind {
+    RoomJoin room_join = 1;
+    RoomJoined room_joined = 2;
+    RoomLeave room_leave = 3;
+    PeerEvent peer_event = 4;
+    Resume resume = 5;
+    Ping ping = 6;
+    Pong pong = 7;
+    WebRtcSignal webrtc = 8;
+    Error error = 9;
+  }
+}
+
+message RoomJoin {
+  bytes group_hash = 1;  // 4 bytes; relay never learns group_uuid or keys
+  NodeRef node = 2;
+  bytes resume_token = 3;
+}
+
+message RoomJoined {
+  bytes resume_token = 1;
+  repeated NodeRef peers = 2;
+  uint32 room_size = 3;
+  uint64 server_ms = 4;
+}
+
+message RoomLeave {}
+
+message PeerEvent {
+  NodeRef node = 1;
+  bool joined = 2;
+}
+
+message Resume {
+  bytes resume_token = 1;
+}
+
+message Ping { uint64 ts_ms = 1; }
+message Pong { uint64 ts_ms = 1; uint64 server_ms = 2; }
+
+// Web LAN mode signalling (offer/answer/ICE) relayed when both are online;
+// otherwise carried in QR.
+message WebRtcSignal {
+  bytes to = 1;
+  bytes from = 2;
+  oneof payload {
+    string offer_sdp = 3;
+    string answer_sdp = 4;
+    string ice_candidate = 5;
+  }
+}
+
+message Error {
+  uint32 code = 1;
+  string message = 2;
+}

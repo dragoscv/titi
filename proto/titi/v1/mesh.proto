@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package titi.v1;
+
+import "titi/v1/common.proto";
+
+// Link-local, TTL 1. Every 4 s when alone, 15-30 s jittered when connected.
+message Hello {
+  NodeRef node = 1;
+  repeated bytes group_hashes = 2;  // 4-byte truncated BLAKE2b(group_uuid) per joined group
+  LinkInfo link = 3;
+  uint32 battery_class = 4;         // 0 unknown, 1 critical, 2 low, 3 ok, 4 charging
+  repeated bytes neighbour_ids = 5; // <= 10
+  uint32 caps = 6;                  // bitset: 1 relay-capable, 2 leader-capable, 4 internet
+  uint64 ts_ms = 7;
+}
+
+// Signed, flooded TTL 7 every 30-60 s. Builds the 2-hop map.
+message Announce {
+  NodeRef node = 1;
+  repeated NeighbourLink neighbours = 2; // <= 10
+  uint64 ts_ms = 3;
+  bytes signature = 4;                   // ed25519 over canonical bytes without this field
+}
+
+message NeighbourLink {
+  bytes node_id = 1;
+  LinkClass class = 2;
+  uint32 cost = 3;
+}
+
+// Confirms a bidirectional path for source routing.
+message RouteProbe {
+  repeated bytes path = 1;   // node ids, source first
+  uint64 sent_ms = 2;
+  uint32 min_bps = 3;
+  bool reply = 4;
+}

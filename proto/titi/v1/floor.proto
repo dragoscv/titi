@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package titi.v1;
+
+import "titi/v1/common.proto";
+
+// MCPTT-lite floor control (TS 24.380 off-network variant, simplified).
+message FloorRequest {
+  bytes group_uuid = 1;
+  bytes talker_id = 2;
+  Priority priority = 3;
+  uint64 ts_ms = 4;
+  uint32 nonce = 5;
+}
+
+message FloorTaken {
+  bytes group_uuid = 1;
+  bytes talker_id = 2;
+  uint32 talker_short = 3;   // 16-bit id used in voice headers
+  Priority priority = 4;
+  uint64 since_ms = 5;
+  CodecProfile profile = 6;
+}
+
+message FloorIdle {
+  bytes group_uuid = 1;
+  bytes talker_id = 2;
+  uint64 ts_ms = 3;
+}
+
+message FloorDeny {
+  bytes group_uuid = 1;
+  bytes requester_id = 2;
+  bytes holder_id = 3;
+  string reason = 4;
+}
+
+message FloorRevoke {
+  bytes group_uuid = 1;
+  bytes talker_id = 2;
+  string reason = 3;
+}
+
+// Full-duplex mode toggle, group-wide, from creator or majority.
+message ModeChange {
+  bytes group_uuid = 1;
+  bool full_duplex = 2;
+  bytes by = 3;
+  uint64 ts_ms = 4;
+}

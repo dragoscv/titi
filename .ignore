@@ -1,0 +1,7 @@
+core/target
+packages/core-wasm/pkg
+android/**/build
+ios/DerivedData
+docs/research
+pnpm-lock.yaml
+Cargo.lock

@@ -1,0 +1,31 @@
+{
+  "name": "titi",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Titi — offline-first walkie-talkie for Android, iOS and web",
+  "packageManager": "pnpm@10.18.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "proto:gen": "pnpm dlx @bufbuild/buf@1.73.0 generate",
+    "proto:lint": "pnpm dlx @bufbuild/buf@1.73.0 lint",
+    "core:test": "cargo test --manifest-path core/Cargo.toml",
+    "core:vectors": "cargo run --manifest-path core/Cargo.toml -p titi-core --bin gen-vectors --features vectors",
+    "core:wasm": "pwsh -NoProfile -File scripts/build-wasm.ps1",
+    "android:debug": "pwsh -NoProfile -File scripts/android-build.ps1 -Task assembleDebug",
+    "android:release": "pwsh -NoProfile -File scripts/android-build.ps1 -Task bundleRelease"
+  },
+  "devDependencies": {
+    "turbo": "2.10.12",
+    "typescript": "7.0.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}
