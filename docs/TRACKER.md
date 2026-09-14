@@ -76,34 +76,34 @@ Legend of surfaces: **C** core (Rust) · **B** backend · **A** Android ·
 
 | ID | Item | Status | Evidence |
 |---|---|---|---|
-| A-01 | Gradle 9.6 / AGP 9.4 / Kotlin 2.4 / Compose BOM 2026.08 / M3 1.5 Expressive, min 26 target 36 | todo | |
-| A-02 | `core-ffi` module: cargo-ndk build task, jniLibs, generated Kotlin | todo | |
-| A-03 | Design system: Signal Amber theme, Manrope/Geist Mono, tokens | todo | |
-| A-04 | Onboarding: name + avatar colour, permissions rationale flow | todo | |
-| A-05 | Home: groups list, nearby radar, giant Talk button shared element | todo | |
-| A-06 | Group screen: morphing PTT button, who-is-talking, peers w/ link bars + hop badge | todo | |
-| A-07 | Mode switch PTT ↔ full-duplex (button morph, mute pill) | todo | |
-| A-08 | Create group; tap-to-invite; accept sheet | todo | |
-| A-09 | Join by code (3 words + 2 digits) with slot tolerance; QR scan/show | todo | |
-| A-10 | Audio: Oboe capture/playback, AEC/NS, BT headset routing | todo | |
-| A-11 | Foreground service (microphone|connectedDevice), wake/Wi-Fi locks, notification with PTT action | todo | |
-| A-12 | Transport LAN: NsdManager + UDP unicast/multicast, multicast lock | todo | |
-| A-13 | Transport BLE: advertise/scan, GATT control channel, L2CAP CoC data | todo | |
+| A-01 | Gradle 9.7.1 / AGP 9.4.0 (built-in Kotlin 2.4) / Compose BOM 2026.09 / M3 1.4, compileSdk 37, min 26, target 36 | done | `android/gradle/libs.versions.toml`; `assembleGmsDebug` BUILD SUCCESSFUL |
+| A-02 | `core-ffi` module: cargo-ndk build task, jniLibs, generated Kotlin | done | `android/core-ffi/build.gradle.kts` (cargoNdkDebug/Release + uniffiBindgen, NDK cmake env for libopus) |
+| A-03 | Design system: Signal Amber theme, Manrope/Geist Mono, tokens | done | `ui/theme/Theme.kt`, fonts bundled (OFL) |
+| A-04 | Onboarding: name + avatar colour, permissions rationale flow | done | `OnboardingScreen.kt`; verified on S25 (screenshots) |
+| A-05 | Home: groups list, nearby radar, Talk button shared element | partial | groups + radar + create/join done; shared-element transition to group not yet |
+| A-06 | Group screen: morphing PTT button, who-is-talking, peers w/ link bars + hop badge | done | `TalkButton.kt` (circle→squircle→bar, spring 380), verified "You are talking" on device |
+| A-07 | Mode switch PTT ↔ full-duplex (button morph, mute pill) | done | segmented control + mute pill |
+| A-08 | Create group; tap-to-invite; accept sheet | done | create verified on device; invite banner + nearby tap |
+| A-09 | Join by code (3 words + 2 digits) with slot tolerance; QR scan/show | done | `JoinScreen.kt` (ML Kit), `InviteSheet` QR (zxing) + rotating code |
+| A-10 | Audio: capture/playback 48k/20ms, AEC/NS/AGC, comm-device routing | done | `AudioEngine.kt` (AudioRecord/AudioTrack low-latency; Oboe deferred — Java path measured first) |
+| A-11 | Foreground service (microphone|connectedDevice), wake/Wi-Fi locks, notification with PTT action | done | `RadioService.kt`; dumpsys `isForeground=true types=0x90` |
+| A-12 | Transport LAN: UDP unicast + multicast 239.77.84.84:41414, multicast lock, NetworkCallback | done | `LanTransport.kt`; log "bound on wlan0" (mDNS not needed: HELLO multicast is discovery) |
+| A-13 | Transport BLE: advertise/scan, GATT PSM exchange, L2CAP CoC data | done (untested 2-phone) | `BleTransport.kt`; advert fixed to fit 31 B (node id in scan response) |
 | A-14 | Transport Nearby Connections (gms flavour), P2P_CLUSTER, STREAM payloads | todo | |
 | A-15 | Transport Wi-Fi Aware (when FEATURE_WIFI_AWARE) | todo | |
 | A-16 | Transport LocalOnlyHotspot host + QR creds; join via WifiNetworkSpecifier | todo | |
 | A-17 | Transport BT RFCOMM (insecure) | todo | |
-| A-18 | Transport Internet WSS to relay, reconnect | todo | |
+| A-18 | Transport Internet WSS to relay, reconnect + resume | done | `RelayTransport.kt`; relay `/health` showed rooms:1 members:1 from the phone |
 | A-19 | Link manager: cost, warm standby, handover surfaced in UI | todo | |
-| A-20 | Text chat + voice notes (S&F), unread badges | todo | |
-| A-21 | Hardware PTT: volume keys, BT HID PTT, rugged intents adapter table | todo | |
-| A-22 | Lock-screen: media-style notification PTT, Glance widget | todo | |
+| A-20 | Text chat + voice notes (S&F), unread badges, location/SOS bubbles | done | `ChatScreen.kt`, `VoiceNote.kt` |
+| A-21 | Hardware PTT: volume-down hold, headset hook toggle | partial | `MainActivity.onKeyDown`; rugged-intent table todo |
+| A-22 | Lock-screen: media-style notification PTT, Glance widget | done | notification actions Talk/Mute/Stop; `TalkWidget.kt` |
 | A-23 | Offline map (MapLibre + MBTiles download) + location share + breadcrumbs | todo | |
-| A-24 | SOS beacon (priority emergency floor + location broadcast) | todo | |
-| A-25 | Sound packs (Bird/Radio/Minimal) + themes (dark/light/high-contrast) | todo | |
-| A-26 | Settings: name, codec profile override, battery mode, about/licences | todo | |
-| A-27 | i18n EN + RO complete | todo | |
-| A-28 | Accessibility: TalkBack labels, ≥88 dp button, haptic-only mode | todo | |
+| A-24 | SOS beacon (priority emergency floor + location broadcast) | done | GroupScreen SOS dialog → `sendSos` + `pttDown(EMERGENCY)` |
+| A-25 | Sound packs (Bird/Radio/Minimal) + themes (dark/light/high-contrast) | done | `Cues.kt` synthesised; `Theme.kt` |
+| A-26 | Settings: name, codec profile override, battery mode, about | done | `SettingsScreen.kt`; licences screen todo |
+| A-27 | i18n EN + RO complete | done | `values/strings.xml`, `values-ro/strings.xml` |
+| A-28 | Accessibility: TalkBack labels, ≥88 dp button, haptic-only mode | done | contentDescription/stateDescription on TalkButton; haptics-only setting |
 | A-29 | `foss` flavour compiles without GMS | todo | |
 | A-30 | Unit tests (vectors), instrumentation smoke, lint clean | todo | |
 | A-31 | Release signing (upload key), `bundleRelease` AAB | todo | |
