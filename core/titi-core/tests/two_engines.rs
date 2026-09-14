@@ -132,7 +132,7 @@ fn pcm_tone(n: usize, f: f32) -> Vec<i16> {
 #[test]
 fn discovery_invite_ptt_voice_text() {
     let mut net = Net::new(2, &["Ana", "Bogdan"]);
-    let mut now = 1_000_000;
+    let mut now = 1_789_400_000_000u64;
     net.bring_up(now);
     net.run(now, now + 500, 20);
     now += 520;
@@ -223,7 +223,7 @@ fn discovery_invite_ptt_voice_text() {
 #[test]
 fn join_by_rotating_code() {
     let mut net = Net::new(2, &["Host", "Guest"]);
-    let mut now = 5_000_000;
+    let mut now = 1_789_400_500_000u64;
     net.bring_up(now);
     net.run(now, now + 400, 20);
     now += 420;
@@ -251,7 +251,7 @@ fn join_by_rotating_code() {
 #[test]
 fn join_by_deep_link() {
     let mut net = Net::new(2, &["Host", "Web"]);
-    let mut now = 7_000_000;
+    let mut now = 1_789_401_000_000u64;
     net.bring_up(now);
     net.run(now, now + 400, 20);
     now += 420;
@@ -272,7 +272,7 @@ fn three_nodes_relay_voice_over_middle() {
     // A — B — C  (A and C cannot hear each other)
     let mut net = Net::new(3, &["A", "B", "C"]);
     net.adj = vec![vec![1], vec![0, 2], vec![1]];
-    let mut now = 9_000_000;
+    let mut now = 1_789_402_000_000u64;
     net.bring_up(now);
     net.run(now, now + 600, 20);
     now += 620;

@@ -45,4 +45,14 @@ mod tests {
         assert_eq!(unwrap16(0x10005, 0xFFF0), 0xFFF0);
         assert_eq!(unwrap16(5, 0xFFFF), 0); // saturates instead of underflow
     }
+
+    #[test]
+    fn unwrap_with_wall_clock_ticks_does_not_overflow() {
+        // 2026-09-14 in ms → ticks; the caller must pass ticks, not ms.
+        let now_ms: u64 = 1_789_400_000_000;
+        let ticks = now_ms / TICK_MS;
+        let w = to_tick16(now_ms);
+        let abs = unwrap16(ticks, w).saturating_mul(TICK_MS);
+        assert_eq!(abs, now_ms - now_ms % TICK_MS);
+    }
 }

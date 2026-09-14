@@ -102,8 +102,15 @@ impl Handover {
                 if r.path != route.path {
                     self.state = HoState::Switching { route: r, confirmed: 0 };
                 } else {
-                    let c = *confirmed;
-                    self.state = HoState::Switching { route: r, confirmed: c };
+                    // A route that keeps being re-computed identically is as good a
+                    // confirmation as an ACK for a member who never transmits.
+                    let c = confirmed + 1;
+                    if c >= SWITCH_CONFIRM_FRAMES {
+                        ev.push(HoEvent::Stable { route: r.clone() });
+                        self.state = HoState::Stable { route: r };
+                    } else {
+                        self.state = HoState::Switching { route: r, confirmed: c };
+                    }
                 }
             }
         }

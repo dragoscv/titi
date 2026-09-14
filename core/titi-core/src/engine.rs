@@ -163,6 +163,8 @@ pub struct Engine {
     msg_counter: u32,
     peer_names: HashMap<NodeId, (String, u16)>,
     last_level_ui: Ms,
+    last_route_eval: Ms,
+    last_peer_link: HashMap<NodeId, (LinkClass, u8, u8)>,
 }
 
 const PTT_BUFFER_MAX: usize = audio::TICK_SAMPLES * 15; // 300 ms
@@ -195,6 +197,8 @@ impl Engine {
             msg_counter: 0,
             peer_names: HashMap::new(),
             last_level_ui: 0,
+            last_route_eval: 0,
+            last_peer_link: HashMap::new(),
         }
     }
 
@@ -1351,7 +1355,9 @@ impl Engine {
         if hdr.marker {
             jb.reset();
         }
-        let ts_abs = time::unwrap16(jb.last_ts_abs, hdr.ts) * time::TICK_MS;
+        // unwrap in TICK units (last_ts_abs is ms) then scale; mixing the two
+        // overflowed u64 with real wall-clock timestamps.
+        let ts_abs = time::unwrap16(jb.last_ts_abs / time::TICK_MS, hdr.ts).saturating_mul(time::TICK_MS);
         jb.push(Packet { seq: seq32 as u64, ts_abs, arrived: now, payload: payload.to_vec(), frames: hdr.frames, profile: hdr.profile }, now);
         acts.extend(self.apply_floor_events(gid, evs, now));
         // handover ack: hearing voice back from a member confirms our route
@@ -1518,6 +1524,13 @@ impl Engine {
         // flood relays due
         for p in self.flood.due(now) {
             acts.extend(self.fanout_relay(&p, true));
+        }
+        // routes: handover's SUSPEND timer is fed by `on_route`, which only ran on
+        // hello/announce (15–30 s apart) → false "out of range" after 3 s. Re-evaluate
+        // once a second; it is a Dijkstra over a handful of nodes.
+        if now.saturating_sub(self.last_route_eval) >= 1_000 {
+            self.last_route_eval = now;
+            acts.extend(self.recompute_routes(now));
         }
         // floors & handover & playout
         let gids: Vec<GroupId> = self.groups.keys().copied().collect();
@@ -1817,7 +1830,10 @@ impl Engine {
                 let h = g.handover.entry(m).or_insert_with(|| Handover::new(now));
                 let evs = h.on_route(r, now);
                 if let Some(c) = class {
-                    acts.push(Action::Ui(UiEvent::PeerLink { node: m, link: c, bars, hops }));
+                    // only surface changes: this runs every second
+                    if self.last_peer_link.insert(m, (c, bars, hops)) != Some((c, bars, hops)) {
+                        acts.push(Action::Ui(UiEvent::PeerLink { node: m, link: c, bars, hops }));
+                    }
                 }
                 for e in evs {
                     acts.extend(self.ho_event_to_actions(gid, e));

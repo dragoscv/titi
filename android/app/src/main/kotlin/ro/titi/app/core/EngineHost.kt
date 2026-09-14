@@ -207,14 +207,15 @@ class EngineHost(private val ctx: Context, private val prefs: Prefs) : Transport
         for (a in actions) {
             when (a) {
                 is FfiAction.Send -> transports[a.link]?.send(a.peer, a.bytes)
-                is FfiAction.Play -> audio.play(a.pcmLe.toShorts())
+                is FfiAction.Play -> { playCount++; if (playCount % 50 == 1) Log.d(TAG, "play #$playCount ${a.pcmLe.size}B"); audio.play(a.pcmLe.toShorts()) }
                 is FfiAction.Capture -> if (a.active) audio.startCapture() else audio.stopCapture()
                 is FfiAction.Persist -> if (a.key == "groups") prefs.saveGroupsBlob(a.value)
                 is FfiAction.WakeAt -> Unit // ticking at 20 ms covers it; used by iOS/wasm
-                is FfiAction.Ui -> onUi(a.event)
+                is FfiAction.Ui -> { if (a.event !is FfiUiEvent.Level && a.event !is FfiUiEvent.PeerDiscovered) Log.d(TAG, "ui ${a.event.javaClass.simpleName}"); onUi(a.event) }
             }
         }
     }
+    private var playCount = 0
 
     private fun onUi(e: FfiUiEvent) {
         when (e) {
