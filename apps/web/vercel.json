@@ -1,9 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "installCommand": "pnpm install --frozen-lockfile",
-  "buildCommand": "pnpm --filter @titi/web build",
-  "outputDirectory": ".next",
+  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm build",
   "headers": [
     { "source": "/sw.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }, { "key": "Service-Worker-Allowed", "value": "/" }] },
     { "source": "/.well-known/assetlinks.json", "headers": [{ "key": "Content-Type", "value": "application/json" }] },
