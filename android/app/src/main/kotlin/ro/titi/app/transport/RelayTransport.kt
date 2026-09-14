@@ -44,7 +44,9 @@ class RelayTransport(
     private var events: TransportEvents? = null
     private var ws: WebSocket? = null
     private var connectJob: Job? = null
-    private var groupHash: ByteArray? = null
+    /** desired rooms: hex(hash) → rendezvous */
+    private var rooms: Map<String, Boolean> = emptyMap()
+    private val joinedRooms = HashSet<String>()
     private var resumeToken: ByteArray = ByteArray(0)
     private var attempt = 0
     @Volatile private var enabled = false
@@ -66,11 +68,12 @@ class RelayTransport(
         scope.cancel()
     }
 
-    /** Set the group whose room we should sit in (active group). */
-    fun setGroupHash(h: ByteArray?) {
-        if (h contentEquals groupHash) return
-        groupHash = h
-        resumeToken = ByteArray(0)
+    /** Desired room set: group rooms (voice) + rendezvous rooms (discovery only). */
+    fun setRooms(want: List<Pair<ByteArray, Boolean>>) {
+        val m = want.associate { (h, r) -> h.toHex() to r }
+        if (m == rooms) return
+        ws?.let { s -> for (k in rooms.keys) if (k !in m) sendLeave(s, k) }
+        rooms = m
         ws?.let { sendJoin(it) }
     }
 
@@ -91,6 +94,7 @@ class RelayTransport(
     private val listener = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
             attempt = 0
+            joinedRooms.clear()
             sendJoin(webSocket)
         }
 
@@ -135,16 +139,27 @@ class RelayTransport(
     }
 
     private fun sendJoin(s: WebSocket) {
-        val gh = groupHash ?: return
-        val node = MiniProto.Writer()
-            .bytes(1, nodeId())
-            .string(3, displayName())
-            .varint(4, hue().toLong())
-        val join = MiniProto.Writer()
-            .bytes(1, gh)
-            .message(2, node)
-            .bytes(3, resumeToken)
-        val sig = MiniProto.Writer().message(F_ROOM_JOIN, join).toByteArray()
+        for ((k, rendezvous) in rooms) {
+            if (k in joinedRooms) continue
+            val node = MiniProto.Writer()
+                .bytes(1, nodeId())
+                .string(3, displayName())
+                .varint(4, hue().toLong())
+            val join = MiniProto.Writer()
+                .bytes(1, k.hexToBytes())
+                .message(2, node)
+                .bytes(3, resumeToken)
+                .varint(4, if (rendezvous) 1 else 0)
+            val sig = MiniProto.Writer().message(F_ROOM_JOIN, join).toByteArray()
+            s.send(byteArrayOf(TAG_SIGNAL.toByte()).plus(sig).toByteString())
+            joinedRooms.add(k)
+        }
+    }
+
+    private fun sendLeave(s: WebSocket, k: String) {
+        joinedRooms.remove(k)
+        val leave = MiniProto.Writer().bytes(1, k.hexToBytes())
+        val sig = MiniProto.Writer().message(F_ROOM_LEAVE, leave).toByteArray()
         s.send(byteArrayOf(TAG_SIGNAL.toByte()).plus(sig).toByteString())
     }
 
@@ -187,7 +202,7 @@ class RelayTransport(
                     var code = 0L; var msg = ""
                     while (m.next()) { when (m.field) { 1 -> code = m.varint(); 2 -> msg = m.string(); else -> m.skip() } }
                     Log.w(TAG, "relay error $code: $msg")
-                    if (code == 5L) { resumeToken = ByteArray(0); ws?.let { sendJoin(it) } }
+                    if (code == 5L) { resumeToken = ByteArray(0); joinedRooms.clear(); ws?.let { sendJoin(it) } }
                 }
                 else -> r.skip()
             }
@@ -204,6 +219,7 @@ class RelayTransport(
     override fun stats(): LinkStats = LinkStats(estBps = 200_000u, rttMs = 120u, lossPct = 0u)
 
     private fun ByteArray.toHex() = joinToString("") { "%02x".format(it) }
+    private fun String.hexToBytes() = ByteArray(length / 2) { i -> ((Character.digit(this[i * 2], 16) shl 4) or Character.digit(this[i * 2 + 1], 16)).toByte() }
 
     companion object {
         private const val TAG = "RelayTransport"
@@ -212,6 +228,7 @@ class RelayTransport(
         // Signal oneof field numbers (signal.proto)
         private const val F_ROOM_JOIN = 1
         private const val F_ROOM_JOINED = 2
+        private const val F_ROOM_LEAVE = 3
         private const val F_PEER_EVENT = 4
         private const val F_ERROR = 9
     }

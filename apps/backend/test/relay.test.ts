@@ -26,21 +26,21 @@ const nodeA = new Uint8Array([0xa, 1, 2, 3, 4, 5, 6, 7]);
 const nodeB = new Uint8Array([0xb, 1, 2, 3, 4, 5, 6, 7]);
 const nodeC = new Uint8Array([0xc, 1, 2, 3, 4, 5, 6, 7]);
 
-function join(node: Uint8Array, resume?: Uint8Array): Uint8Array {
+function join(node: Uint8Array, resume?: Uint8Array, hash: Uint8Array = GH, rendezvous = false): Uint8Array {
   const s = create(SignalSchema, {
     kind: {
       case: "roomJoin",
-      value: { groupHash: GH, node: { nodeId: node, displayName: "n" }, resumeToken: resume ?? new Uint8Array() },
+      value: { groupHash: hash, node: { nodeId: node, displayName: "n" }, resumeToken: resume ?? new Uint8Array(), rendezvous },
     },
   });
   return tagged(WsTag.Signal, toBinary(SignalSchema, s));
 }
 
-function envelope(src: Uint8Array, dst?: Uint8Array, flags = 0): Uint8Array {
+function envelope(src: Uint8Array, dst?: Uint8Array, flags = 0, ftype = 0x11): Uint8Array {
   const hdr = dst ? 24 : 16;
   const b = new Uint8Array(hdr + 3);
   b[0] = PROTOCOL_VERSION;
-  b[1] = 0x11; // VoiceFlood
+  b[1] = ftype; // default VoiceFlood
   b[2] = 0x33;
   b[3] = flags | (dst ? Flags.UNICAST : 0);
   b.set(src, 8);
@@ -57,6 +57,31 @@ function setup() {
 }
 
 describe("relay", () => {
+  it("multi-room: rendezvous rooms pass hello but not voice; leaving one room keeps the other", () => {
+    const { relay } = setup();
+    const RDV = new Uint8Array([9, 9, 9, 9]);
+    const a = new FakeSink();
+    const b = new FakeSink();
+    const ia = relay.connect(a);
+    const ib = relay.connect(b);
+    relay.onMessage(ia, join(nodeA)); // A: group room
+    relay.onMessage(ia, join(nodeA, undefined, RDV, true)); // A: + rendezvous
+    relay.onMessage(ib, join(nodeB, undefined, RDV, true)); // B: rendezvous only (joiner typing a code)
+    expect(relay.stats()).toMatchObject({ rooms: 2, members: 3 });
+    relay.onMessage(ia, envelope(nodeA)); // voice → not forwarded through rendezvous
+    expect(b.envelopes().length).toBe(0);
+    relay.onMessage(ia, envelope(nodeA, undefined, 0, 0x01)); // Hello → forwarded
+    expect(b.envelopes().length).toBe(1);
+    relay.onMessage(ib, envelope(nodeB, nodeA, 0, 0x04)); // Handshake unicast via shared room
+    expect(a.envelopes().length).toBe(1);
+    // A leaves rendezvous only
+    const leave = create(SignalSchema, { kind: { case: "roomLeave", value: { groupHash: RDV } } });
+    relay.onMessage(ia, tagged(WsTag.Signal, toBinary(SignalSchema, leave)));
+    expect(relay.stats()).toMatchObject({ rooms: 2, members: 2 });
+    relay.onMessage(ia, envelope(nodeA, undefined, 0, 0x01));
+    expect(b.envelopes().length).toBe(1); // no longer shared
+  });
+
   it("joins, announces peers, broadcasts and unicasts envelopes", () => {
     const { relay } = setup();
     const a = new FakeSink();

@@ -5,7 +5,7 @@ plugins:
     out: ../packages/protocol/src/gen
     opt:
       - target=ts
-      - import_extension=js
+      - import_extension=ts
   - remote: buf.build/squareup/wire:v5.4.0
     out: ../android/app/src/main/kotlin
     opt:

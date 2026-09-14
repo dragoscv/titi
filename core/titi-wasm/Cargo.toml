@@ -15,3 +15,5 @@ js-sys = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 getrandom = { workspace = true, features = ["wasm_js"] }
+# rand_core 0.9 / snow still pull getrandom 0.3; it needs the same feature on wasm
+getrandom03 = { package = "getrandom", version = "0.3", features = ["wasm_js"] }

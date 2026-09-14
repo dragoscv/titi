@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "ro.titi.app",
+      "sha256_cert_fingerprints": [
+        "30:E9:2B:32:BE:AA:11:91:56:B5:85:F5:47:F4:1A:F9:1B:07:0A:CC:84:2D:80:8A:C0:35:67:1B:39:D8:02:4F"
+      ]
+    }
+  }
+]

@@ -110,6 +110,7 @@ class EngineHost(private val ctx: Context, private val prefs: Prefs) : Transport
     private val transports = LinkedHashMap<UInt, Transport>()
     private var tickJob: Job? = null
     private val names = HashMap<String, String>() // node hex → display name
+    private var pendingCode: Pair<String, Long>? = null // code, until
 
     init {
         if (prefs.identitySeed() == null) prefs.saveIdentitySeed(engine.identitySeed())
@@ -128,11 +129,10 @@ class EngineHost(private val ctx: Context, private val prefs: Prefs) : Transport
             t.start(this)
         }
         tickJob = scope.launch {
+            var n = 0
             while (isActive) {
                 apply(engine.tick(now()))
-                for (t in this@EngineHost.transports.values) {
-                    // cheap: engine ignores unchanged stats
-                }
+                if (++n % 500 == 0) syncRelayRoom() // rendezvous slots rotate every 10 min
                 delay(20)
             }
         }
@@ -180,7 +180,21 @@ class EngineHost(private val ctx: Context, private val prefs: Prefs) : Transport
         _state.update { s -> s.copy(invites = s.invites.filterNot { it.group == inv.group }) }
         runCatching { apply(engine.declineInvite(inv.group.hexToBytes(), inv.host.hexToBytes(), now())) }
     }
-    fun joinByCode(code: String) = post { apply(engine.joinByCode(code, now())) }
+    fun joinByCode(code: String) = post {
+        // sit in the code's relay rendezvous rooms for 2 min and retry until a member appears
+        pendingCode = code to (System.currentTimeMillis() + 120_000)
+        syncRelayRoom()
+        apply(engine.joinByCode(code, now()))
+        scope.launch {
+            while (isActive) {
+                delay(3000)
+                val p = pendingCode ?: break
+                if (System.currentTimeMillis() > p.second) { pendingCode = null; syncRelayRoom(); break }
+                if (_state.value.active?.members?.size ?: 0 > 1) { pendingCode = null; syncRelayRoom(); break }
+                apply(engine.joinByCode(p.first, now()))
+            }
+        }
+    }
     fun joinByLink(url: String) = post { apply(engine.joinByLink(url, now())) }
     fun sendText(group: String, text: String) = post {
         runCatching { apply(engine.sendText(group.hexToBytes(), text, now())) }.onFailure { err(it) }
@@ -282,11 +296,17 @@ class EngineHost(private val ctx: Context, private val prefs: Prefs) : Transport
         _state.update { it.copy(groups = list, activeGroup = gs.firstOrNull { g -> g.isActive }?.id?.toHex()) }
     }
 
-    /** Tell the relay transport which room to sit in (active group's hash). */
+    /** Relay rooms: every group (voice) + their rendezvous rooms + a pending code's rooms. */
     private fun syncRelayRoom() {
         val relay = transports[ro.titi.app.transport.LinkIds.INTERNET] as? ro.titi.app.transport.RelayTransport ?: return
-        val active = _state.value.activeGroup
-        relay.setGroupHash(active?.let { runCatching { groupHash(it.hexToBytes()) }.getOrNull() })
+        val rooms = mutableListOf<Pair<ByteArray, Boolean>>()
+        for (g in _state.value.groups) {
+            val gid = g.id.hexToBytes()
+            runCatching { groupHash(gid) }.getOrNull()?.let { rooms += it to false }
+            runCatching { engine.rendezvousForGroup(gid, now()) }.getOrDefault(emptyList()).forEach { rooms += it to true }
+        }
+        pendingCode?.let { (code, _) -> uniffi.titi_ffi.rendezvousForCode(code, now()).forEach { rooms += it to true } }
+        relay.setRooms(rooms)
     }
 
     private inline fun updateActive(f: (GroupState) -> GroupState) { _state.value.activeGroup?.let { updateGroup(it, f) } }

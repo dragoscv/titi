@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+/* ADR-0007 Signal Amber — CSS-first Tailwind v4 theme */
+@theme {
+  --color-graphite: #0e1013;
+  --color-surface: #16191e;
+  --color-elevated: #1e2229;
+  --color-outline: #2a2f38;
+  --color-ink: #f2f4f7;
+  --color-muted: #9aa3b2;
+  --color-amber: #ffb020;
+  --color-amber-deep: #d98e00;
+  --color-teal: #2dd4bf;
+  --color-danger: #ff5a5f;
+  --color-success: #3ddc84;
+  --color-emergency: #ff2d55;
+
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --radius-xl: 22px;
+  --radius-2xl: 28px;
+  --radius-pill: 999px;
+
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+  background: var(--color-graphite);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+body {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}

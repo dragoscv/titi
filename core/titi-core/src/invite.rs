@@ -128,6 +128,20 @@ pub fn seconds_until_rotation(now_ms: time::Ms) -> u32 {
     ((time::SLOT_MS - now_ms % time::SLOT_MS) / 1000) as u32
 }
 
+/// Relay rendezvous room for a code+slot (ADR-0005): lets two online parties
+/// that share nothing but a spoken code find each other through the relay.
+/// `BLAKE2b-256("titi/v1/rdv" ‖ code ‖ slot)[0..4]`. Reveals only that
+/// someone is joining by *some* code in this 10-minute slot.
+pub fn rendezvous_hash(code: &Code, slot: u64) -> [u8; 4] {
+    use blake2::{Blake2b512, Digest};
+    let mut h = Blake2b512::new();
+    h.update(b"titi/v1/rdv");
+    h.update(code.to_string().as_bytes());
+    h.update(slot.to_be_bytes());
+    let d = h.finalize();
+    [d[0], d[1], d[2], d[3]]
+}
+
 /// Deep link: `titi://j/<uuid_hex>/<key_b64url>/<exp_ms>/<sig_b64url>`
 /// where key = K_join (32 B) and sig = Ed25519(creator) over
 /// `uuid ‖ key ‖ exp_be64`.

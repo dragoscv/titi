@@ -194,6 +194,8 @@ impl From<Action> for FfiAction {
         match a {
             Action::Send { link, peer, bytes } => FfiAction::Send { link, peer, bytes },
             Action::Play { pcm } => FfiAction::Play { pcm_le: pcm_to_le(&pcm) },
+            // never produced with the opus feature (mobile builds decode in core)
+            Action::PlayPacket { .. } => FfiAction::Play { pcm_le: vec![] },
             Action::Capture { active, profile } => FfiAction::Capture { active, profile: profile.into() },
             Action::Ui(e) => FfiAction::Ui { event: e.into() },
             Action::Persist { key, value } => FfiAction::Persist { key, value },
@@ -381,6 +383,16 @@ impl TitiEngine {
         let e = self.inner.lock().unwrap();
         e.active_group.and_then(|g| e.groups.get(&g)).is_some_and(|g| g.floor.is_talking())
     }
+    /// Relay rendezvous room hashes (4 B each) the host should join for `group`.
+    pub fn rendezvous_for_group(&self, group: Vec<u8>, now_ms: u64) -> Result<Vec<Vec<u8>>, TitiError> {
+        Ok(self.inner.lock().unwrap().rendezvous_for_group(&to16(&group)?, now_ms).into_iter().map(|h| h.to_vec()).collect())
+    }
+}
+
+/// Relay rendezvous room hashes for a typed invite code (slots −1, 0, +1).
+#[uniffi::export]
+pub fn rendezvous_for_code(code: String, now_ms: u64) -> Vec<Vec<u8>> {
+    Engine::rendezvous_for_code(&code, now_ms).into_iter().map(|h| h.to_vec()).collect()
 }
 
 /// Opus encode helper for voice notes (host records PCM, we produce packets).

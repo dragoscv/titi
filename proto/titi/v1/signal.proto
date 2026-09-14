@@ -25,6 +25,9 @@ message RoomJoin {
   bytes group_hash = 1;  // 4 bytes; relay never learns group_uuid or keys
   NodeRef node = 2;
   bytes resume_token = 3;
+  // Rendezvous rooms are derived from an invite code (ADR-0004). Only
+  // discovery/handshake/control frames are forwarded inside them.
+  bool rendezvous = 4;
 }
 
 message RoomJoined {
@@ -34,7 +37,9 @@ message RoomJoined {
   uint64 server_ms = 4;
 }
 
-message RoomLeave {}
+message RoomLeave {
+  bytes group_hash = 1;  // empty = leave every room
+}
 
 message PeerEvent {
   NodeRef node = 1;

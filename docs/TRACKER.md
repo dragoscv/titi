@@ -29,7 +29,7 @@ Legend of surfaces: **C** core (Rust) · **B** backend · **A** Android ·
 | P-03 | `group.proto`: JOIN/LEAVE/INVITE_OFFER/ACCEPT/KEY_ROTATE/REVOKE | C | todo | |
 | P-04 | `floor.proto`: FLOOR_REQ/TAKEN/IDLE/DENY/REVOKE, priorities | C | todo | |
 | P-05 | `message.proto`: TEXT, VOICE_NOTE (S&F), LOCATION, SOS, ACK | C | todo | |
-| P-06 | `signal.proto`: relay room join, WebRTC offer/answer/ICE for web LAN | C | todo | |
+| P-06 | `signal.proto`: relay room join (+ `rendezvous`, per-room leave), WebRTC offer/answer/ICE for web LAN | C | done | `proto/titi/v1/signal.proto`; buf lint clean |
 | P-07 | buf lint + breaking in CI; codegen to Kotlin(Wire)/Swift/TS/Rust | D | todo | |
 
 ## 2. Rust core (`core/titi-core`)
@@ -115,18 +115,18 @@ Legend of surfaces: **C** core (Rust) · **B** backend · **A** Android ·
 
 | ID | Item | Status | Evidence |
 |---|---|---|---|
-| W-01 | Next.js 16 + React 19 + Tailwind v4 + shadcn + Motion + Serwist scaffold | todo | |
-| W-02 | Design tokens, fonts, dark-first theme | todo | |
-| W-03 | Landing/marketing + install prompt | todo | |
-| W-04 | Join by code / QR / deep link → relay room | todo | |
-| W-05 | Group screen: morphing Talk button, peers, who-is-talking | todo | |
-| W-06 | AudioWorklet capture/playback, WebCodecs Opus + wasm fallback | todo | |
-| W-07 | `core-wasm` integration: framing, crypto, floor | todo | |
-| W-08 | WS relay transport with reconnect | todo | |
-| W-09 | Text chat + voice notes | todo | |
+| W-01 | Next.js 16.3 + React 19.3 + Tailwind v4 + Motion 13 + Serwist 9 scaffold (React Compiler on) | done | `apps/web`; `next build` OK, routes `/`, `/j/[token]`, `/~offline`, manifest |
+| W-02 | Design tokens, fonts, dark-first theme | done | `globals.css` `@theme` Signal Amber; Manrope + Geist Mono via next/font |
+| W-03 | Landing/marketing + install prompt | partial | onboarding acts as landing; marketing page + `beforeinstallprompt` todo |
+| W-04 | Join by code / QR / deep link → relay rendezvous rooms | done | code join verified web→A51 over internet (rendezvous rooms, 4 members shown) |
+| W-05 | Group screen: morphing Talk button, peers, who-is-talking | done | `TalkButton.tsx` (Motion spring 380/30, pointer capture) |
+| W-06 | AudioWorklet capture + WebCodecs Opus encode/decode, scheduled playout | done | `lib/audio.ts`; 237 packets played in test; wasm-opus fallback deferred (Chrome/Edge/Safari 17+ all have WebCodecs Opus) |
+| W-07 | `core-wasm` integration: framing, crypto, floor | done | `packages/core-wasm` 648 KB (no opus); `PlayPacket`/`on_opus_in` path in core |
+| W-08 | WS relay transport with reconnect, multi-room | done | `lib/relay.ts` |
+| W-09 | Text chat + voice notes | partial | text chat done; voice notes in web todo |
 | W-10 | LAN mode: WebRTC DataChannel to phone host, QR offer/answer, LNA long-poll | todo | |
-| W-11 | i18n EN + RO (next-intl) | todo | |
-| W-12 | PWA manifest, offline shell, icons | todo | |
+| W-11 | i18n EN + RO (next-intl) | todo | strings currently EN inline |
+| W-12 | PWA manifest, offline shell, icons | done | `manifest.ts`, `sw.ts` precache + `/~offline`, icons generated (`scripts/gen-icons.mjs`) |
 | W-13 | Vitest (vectors) + Playwright smoke | todo | |
 | W-14 | Deployed (Vercel), live URL verified | todo | |
 

@@ -17,7 +17,7 @@ use crate::floor::{Claim, Floor, FloorEvent, Priority};
 use crate::frame::{self, flags, Codec, Envelope, FrameType, NodeId, Profile, VoiceHeader};
 use crate::handover::{HoEvent, Handover};
 use crate::identity::{self, Identity};
-use crate::invite::{Code, DeepLink};
+use crate::invite::{self, Code, DeepLink};
 use crate::link::{Link, LinkClass, LinkId};
 use crate::mesh::{self, Dedup, FloodScheduler, NeighbourTable, Rng, Route, Topology};
 use crate::proto;
@@ -34,6 +34,9 @@ pub enum Action {
     Send { link: LinkId, peer: Option<String>, bytes: Vec<u8> },
     /// Play 20 ms of 48 kHz mono PCM (mixed).
     Play { pcm: Vec<i16> },
+    /// Non-opus builds (wasm): one encoded Opus packet from `talker`, for the
+    /// host to decode (WebCodecs) and mix. `lost` = concealment slot.
+    PlayPacket { talker: NodeId, packet: Vec<u8>, frames: u8 },
     /// Host should (re)configure capture for this profile (rate/frames).
     Capture { active: bool, profile: Profile },
     Ui(UiEvent),
@@ -386,6 +389,28 @@ impl Engine {
         self.send_control_to(host, ControlKind::InviteAccept, acc.encode_to_vec(), now)
     }
 
+    /// Relay rendezvous rooms a *joiner* should sit in while joining by this
+    /// code (slots −1, 0, +1), or empty if the code does not parse.
+    pub fn rendezvous_for_code(code_text: &str, now: Ms) -> Vec<[u8; 4]> {
+        let Ok(code) = Code::parse(code_text) else { return vec![] };
+        let slot = time::slot_index(now);
+        [0i64, -1, 1].iter().map(|d| invite::rendezvous_hash(&code, (slot as i64 + d).max(0) as u64)).collect()
+    }
+
+    /// Relay rendezvous rooms the *host* of `gid` should sit in so joiners
+    /// typing its current code can reach it (same three slots).
+    pub fn rendezvous_for_group(&self, gid: &GroupId, now: Ms) -> Vec<[u8; 4]> {
+        let Some(g) = self.groups.get(gid) else { return vec![] };
+        let slot = time::slot_index(now);
+        [0i64, -1, 1]
+            .iter()
+            .map(|d| {
+                let s = (slot as i64 + d).max(0) as u64;
+                invite::rendezvous_hash(&Code::for_slot(&g.k_invite, s), s)
+            })
+            .collect()
+    }
+
     /// Join by typed code: look for a neighbour advertising a group hash we
     /// don't have, open XXpsk3 with psk derived from the code, then JoinRequest.
     pub fn join_by_code(&mut self, code_text: &str, now: Ms) -> Vec<Action> {
@@ -568,6 +593,18 @@ impl Engine {
         #[cfg(not(feature = "opus"))]
         let payload: Vec<u8> = pcm.iter().flat_map(|s| s.to_le_bytes()).collect();
         self.send_voice_payload(gid, payload, profile, now)
+    }
+
+    /// Host-encoded Opus packet (web/WebCodecs). Applies the same floor gating
+    /// as `on_audio_in` but skips PCM accumulation and the core encoder.
+    pub fn on_opus_in(&mut self, packet: &[u8], now: Ms) -> Vec<Action> {
+        let Some(gid) = self.active_group else { return vec![] };
+        let Some(g) = self.groups.get(&gid) else { return vec![] };
+        if !(g.full_duplex || g.floor.is_talking()) {
+            return vec![];
+        }
+        let profile = self.current_profile(&gid);
+        self.send_voice_payload(gid, packet.to_vec(), profile, now)
     }
 
     fn send_voice_payload(&mut self, gid: GroupId, payload: Vec<u8>, profile: Profile, now: Ms) -> Vec<Action> {
@@ -1561,6 +1598,26 @@ impl Engine {
     /// Produce one 20 ms mixed frame if any talker has audio.
     fn playout(&mut self, gid: GroupId, now: Ms) -> Vec<Action> {
         let Some(g) = self.groups.get_mut(&gid) else { return vec![] };
+        #[cfg(not(feature = "opus"))]
+        {
+            // Host decodes: hand over packets in playout order, one per talker per tick.
+            let mut acts = vec![];
+            let talkers: Vec<u16> = g.jitter.keys().copied().collect();
+            for t in talkers {
+                let jb = g.jitter.get_mut(&t).unwrap();
+                let node = g.short_to_node.get(&t).copied().unwrap_or([0u8; 8]);
+                match jb.pop(now) {
+                    Pop::Wait => {}
+                    Pop::Packet(p) => acts.push(Action::PlayPacket { talker: node, packet: p.payload, frames: p.frames }),
+                    Pop::Lost { fec_from_next: Some(nx), .. } => acts.push(Action::PlayPacket { talker: node, packet: nx.payload, frames: nx.frames }),
+                    Pop::Lost { .. } => acts.push(Action::PlayPacket { talker: node, packet: vec![], frames: 1 }),
+                }
+            }
+            g.jitter.retain(|_, jb| jb.buffered_ms() > 0 || now.saturating_sub(jb.last_ts_abs) < 2_000 || jb.last_ts_abs == 0);
+            return acts;
+        }
+        #[cfg(feature = "opus")]
+        {
         let mut streams: Vec<Vec<i16>> = vec![];
         let mut ui_level: Option<(NodeId, f32)> = None;
         let talkers: Vec<u16> = g.jitter.keys().copied().collect();
@@ -1570,7 +1627,6 @@ impl Engine {
                 Pop::Wait => {}
                 Pop::Packet(p) => {
                     let n = audio::TICK_SAMPLES * (p.profile.frame_ms() as usize / time::TICK_MS as usize);
-                    #[cfg(feature = "opus")]
                     let pcm = {
                         let dec = match g.decoders.entry(t) {
                             std::collections::hash_map::Entry::Occupied(e) => e.into_mut(),
@@ -1581,31 +1637,22 @@ impl Engine {
                         };
                         dec.decode(&p.payload, n, false).unwrap_or_else(|_| vec![0; n])
                     };
-                    #[cfg(not(feature = "opus"))]
-                    let pcm: Vec<i16> = p.payload.chunks_exact(2).map(|c| i16::from_le_bytes([c[0], c[1]])).collect();
                     if let Some(node) = g.short_to_node.get(&t) {
                         ui_level = Some((*node, audio::energy_dbfs(&pcm)));
                     }
                     streams.push(pcm);
                 }
                 Pop::Lost { fade, fec_from_next } => {
-                    #[cfg(feature = "opus")]
-                    {
-                        if let Some(dec) = g.decoders.get_mut(&t) {
-                            let n = audio::TICK_SAMPLES;
-                            let mut pcm = match fec_from_next {
-                                Some(nx) => dec.decode(&nx.payload, n, true).unwrap_or_else(|_| vec![0; n]),
-                                None => dec.conceal(n).unwrap_or_else(|_| vec![0; n]),
-                            };
-                            if fade {
-                                audio::fade_out(&mut pcm, 0.5, 0.0);
-                            }
-                            streams.push(pcm);
+                    if let Some(dec) = g.decoders.get_mut(&t) {
+                        let n = audio::TICK_SAMPLES;
+                        let mut pcm = match fec_from_next {
+                            Some(nx) => dec.decode(&nx.payload, n, true).unwrap_or_else(|_| vec![0; n]),
+                            None => dec.conceal(n).unwrap_or_else(|_| vec![0; n]),
+                        };
+                        if fade {
+                            audio::fade_out(&mut pcm, 0.5, 0.0);
                         }
-                    }
-                    #[cfg(not(feature = "opus"))]
-                    {
-                        let _ = (fade, fec_from_next);
+                        streams.push(pcm);
                     }
                 }
             }
@@ -1631,6 +1678,7 @@ impl Engine {
             }
         }
         acts
+        }
     }
 
     // ───────────────────────── helpers ─────────────────────────

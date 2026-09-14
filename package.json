@@ -22,10 +22,13 @@
     "android:release": "pwsh -NoProfile -File scripts/android-build.ps1 -Task bundleRelease"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "turbo": "2.10.12",
     "typescript": "7.0.2"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

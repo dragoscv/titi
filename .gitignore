@@ -57,3 +57,12 @@ android/**/build/
 android/local.properties
 android/.kotlin/
 
+
+apps/web/public/sw.js
+apps/web/public/sw.js.map
+apps/web/.next/
+apps/web/next-env.d.ts
+apps/web/AGENTS.md
+apps/web/CLAUDE.md
+packages/core-wasm/pkg/
+

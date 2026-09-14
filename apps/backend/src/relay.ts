@@ -8,6 +8,7 @@ import {
   bytesEqual,
   decodeHeader,
   Flags,
+  FrameType,
   nodeIdHex,
   NodeRefSchema,
   SignalSchema,
@@ -29,7 +30,7 @@ interface Member {
   node: NodeRef;
   nodeHex: string;
   sink: Sink;
-  room: Room | null;
+  rooms: Map<string, Room>;
   resumeToken: Uint8Array;
   // token-bucket rate limit
   tokens: number;
@@ -39,12 +40,13 @@ interface Member {
 
 interface Room {
   hash: string;
+  rendezvous: boolean;
   members: Map<number, Member>;
 }
 
 interface Parked {
   node: NodeRef;
-  roomHash: string;
+  rooms: { hash: string; rendezvous: boolean }[];
   expiresAt: number;
 }
 
@@ -76,7 +78,7 @@ export class Relay {
       node: create(NodeRefSchema),
       nodeHex: "",
       sink,
-      room: null,
+      rooms: new Map(),
       resumeToken: new Uint8Array(),
       tokens: this.cfg.RATE_LIMIT_FPS,
       lastRefill: this.now(),
@@ -89,9 +91,7 @@ export class Relay {
     const m = this.members.get(id);
     if (!m) return;
     this.members.delete(id);
-    if (m.room) {
-      this.leaveRoom(m, /*park*/ true);
-    }
+    this.leaveAll(m, /*park*/ true);
   }
 
   /** Incoming binary WebSocket message. */
@@ -144,19 +144,22 @@ export class Relay {
           this.sendError(m, ErrorCode.BadFrame, "bad room_join");
           return;
         }
-        if (m.room) this.leaveRoom(m, false);
+        const nodeHex = nodeIdHex(j.node.nodeId);
+        if (m.nodeHex && m.nodeHex !== nodeHex) this.leaveAll(m, false); // identity changed: start over
         m.node = j.node;
-        m.nodeHex = nodeIdHex(j.node.nodeId);
-        // resume: same node re-joining reclaims its token, else a fresh one
-        const parkedKey = j.resumeToken.length ? nodeIdHex(j.resumeToken) : null;
-        const parked = parkedKey ? this.parked.get(parkedKey) : undefined;
-        if (parked && parked.expiresAt > this.now() && nodeIdHex(parked.node.nodeId) === m.nodeHex) {
-          this.parked.delete(parkedKey!);
-          m.resumeToken = j.resumeToken;
-        } else {
-          m.resumeToken = randomBytes(16);
+        m.nodeHex = nodeHex;
+        if (!m.resumeToken.length) {
+          // resume: same node re-joining reclaims its token, else a fresh one
+          const parkedKey = j.resumeToken.length ? nodeIdHex(j.resumeToken) : null;
+          const parked = parkedKey ? this.parked.get(parkedKey) : undefined;
+          if (parked && parked.expiresAt > this.now() && nodeIdHex(parked.node.nodeId) === m.nodeHex) {
+            this.parked.delete(parkedKey!);
+            m.resumeToken = j.resumeToken;
+          } else {
+            m.resumeToken = randomBytes(16);
+          }
         }
-        this.joinRoom(m, nodeIdHex(j.groupHash));
+        this.joinRoom(m, nodeIdHex(j.groupHash), j.rendezvous);
         return;
       }
       case "resume": {
@@ -170,26 +173,24 @@ export class Relay {
         m.node = p.node;
         m.nodeHex = nodeIdHex(p.node.nodeId);
         m.resumeToken = k.value.resumeToken;
-        this.joinRoom(m, p.roomHash);
+        for (const r of p.rooms) this.joinRoom(m, r.hash, r.rendezvous);
         return;
       }
       case "roomLeave":
-        if (m.room) this.leaveRoom(m, false);
+        if (k.value.groupHash.length === 4) { const r = m.rooms.get(nodeIdHex(k.value.groupHash)); if (r) this.leaveRoom(m, r, false); }
+        else this.leaveAll(m, false);
         return;
       case "ping":
         this.sendSignal(m, { case: "pong", value: { tsMs: k.value.tsMs, serverMs: BigInt(this.now()) } });
         return;
       case "webrtc": {
         // pass-through to a specific peer in the same room (web LAN bootstrap)
-        if (!m.room) return this.sendError(m, ErrorCode.NotInRoom, "not in room");
+        if (m.rooms.size === 0) return this.sendError(m, ErrorCode.NotInRoom, "not in room");
         const to = nodeIdHex(k.value.to);
-        for (const peer of m.room.members.values()) {
-          if (peer.nodeHex === to) {
-            const fwd = create(SignalSchema, { kind: { case: "webrtc", value: { ...k.value, from: m.node.nodeId } } });
-            peer.sink.send(tagged(WsTag.Signal, toBinary(SignalSchema, fwd)));
-            return;
-          }
-        }
+        const peer = this.findPeer(m, to);
+        if (!peer) return;
+        const fwd = create(SignalSchema, { kind: { case: "webrtc", value: { ...k.value, from: m.node.nodeId } } });
+        peer.sink.send(tagged(WsTag.Signal, toBinary(SignalSchema, fwd)));
         return;
       }
       default:
@@ -197,20 +198,27 @@ export class Relay {
     }
   }
 
-  private joinRoom(m: Member, hash: string) {
-    let room = this.rooms.get(hash);
-    if (!room) {
-      room = { hash, members: new Map() };
-      this.rooms.set(hash, room);
-    }
-    // a reconnecting node replaces its stale connection
-    for (const other of room.members.values()) {
+  /** Any member of any room we share (unicast forwarding target). */
+  private findPeer(m: Member, nodeHex: string): Member | null {
+    for (const r of m.rooms.values()) for (const p of r.members.values()) if (p.nodeHex === nodeHex) return p;
+    return null;
+  }
+
+  private joinRoom(m: Member, hash: string, rendezvous: boolean) {
+    if (m.rooms.has(hash)) return;
+    // a reconnecting node replaces its stale connection (evict before we
+    // touch the room: eviction may delete an emptied room)
+    for (const other of [...(this.rooms.get(hash)?.members.values() ?? [])]) {
       if (other.nodeHex === m.nodeHex && other.id !== m.id) {
-        room.members.delete(other.id);
-        other.room = null;
+        this.leaveAll(other, false);
         other.sink.close(4000, "replaced");
         this.members.delete(other.id);
       }
+    }
+    let room = this.rooms.get(hash);
+    if (!room) {
+      room = { hash, rendezvous, members: new Map() };
+      this.rooms.set(hash, room);
     }
     if (room.members.size >= this.cfg.MAX_ROOM_SIZE) {
       this.sendError(m, ErrorCode.RoomFull, "room full");
@@ -219,7 +227,7 @@ export class Relay {
     }
     const peers = [...room.members.values()].map((p) => p.node);
     room.members.set(m.id, m);
-    m.room = room;
+    m.rooms.set(hash, room);
     this.sendSignal(m, {
       case: "roomJoined",
       value: { resumeToken: m.resumeToken, peers, roomSize: room.members.size, serverMs: BigInt(this.now()) },
@@ -227,32 +235,35 @@ export class Relay {
     const ev = create(SignalSchema, { kind: { case: "peerEvent", value: { node: m.node, joined: true } } });
     const evBytes = tagged(WsTag.Signal, toBinary(SignalSchema, ev));
     for (const p of room.members.values()) if (p.id !== m.id) p.sink.send(evBytes);
-    log.info("room.join", { room: hash, node: m.nodeHex, size: room.members.size });
+    log.info("room.join", { room: hash, node: m.nodeHex, size: room.members.size, rendezvous });
   }
 
-  private leaveRoom(m: Member, park: boolean) {
-    const room = m.room;
-    if (!room) return;
-    room.members.delete(m.id);
-    m.room = null;
-    if (park && m.resumeToken.length) {
+  private leaveAll(m: Member, park: boolean) {
+    if (park && m.resumeToken.length && m.rooms.size) {
       this.parked.set(nodeIdHex(m.resumeToken), {
         node: m.node,
-        roomHash: room.hash,
+        rooms: [...m.rooms.values()].map((r) => ({ hash: r.hash, rendezvous: r.rendezvous })),
         expiresAt: this.now() + this.cfg.RESUME_TTL_MS,
       });
     }
+    for (const r of [...m.rooms.values()]) this.leaveRoom(m, r, false);
+  }
+
+  private leaveRoom(m: Member, room: Room, park: boolean) {
+    room.members.delete(m.id);
+    m.rooms.delete(room.hash);
+    void park;
     const ev = create(SignalSchema, { kind: { case: "peerEvent", value: { node: m.node, joined: false } } });
     const evBytes = tagged(WsTag.Signal, toBinary(SignalSchema, ev));
     for (const p of room.members.values()) p.sink.send(evBytes);
     if (room.members.size === 0) this.rooms.delete(room.hash);
-    log.info("room.leave", { room: room.hash, node: m.nodeHex, size: room.members.size, parked: park });
+    log.info("room.leave", { room: room.hash, node: m.nodeHex, size: room.members.size });
   }
 
   // ---- envelopes -------------------------------------------------------
 
   private onEnvelope(m: Member, env: Uint8Array, raw: Uint8Array) {
-    if (!m.room) return this.sendError(m, ErrorCode.NotInRoom, "not in room");
+    if (m.rooms.size === 0) return this.sendError(m, ErrorCode.NotInRoom, "not in room");
     if (!this.takeToken(m)) {
       // silently drop voice under pressure; tell the client once per second
       if (m.frames % this.cfg.RATE_LIMIT_FPS === 0) this.sendError(m, ErrorCode.RateLimited, "rate limited");
@@ -267,16 +278,19 @@ export class Relay {
       if ((h.flags & Flags.RELAYED) === 0) return this.sendError(m, ErrorCode.BadFrame, "src mismatch");
     }
     if (h.dst) {
-      const to = nodeIdHex(h.dst);
-      for (const p of m.room.members.values()) {
-        if (p.nodeHex === to) {
-          p.sink.send(raw);
-          return;
-        }
-      }
-      return; // unknown dst in this room: drop
+      const p = this.findPeer(m, nodeIdHex(h.dst));
+      p?.sink.send(raw); // unknown dst: drop
+      return;
     }
-    for (const p of m.room.members.values()) if (p.id !== m.id) p.sink.send(raw);
+    // Broadcast to every room we share. Rendezvous rooms carry only
+    // discovery/handshake/control so a code-room cannot be used to eavesdrop
+    // on (encrypted, but still) voice volume.
+    const voiceLike = h.ftype === FrameType.VoiceRouted || h.ftype === FrameType.VoiceFlood || h.ftype === FrameType.Message;
+    const sent = new Set<number>([m.id]);
+    for (const r of m.rooms.values()) {
+      if (r.rendezvous && voiceLike) continue;
+      for (const p of r.members.values()) if (!sent.has(p.id)) { sent.add(p.id); p.sink.send(raw); }
+    }
   }
 
   private takeToken(m: Member): boolean {
