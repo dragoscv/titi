@@ -48,7 +48,10 @@ import java.util.concurrent.ConcurrentHashMap
  * Wi-Fi. Frames are 2-byte length prefixed. Token = remote MAC.
  *
  * Glare avoidance: the side with the lexicographically smaller node id
- * initiates the connection; the other side only listens.
+ * initiates the connection; the other side only listens. Peers are keyed by
+ * the remote NODE id (from the advert / a hello over the socket), never by
+ * MAC: Android rotates the resolvable private address every few minutes, so a
+ * MAC-keyed table would see the same phone as a new peer each rotation.
  */
 @SuppressLint("MissingPermission")
 class BleTransport(
@@ -67,12 +70,12 @@ class BleTransport(
     private var server: BluetoothServerSocket? = null
     private var gattServer: BluetoothGattServer? = null
     private var psm: Int = 0
-    private val peers = ConcurrentHashMap<String, Peer>() // MAC → peer
-    private val seen = ConcurrentHashMap<String, Long>() // MAC → last advert
-    private val connecting = ConcurrentHashMap.newKeySet<String>()
+    private val peers = ConcurrentHashMap<String, Peer>() // token (node hex) → peer
+    private val seen = ConcurrentHashMap<String, Long>() // node hex → last advert
+    private val connecting = ConcurrentHashMap.newKeySet<String>() // node hex
     private var up = false
 
-    private inner class Peer(val mac: String, val sock: BluetoothSocket) {
+    private inner class Peer(val token: String, val sock: BluetoothSocket) {
         val out = DataOutputStream(sock.outputStream.buffered(4096))
         val inp = DataInputStream(sock.inputStream.buffered(4096))
         @Synchronized fun write(b: ByteArray) {
@@ -89,7 +92,7 @@ class BleTransport(
 
     override fun start(events: TransportEvents) {
         this.events = events
-        val a = adapter ?: return
+        val a = adapter ?: run { Log.i(TAG, "no adapter"); return }
         if (!a.isEnabled || !hasPermissions() || Build.VERSION.SDK_INT < 29) {
             Log.i(TAG, "BLE unavailable (enabled=${a.isEnabled}, perms=${hasPermissions()})")
             return
@@ -97,6 +100,7 @@ class BleTransport(
         try {
             server = a.listenUsingInsecureL2capChannel()
             psm = server!!.psm
+            Log.i(TAG, "l2cap listening psm=$psm")
         } catch (e: IOException) {
             Log.w(TAG, "l2cap listen failed", e); return
         }
@@ -169,15 +173,16 @@ class BleTransport(
     private val scanCb = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, r: ScanResult) {
             val mac = r.device.address
-            seen[mac] = System.currentTimeMillis()
-            if (peers.containsKey(mac) || !connecting.add(mac)) return
             val remoteNode = r.scanRecord?.getServiceData(ParcelUuid(SERVICE_UUID))
+            if (remoteNode == null || remoteNode.size != 8) return // scan response not received yet
+            val token = remoteNode.toHex()
+            seen[token] = System.currentTimeMillis()
+            if (peers.containsKey(token)) return
             // glare avoidance: smaller node id initiates
-            if (remoteNode == null || compare(nodeId(), remoteNode) < 0) {
-                scope.launch { connectTo(r.device) }
-            } else {
-                connecting.remove(mac)
-            }
+            if (compare(nodeId(), remoteNode) >= 0) return
+            if (!connecting.add(token)) return
+            Log.d(TAG, "scan hit $mac node=$token rssi=${r.rssi}")
+            scope.launch { connectTo(r.device, token) }
         }
         override fun onScanFailed(errorCode: Int) { Log.w(TAG, "scan failed $errorCode") }
     }
@@ -192,17 +197,21 @@ class BleTransport(
         scanner.startScan(listOf(filter), settings, scanCb)
     }
 
-    private suspend fun connectTo(dev: BluetoothDevice) {
+    private suspend fun connectTo(dev: BluetoothDevice, token: String) {
         val mac = dev.address
         try {
-            val remotePsm = readPsm(dev) ?: return
+            val remotePsm = readPsm(dev) ?: run { Log.w(TAG, "no psm from $mac"); return }
+            Log.i(TAG, "connecting l2cap $mac psm=$remotePsm")
             val sock = dev.createInsecureL2capChannel(remotePsm)
             sock.connect()
-            attach(mac, sock)
+            Log.i(TAG, "l2cap connected $mac")
+            // tell the acceptor who we are: 8-byte node id preamble
+            sock.outputStream.write(nodeId()); sock.outputStream.flush()
+            attach(token, sock)
         } catch (e: Exception) {
             Log.w(TAG, "connect $mac: ${e.message}")
         } finally {
-            connecting.remove(mac)
+            connecting.remove(token)
         }
     }
 
@@ -241,14 +250,23 @@ class BleTransport(
         val s = server ?: return
         while (scope.isActive) {
             val sock = try { s.accept() } catch (e: IOException) { break }
-            attach(sock.remoteDevice.address, sock)
+            scope.launch {
+                try {
+                    val id = ByteArray(8)
+                    DataInputStream(sock.inputStream).readFully(id)
+                    attach(id.toHex(), sock)
+                } catch (e: IOException) {
+                    runCatching { sock.close() }
+                }
+            }
         }
     }
 
-    private fun attach(mac: String, sock: BluetoothSocket) {
-        val p = Peer(mac, sock)
-        peers.put(mac, p)?.close()
-        events?.peerSeen(this, mac)
+    private fun attach(token: String, sock: BluetoothSocket) {
+        val p = Peer(token, sock)
+        peers.put(token, p)?.close()
+        Log.i(TAG, "peer attached $token (${peers.size})")
+        events?.peerSeen(this, token)
         scope.launch { readLoop(p) }
     }
 
@@ -259,12 +277,12 @@ class BleTransport(
                 if (len == 0 || len > 4096) break
                 val buf = ByteArray(len)
                 p.inp.readFully(buf)
-                events?.frame(this, p.mac, buf)
+                events?.frame(this, p.token, buf)
             }
         } catch (_: IOException) {
         } finally {
             p.close()
-            if (peers.remove(p.mac, p)) events?.peerLost(this, p.mac)
+            if (peers.remove(p.token, p)) events?.peerLost(this, p.token)
         }
     }
 
@@ -288,6 +306,8 @@ class BleTransport(
     }
 
     override fun stats(): LinkStats = LinkStats(estBps = 300_000u, rttMs = 40u, lossPct = 1u)
+
+    private fun ByteArray.toHex() = joinToString("") { "%02x".format(it) }
 
     private fun compare(a: ByteArray, b: ByteArray): Int {
         for (i in 0 until minOf(a.size, b.size)) {

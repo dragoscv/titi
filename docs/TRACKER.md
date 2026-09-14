@@ -88,7 +88,7 @@ Legend of surfaces: **C** core (Rust) · **B** backend · **A** Android ·
 | A-10 | Audio: capture/playback 48k/20ms, AEC/NS/AGC, comm-device routing | done | `AudioEngine.kt` (AudioRecord/AudioTrack low-latency; Oboe deferred — Java path measured first) |
 | A-11 | Foreground service (microphone|connectedDevice), wake/Wi-Fi locks, notification with PTT action | done | `RadioService.kt`; dumpsys `isForeground=true types=0x90` |
 | A-12 | Transport LAN: UDP unicast + multicast 239.77.84.84:41414, multicast lock, NetworkCallback | done | `LanTransport.kt`; log "bound on wlan0" (mDNS not needed: HELLO multicast is discovery) |
-| A-13 | Transport BLE: advertise/scan, GATT PSM exchange, L2CAP CoC data | done (untested 2-phone) | `BleTransport.kt`; advert fixed to fit 31 B (node id in scan response) |
+| A-13 | Transport BLE: advertise/scan, GATT PSM exchange, L2CAP CoC data | done | `BleTransport.kt`; peers keyed by node id (RPA rotation), 8 B preamble on connect; L2CAP psm 131–133 connected A51↔S25 |
 | A-14 | Transport Nearby Connections (gms flavour), P2P_CLUSTER, STREAM payloads | todo | |
 | A-15 | Transport Wi-Fi Aware (when FEATURE_WIFI_AWARE) | todo | |
 | A-16 | Transport LocalOnlyHotspot host + QR creds; join via WifiNetworkSpecifier | todo | |
@@ -107,9 +107,9 @@ Legend of surfaces: **C** core (Rust) · **B** backend · **A** Android ·
 | A-29 | `foss` flavour compiles without GMS | todo | |
 | A-30 | Unit tests (vectors), instrumentation smoke, lint clean | todo | |
 | A-31 | Release signing (upload key), `bundleRelease` AAB | todo | |
-| A-32 | Two-phone LAN test A51↔S25: PTT both ways, <150 ms perceived | todo | |
-| A-33 | Two-phone BLE-only test (Wi-Fi off) | todo | |
-| A-34 | Handover test: LAN → BLE mid-transmission | todo | |
+| A-32 | Two-phone LAN test A51↔S25: PTT both ways | done | logcat: FloorTaken → play #1…#151 → FloorIdle both directions, 2026-09-14 19:30 |
+| A-33 | Two-phone BLE-only test (Wi-Fi off) | done | link chip "Bluetooth LE / ble_l2cap"; voice both ways 19:46–19:47 |
+| A-34 | Handover test: BLE → LAN mid-transmission | done | Wi-Fi re-enabled during a 6 s A51 talk; S25 chip → Wi-Fi, 250+ frames played, no gap/crash |
 
 ## 5. Web PWA (`apps/web`)
 
