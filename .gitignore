@@ -10,7 +10,6 @@ out/
 # Rust
 core/target/
 target/
-packages/core-wasm/pkg/
 
 # Android
 android/.gradle/
@@ -64,7 +63,6 @@ apps/web/.next/
 apps/web/next-env.d.ts
 apps/web/AGENTS.md
 apps/web/CLAUDE.md
-packages/core-wasm/pkg/
 
 
 ios/*.xcodeproj/

@@ -134,17 +134,17 @@ Legend of surfaces: **C** core (Rust) · **B** backend · **A** Android ·
 
 | ID | Item | Status | Evidence |
 |---|---|---|---|
-| I-01 | XcodeGen `project.yml`, SwiftUI app target, TitiCore SwiftPM | todo | |
-| I-02 | Design system Signal Amber, Liquid Glass adoption | todo | |
-| I-03 | Home / group / PTT screens with matchedGeometry morph | todo | |
-| I-04 | Audio: AVAudioEngine `.voiceChat`, PushToTalk framework | todo | |
-| I-05 | Transport Bonjour + UDP (Network.framework) | todo | |
-| I-06 | Transport BLE central/peripheral + L2CAP | todo | |
-| I-07 | Transport Wi-Fi Aware (iOS 26+) | todo | |
-| I-08 | Transport WSS relay | todo | |
+| I-01 | XcodeGen `project.yml`, SwiftUI app target, TitiCore SwiftPM | done (unbuilt on device) | `ios/project.yml`, `ios/TitiCore/Package.swift`; xcframework via `scripts/ios-build-core.sh` |
+| I-02 | Design system Signal Amber, Liquid Glass adoption | partial | `Design.swift` palette/spring; Liquid Glass materials todo (iOS 26 only) |
+| I-03 | Home / group / PTT screens with matchedGeometry morph | done (unbuilt) | `Views/*.swift`, `TalkButton.swift` |
+| I-04 | Audio: AVAudioEngine `.voiceChat`, PushToTalk framework | done (unbuilt) | `AudioEngine.swift`, `PttChannel.swift` |
+| I-05 | Transport UDP multicast + unicast (Network.framework), same group/port as Android | done (unbuilt) | `LanTransport.swift` |
+| I-06 | Transport BLE central/peripheral + L2CAP, Android-compatible | done (unbuilt) | `BleTransport.swift` |
+| I-07 | Transport Wi-Fi Aware (iOS 26+) | deferred | entitlement declared; needs device + iOS 26 API validation |
+| I-08 | Transport WSS relay (multi-room, rendezvous) | done (unbuilt) | `RelayTransport.swift` |
 | I-09 | Join hotspot via NEHotspotConfiguration from QR | todo | |
-| I-10 | Swift non-UI tests against vectors run on Windows | todo | |
-| I-11 | CI build on macos-26 | blocked(Apple account) | |
+| I-10 | Swift non-UI tests against vectors run on Windows | done | `swift test --filter TitiFrameTests` → 4/4 pass on Windows Swift 6.3.3 |
+| I-11 | CI build on macos-26 | configured, unverified | `.github/workflows/ios.yml` (needs GitHub remote push) |
 
 ## 7. Publishing & ops
 
