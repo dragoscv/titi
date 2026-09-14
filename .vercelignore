@@ -1,0 +1,13 @@
+android
+core
+ios
+proto
+docs
+testvectors
+scripts
+apps/backend
+.copilot-tmp
+**/node_modules
+**/.next
+**/target
+**/build
