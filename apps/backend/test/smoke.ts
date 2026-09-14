@@ -1,5 +1,6 @@
-// End-to-end smoke: starts dist/index.js, connects two ws clients, joins a
-// room, sends an envelope A→B and checks it arrives. Run: pnpm tsx test/smoke.ts
+// End-to-end smoke: starts dist/index.js (or targets TITI_RELAY_URL if set),
+// connects two ws clients, joins a room, sends an envelope A→B and checks it
+// arrives. Run: pnpm tsx test/smoke.ts   |   TITI_RELAY_URL=https://... pnpm tsx test/smoke.ts
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { PROTOCOL_VERSION, SignalSchema, WsTag } from "@titi/protocol";
 import { spawn } from "node:child_process";
@@ -7,13 +8,18 @@ import { setTimeout as sleep } from "node:timers/promises";
 import WebSocket from "ws";
 
 const PORT = 18080;
-const server = spawn(process.execPath, ["dist/index.js"], { env: { ...process.env, PORT: String(PORT), LOG_LEVEL: "debug" }, stdio: ["ignore", "pipe", "inherit"] });
-server.stdout.on("data", (d) => process.stdout.write(`[server] ${d}`));
+const remote = process.env.TITI_RELAY_URL;
+const httpBase = remote ?? `http://127.0.0.1:${PORT}`;
+const wsBase = httpBase.replace(/^http/, "ws");
+const server = remote
+  ? null
+  : spawn(process.execPath, ["dist/index.js"], { env: { ...process.env, PORT: String(PORT), LOG_LEVEL: "debug" }, stdio: ["ignore", "pipe", "inherit"] });
+server?.stdout.on("data", (d) => process.stdout.write(`[server] ${d}`));
 
 try {
   for (let i = 0; i < 50; i++) {
     try {
-      const r = await fetch(`http://127.0.0.1:${PORT}/health`);
+      const r = await fetch(`${httpBase}/health`);
       if (r.ok) {
         console.log("health:", await r.text());
         break;
@@ -34,7 +40,7 @@ try {
   };
   const open = (n: number) =>
     new Promise<WebSocket>((res, rej) => {
-      const ws = new WebSocket(`ws://127.0.0.1:${PORT}/v1/ws`);
+      const ws = new WebSocket(`${wsBase}/v1/ws`);
       ws.binaryType = "nodebuffer";
       ws.once("open", () => {
         ws.send(join(n));
@@ -66,7 +72,7 @@ try {
   a.close();
   b.close();
   await sleep(100);
-  console.log("health after:", await (await fetch(`http://127.0.0.1:${PORT}/health`)).text());
+  console.log("health after:", await (await fetch(`${httpBase}/health`)).text());
 } finally {
-  server.kill();
+  server?.kill();
 }

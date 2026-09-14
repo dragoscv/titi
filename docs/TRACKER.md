@@ -70,7 +70,7 @@ Legend of surfaces: **C** core (Rust) · **B** backend · **A** Android ·
 | B-05 | Reconnect/resume token (60-min WS cap) | done | 16 B token, parked 5 min, same-node replaces stale socket (close 4000) |
 | B-06 | Structured logging, rate limits, max room size | done | JSON `severity` logs; token bucket `RATE_LIMIT_FPS`; `MAX_ROOM_SIZE`; `MAX_FRAME_BYTES` |
 | B-07 | Dockerfile (Node 24, distroless), Cloud Run deploy script + workflow | done | `docker build` OK, container `/health` OK; `scripts/deploy-backend.ps1`, `.github/workflows/backend.yml` |
-| B-08 | Deployed to Cloud Run europe-west1, live `/health` verified | todo | |
+| B-08 | Deployed to Cloud Run europe-west1, live `/health` verified | done | project `hai-small-apps`, service `titi-relay`, rev `00001-88c`, https://titi-relay-x3clqgvrdq-ew.a.run.app — WSS smoke A→B OK (`TITI_RELAY_URL=… tsx test/smoke.ts`) |
 
 ## 4. Android (`android/`)
 
