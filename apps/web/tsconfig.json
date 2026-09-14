@@ -32,7 +32,6 @@
       ]
     },
     "types": [
-      "@serwist/next/typings"
     ]
   },
   "include": [

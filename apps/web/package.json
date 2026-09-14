@@ -11,10 +11,10 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@bufbuild/protobuf": "catalog:",
+    "@serwist/turbopack": "9.5.12",
     "@titi/core-wasm": "workspace:*",
     "@titi/protocol": "workspace:*",
-    "@bufbuild/protobuf": "catalog:",
-    "@serwist/next": "catalog:",
     "clsx": "catalog:",
     "lucide-react": "catalog:",
     "motion": "catalog:",
@@ -33,6 +33,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "babel-plugin-react-compiler": "1.0.0",
+    "esbuild": "^0.28.2",
     "eslint": "catalog:",
     "eslint-config-next": "catalog:",
     "postcss": "catalog:",
