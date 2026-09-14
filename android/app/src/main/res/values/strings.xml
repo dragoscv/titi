@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Titi</string>
+    <string name="widget_label">Titi Talk</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_title">Talk anywhere.\nNo signal needed.</string>
+    <string name="onboarding_subtitle">Titi turns nearby phones into a private radio over Wi‑Fi, hotspot and Bluetooth — and uses the internet when it exists.</string>
+    <string name="onboarding_name_label">What should others call you?</string>
+    <string name="onboarding_name_hint">Your name</string>
+    <string name="onboarding_colour_label">Pick your colour</string>
+    <string name="onboarding_continue">Continue</string>
+    <string name="perm_title">A few permissions</string>
+    <string name="perm_subtitle">Everything stays on your devices. Titi has no account and no server that hears you.</string>
+    <string name="perm_mic">Microphone</string>
+    <string name="perm_mic_why">To transmit your voice.</string>
+    <string name="perm_nearby">Nearby devices</string>
+    <string name="perm_nearby_why">To find phones over Bluetooth and Wi‑Fi. Not used for location.</string>
+    <string name="perm_notifications">Notifications</string>
+    <string name="perm_notifications_why">To keep the radio running in the background and show who is talking.</string>
+    <string name="perm_location">Location (optional)</string>
+    <string name="perm_location_why">Only for sharing your position or an SOS with your group.</string>
+    <string name="perm_grant">Grant</string>
+    <string name="perm_granted">Granted</string>
+    <string name="perm_finish">Start using Titi</string>
+
+    <!-- Home -->
+    <string name="home_groups">Your groups</string>
+    <string name="home_no_groups">No groups yet</string>
+    <string name="home_no_groups_hint">Create one, or join with a code from a friend.</string>
+    <string name="home_nearby">Nearby</string>
+    <string name="home_nearby_empty">Looking for phones around you…</string>
+    <string name="home_create">New group</string>
+    <string name="home_join">Join</string>
+    <string name="home_invite">Invite</string>
+    <string name="home_members">%1$d members</string>
+    <string name="home_member_one">1 member</string>
+    <string name="home_settings">Settings</string>
+
+    <!-- Group -->
+    <string name="group_hold_to_talk">Hold to talk</string>
+    <string name="group_talking">You are talking</string>
+    <string name="group_release">Release to finish</string>
+    <string name="group_busy">%1$s is talking</string>
+    <string name="group_idle">Channel free</string>
+    <string name="group_queued">Waiting for the channel…</string>
+    <string name="group_mode_ptt">Push to talk</string>
+    <string name="group_mode_duplex">Open mic</string>
+    <string name="group_mute">Mute</string>
+    <string name="group_unmute">Unmute</string>
+    <string name="group_chat">Chat</string>
+    <string name="group_members_title">Members</string>
+    <string name="group_leave">Leave group</string>
+    <string name="group_leave_confirm">Leave %1$s? You will need a new invite to come back.</string>
+    <string name="group_hops">%1$d hops</string>
+    <string name="group_via">via %1$s</string>
+    <string name="group_you">You</string>
+    <string name="group_talk_warning">10 seconds left</string>
+    <string name="group_talk_timeout">Talk time limit reached</string>
+    <string name="group_floor_denied">Channel busy</string>
+    <string name="group_sos">SOS</string>
+    <string name="group_sos_confirm">Send an SOS to everyone in %1$s with your location?</string>
+    <string name="group_sos_sent">SOS sent</string>
+    <string name="group_sos_cancel">Cancel SOS</string>
+    <string name="group_share_location">Share location</string>
+
+    <!-- Create / invite / join -->
+    <string name="create_title">Name your group</string>
+    <string name="create_hint">e.g. Cabana, Trail team, Ski lift</string>
+    <string name="create_button">Create</string>
+    <string name="invite_title">Invite to %1$s</string>
+    <string name="invite_code_label">Say this code</string>
+    <string name="invite_code_expires">Changes in %1$s</string>
+    <string name="invite_qr_label">Or scan</string>
+    <string name="invite_nearby_label">Tap a phone nearby</string>
+    <string name="invite_sent">Invitation sent to %1$s</string>
+    <string name="invite_share_link">Share link</string>
+    <string name="invite_offered_title">%1$s invites you</string>
+    <string name="invite_offered_body">Join “%1$s” · %2$d members</string>
+    <string name="invite_accept">Join</string>
+    <string name="invite_decline">Not now</string>
+    <string name="join_title">Join a group</string>
+    <string name="join_code_hint">word word word 00</string>
+    <string name="join_code_help">Ask the host for the three words and two digits shown on their screen.</string>
+    <string name="join_scan">Scan QR</string>
+    <string name="join_button">Join</string>
+    <string name="join_searching">Looking for the group nearby…</string>
+    <string name="join_failed">Could not join: %1$s</string>
+    <string name="join_no_peers">No Titi phones nearby yet. Make sure both are on the same Wi‑Fi or hotspot, or have Bluetooth on.</string>
+    <string name="joined">Joined %1$s</string>
+
+    <!-- Chat -->
+    <string name="chat_hint">Message</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_voice_note">Hold for voice note</string>
+    <string name="chat_location">%1$s shared a location</string>
+    <string name="chat_sos">SOS from %1$s</string>
+    <string name="chat_sos_cancelled">%1$s cancelled the SOS</string>
+    <string name="chat_delivered">Delivered</string>
+    <string name="chat_pending">Waiting for a path…</string>
+
+    <!-- Links -->
+    <string name="link_lan">Wi‑Fi</string>
+    <string name="link_hotspot">Hotspot</string>
+    <string name="link_aware">Wi‑Fi Aware</string>
+    <string name="link_nearby">Nearby</string>
+    <string name="link_ble">Bluetooth LE</string>
+    <string name="link_bt">Bluetooth</string>
+    <string name="link_internet">Internet</string>
+    <string name="link_none">Searching…</string>
+    <string name="handover_degraded">Link weak — switching</string>
+    <string name="handover_switching">Switching to %1$s</string>
+    <string name="handover_suspended">Out of range — will resume</string>
+    <string name="handover_resumed">Back in range</string>
+
+    <!-- Service / notification -->
+    <string name="notif_channel_radio">Radio</string>
+    <string name="notif_channel_radio_desc">Keeps Titi listening while the screen is off</string>
+    <string name="notif_channel_alerts">Alerts</string>
+    <string name="notif_channel_alerts_desc">Invitations, SOS and messages</string>
+    <string name="notif_listening">Listening on %1$s</string>
+    <string name="notif_talking">%1$s is talking</string>
+    <string name="notif_action_talk">Talk</string>
+    <string name="notif_action_stop">Stop</string>
+    <string name="notif_action_mute">Mute</string>
+    <string name="notif_idle">Radio on · %1$d nearby</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_profile">Profile</string>
+    <string name="settings_name">Name</string>
+    <string name="settings_colour">Colour</string>
+    <string name="settings_audio">Audio</string>
+    <string name="settings_quality">Voice quality</string>
+    <string name="settings_quality_auto">Automatic (recommended)</string>
+    <string name="settings_quality_hq">High — Wi‑Fi only</string>
+    <string name="settings_quality_std">Standard</string>
+    <string name="settings_quality_low">Low — Bluetooth</string>
+    <string name="settings_sounds">Sound pack</string>
+    <string name="settings_sound_bird">Bird</string>
+    <string name="settings_sound_radio">Radio</string>
+    <string name="settings_sound_minimal">Minimal</string>
+    <string name="settings_haptics_only">Haptics only (no sounds)</string>
+    <string name="settings_ptt_volume">Volume buttons as talk key</string>
+    <string name="settings_transports">Radios</string>
+    <string name="settings_transport_internet">Use internet when available</string>
+    <string name="settings_transport_ble">Bluetooth LE</string>
+    <string name="settings_transport_hotspot">Allow hosting a hotspot</string>
+    <string name="settings_battery">Battery saver</string>
+    <string name="settings_battery_desc">Slower discovery, lower quality on Bluetooth.</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_contrast">High contrast</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">Version %1$s</string>
+    <string name="settings_licences">Open source licences</string>
+    <string name="settings_privacy">Privacy policy</string>
+    <string name="settings_node_id">Device ID</string>
+
+    <!-- Common -->
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="back">Back</string>
+    <string name="close">Close</string>
+    <string name="copy">Copy</string>
+    <string name="copied">Copied</string>
+    <string name="share">Share</string>
+    <string name="retry">Retry</string>
+    <string name="error_generic">Something went wrong</string>
+    <string name="cd_talk_button">Talk button. Press and hold to transmit.</string>
+    <string name="cd_avatar">Avatar of %1$s</string>
+    <string name="cd_signal_bars">Signal %1$d of 4</string>
+</resources>

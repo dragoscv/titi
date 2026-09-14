@@ -181,7 +181,8 @@ impl From<UiEvent> for FfiUiEvent {
 #[derive(uniffi::Enum, Debug, Clone)]
 pub enum FfiAction {
     Send { link: u32, peer: Option<String>, bytes: Vec<u8> },
-    Play { pcm: Vec<i16> },
+    /// PCM16 little-endian mono 48 kHz (bytes, so the FFI copies one buffer instead of boxing shorts).
+    Play { pcm_le: Vec<u8> },
     Capture { active: bool, profile: FfiProfile },
     Ui { event: FfiUiEvent },
     Persist { key: String, value: Vec<u8> },
@@ -192,7 +193,7 @@ impl From<Action> for FfiAction {
     fn from(a: Action) -> Self {
         match a {
             Action::Send { link, peer, bytes } => FfiAction::Send { link, peer, bytes },
-            Action::Play { pcm } => FfiAction::Play { pcm },
+            Action::Play { pcm } => FfiAction::Play { pcm_le: pcm_to_le(&pcm) },
             Action::Capture { active, profile } => FfiAction::Capture { active, profile: profile.into() },
             Action::Ui(e) => FfiAction::Ui { event: e.into() },
             Action::Persist { key, value } => FfiAction::Persist { key, value },
@@ -203,6 +204,18 @@ impl From<Action> for FfiAction {
 
 fn conv(v: Vec<Action>) -> Vec<FfiAction> {
     v.into_iter().map(Into::into).collect()
+}
+
+fn pcm_to_le(pcm: &[i16]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(pcm.len() * 2);
+    for s in pcm {
+        out.extend_from_slice(&s.to_le_bytes());
+    }
+    out
+}
+
+fn le_to_pcm(b: &[u8]) -> Vec<i16> {
+    b.chunks_exact(2).map(|c| i16::from_le_bytes([c[0], c[1]])).collect()
 }
 
 fn to16(v: &[u8]) -> Result<[u8; 16], TitiError> {
@@ -281,7 +294,9 @@ impl TitiEngine {
     pub fn on_frame(&self, link: u32, token: String, bytes: Vec<u8>, now_ms: u64) -> Vec<FfiAction> {
         conv(self.inner.lock().unwrap().on_frame(link, token, &bytes, now_ms))
     }
-    pub fn on_audio_in(&self, pcm: Vec<i16>, now_ms: u64) -> Vec<FfiAction> {
+    /// `pcm_le` = PCM16 little-endian mono 48 kHz, one 20 ms tick (1920 bytes).
+    pub fn on_audio_in(&self, pcm_le: Vec<u8>, now_ms: u64) -> Vec<FfiAction> {
+        let pcm = le_to_pcm(&pcm_le);
         conv(self.inner.lock().unwrap().on_audio_in(&pcm, now_ms))
     }
     pub fn tick(&self, now_ms: u64) -> Vec<FfiAction> {
@@ -370,7 +385,8 @@ impl TitiEngine {
 
 /// Opus encode helper for voice notes (host records PCM, we produce packets).
 #[uniffi::export]
-pub fn encode_voice_note(pcm_48k_mono: Vec<i16>, profile: FfiProfile) -> Result<Vec<u8>, TitiError> {
+pub fn encode_voice_note(pcm_48k_mono_le: Vec<u8>, profile: FfiProfile) -> Result<Vec<u8>, TitiError> {
+    let pcm_48k_mono = le_to_pcm(&pcm_48k_mono_le);
     let p = match profile { FfiProfile::Hq => Profile::Hq, FfiProfile::Std => Profile::Std, FfiProfile::Low => Profile::Low, FfiProfile::Min => Profile::Min };
     let mut enc = titi_core::audio::codec::Encoder::new(p)?;
     let n = enc.frame_samples();
@@ -386,7 +402,7 @@ pub fn encode_voice_note(pcm_48k_mono: Vec<i16>, profile: FfiProfile) -> Result<
 }
 
 #[uniffi::export]
-pub fn decode_voice_note(packets: Vec<u8>, profile: FfiProfile) -> Result<Vec<i16>, TitiError> {
+pub fn decode_voice_note(packets: Vec<u8>, profile: FfiProfile) -> Result<Vec<u8>, TitiError> {
     let p = match profile { FfiProfile::Hq => Profile::Hq, FfiProfile::Std => Profile::Std, FfiProfile::Low => Profile::Low, FfiProfile::Min => Profile::Min };
     let mut dec = titi_core::audio::codec::Decoder::new()?;
     let n = titi_core::audio::TICK_SAMPLES * (p.frame_ms() as usize / 20);
@@ -399,12 +415,18 @@ pub fn decode_voice_note(packets: Vec<u8>, profile: FfiProfile) -> Result<Vec<i1
         out.extend(dec.decode(&packets[i..i + len], n, false)?);
         i += len;
     }
-    Ok(out)
+    Ok(pcm_to_le(&out))
 }
 
 #[uniffi::export]
 pub fn parse_invite_code(text: String) -> bool {
     titi_core::invite::Code::parse(&text).is_ok()
+}
+
+/// 4-byte group hash used as the relay room key (relay never learns the uuid).
+#[uniffi::export]
+pub fn group_hash(group: Vec<u8>) -> Result<Vec<u8>, TitiError> {
+    Ok(titi_core::identity::group_hash(&to16(&group)?).to_vec())
 }
 
 #[uniffi::export]
