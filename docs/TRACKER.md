@@ -163,7 +163,7 @@ Legend of surfaces: **C** core (Rust) · **B** backend · **A** Android ·
 | ID | Check | Status |
 |---|---|---|
 | R-01 | Every row above `done` with evidence, or `deferred`/`blocked` with reason | todo |
-| R-02 | All test suites pass (cargo, vitest, gradle unit) | todo |
+| R-02 | All test suites pass (cargo, vitest, gradle unit) | done — 2026-09-14: cargo 42 passed; backend vitest 5 passed; `:app:testGmsDebugUnitTest` exit 0 |
 | R-03 | Two-phone manual script executed and logged | todo |
 | R-04 | Ripple: docs, i18n both locales, ADRs match code | todo |
 
