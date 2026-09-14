@@ -1,0 +1,11 @@
+[
+  {
+    "name": "identity_seed_7",
+    "ed25519_pub_hex": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+    "group_hash_of_uuid_05_hex": "18f51fc1",
+    "node_id_hex": "8d2d1c260127c744",
+    "seed_hex": "0707070707070707070707070707070707070707070707070707070707070707",
+    "sig_of_titi_hex": "ed71e29498d0f04216b45519f5cfa91f62dac028dd3c1b3e2a3e9600e48df323a747dae2b5af7ff0c6a1560aef1c704ea32a8f11a626107c68fff53d0c8e4d0b",
+    "x25519_pub_hex": "761d88ec830413919dfe9d4d1d56f17e653c8c994082df5b137b90a0ae6edf74"
+  }
+]

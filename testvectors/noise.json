@@ -1,0 +1,14 @@
+[
+  {
+    "name": "noise_xx_static_keys",
+    "initiator_x25519_public_hex": "1b1b58dd50ea14b60da17b790cd02754d970c9bab864ebb3c0f3016fe51d3f57",
+    "initiator_x25519_secret_hex": "5ce86efb75fa4e2c410f46e16de9f6acae1a1703528651b69bc176c088bef3ee",
+    "msg1_len": "32",
+    "msg2_len": "96",
+    "msg3_len": "64",
+    "notes": "lengths for empty payloads; XX: e | e,ee,s,es | s,se",
+    "pattern": "Noise_XX_25519_ChaChaPoly_SHA256",
+    "responder_x25519_public_hex": "60346e7c911a5f6ba154129174cafe75b294ac3bbd5549632f48cec6266f8410",
+    "responder_x25519_secret_hex": "aa3c626bc9c38c8c201878ebb1d5b0b50ac40e8986c78793db1d4ef369fca1ce"
+  }
+]

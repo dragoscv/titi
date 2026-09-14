@@ -1,0 +1,20 @@
+[
+  {
+    "name": "envelope_broadcast",
+    "input_hex": "6869",
+    "expected_hex": "01017702deadbeef11111111111111116869",
+    "notes": "ver=1 type=HELLO ttl=7 hop_start=7 flags=SIGNED msg_id=deadbeef src=11*8"
+  },
+  {
+    "name": "envelope_unicast",
+    "input_hex": "6869",
+    "expected_hex": "01057703deadbeef111111111111111122222222222222226869",
+    "notes": "UNICAST flag set automatically, dst=22*8"
+  },
+  {
+    "name": "envelope_relayed",
+    "input_hex": "01017702deadbeef11111111111111116869",
+    "expected_hex": "01016706deadbeef11111111111111116869",
+    "notes": "ttl-1, RELAYED flag"
+  }
+]

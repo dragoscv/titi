@@ -1,0 +1,38 @@
+[
+  {
+    "name": "code_slot_0",
+    "check": "62",
+    "code": "carol-duct-eats-62",
+    "k_invite_hex": "0303030303030303030303030303030303030303030303030303030303030303",
+    "slot": "0",
+    "words_idx": "152,347,363"
+  },
+  {
+    "name": "code_slot_1234",
+    "check": "59",
+    "code": "kilt-swore-trait-59",
+    "k_invite_hex": "0303030303030303030303030303030303030303030303030303030303030303",
+    "slot": "1234",
+    "words_idx": "606,1118,1163"
+  },
+  {
+    "name": "code_slot_999999",
+    "check": "53",
+    "code": "yeast-silo-debit-53",
+    "k_invite_hex": "0303030303030303030303030303030303030303030303030303030303030303",
+    "slot": "999999",
+    "words_idx": "1282,978,286"
+  },
+  {
+    "name": "slot_math",
+    "now_ms": "1893456000000",
+    "slot": "3155760",
+    "slot_ms": "600000"
+  },
+  {
+    "name": "deep_link",
+    "invalid_at_ms": "11000",
+    "url": "titi://j/BAQEBAQEBAQEBAQEBAQEBA/BQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQU/10000/6kpsY-KcUgq-9VB7Ey7F-ZVHdq6-vnuSQh7qaRRG0iw/jS83W68cBHi1qqJr7GUnxB34BH6O0hhbrfLWEZYPn0J484Q9M6SmGGhq9elLwx62-IqydAHwOqXggbcJLMYwAQ",
+    "valid_at_ms": "9000"
+  }
+]

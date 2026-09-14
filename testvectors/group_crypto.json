@@ -1,0 +1,16 @@
+[
+  {
+    "name": "group_light",
+    "aad_utf8": "aad",
+    "argon2id_params": "m=8192KiB t=1 p=1",
+    "ciphertext_hex": "0ed69c1c5b5843fb8554d139634b5b28920622",
+    "group_uuid_hex": "05050505050505050505050505050505",
+    "ikm_hex": "f9e5dfc674abe99c050bf4a9d09287b70bebada1db3209114bbce98978613964",
+    "invite_psk_kinvite03_slot1234_hex": "6f0873501ff9d5b5cb2d64bac1c3146b91bfcc63db41e5112a40896673a75f6b",
+    "k_epoch0_hex": "e1dcc51c93fb1c8505f71051defb7162cdb382ba66f506d42fa9f0b3d813d654",
+    "k_epoch1_hex": "5f25520e163d079af4165d2097ee7f1044cd79a94a34ace443fdf9e8f9add7f3",
+    "plaintext_utf8": "pcm",
+    "secret_utf8": "tiger-river-acid-42",
+    "voice_nonce_talker01_epoch0_seq42_hex": "0101010101010101000000000000002a0000000000000000"
+  }
+]

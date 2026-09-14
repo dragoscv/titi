@@ -1,0 +1,20 @@
+[
+  {
+    "name": "voice_header_0",
+    "input_hex": "090909",
+    "expected_hex": "1009abcdffff3039090909",
+    "notes": "VoiceHeader { codec: Opus, frames: 1, marker: true, profile: Hq, talker: 43981, seq: 65535, ts: 12345 }"
+  },
+  {
+    "name": "voice_header_1",
+    "input_hex": "090909",
+    "expected_hex": "1013abcdfffe303a090909",
+    "notes": "VoiceHeader { codec: Opus, frames: 2, marker: false, profile: Low, talker: 43981, seq: 65534, ts: 12346 }"
+  },
+  {
+    "name": "voice_header_2",
+    "input_hex": "090909",
+    "expected_hex": "106cabcdfffd303b090909",
+    "notes": "VoiceHeader { codec: Codec2, frames: 3, marker: true, profile: Min, talker: 43981, seq: 65533, ts: 12347 }"
+  }
+]

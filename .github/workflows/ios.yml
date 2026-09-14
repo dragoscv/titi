@@ -1,0 +1,39 @@
+name: ios
+
+on:
+  push:
+    branches: [main]
+    paths: ["ios/**", "core/**", "scripts/ios-build-core.sh", ".github/workflows/ios.yml"]
+  pull_request:
+    paths: ["ios/**", "core/**"]
+  workflow_dispatch:
+
+jobs:
+  frame-tests:
+    # Pure-Swift TitiFrame package: runs anywhere Swift 6 runs (Linux is cheapest).
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: swift-actions/setup-swift@v2
+        with: { swift-version: "6.1" }
+      - run: cp testvectors/envelope.json ios/TitiCore/Tests/TitiFrameTests/vectors/
+      - run: swift test --package-path ios/TitiCore --filter TitiFrameTests
+
+  app:
+    # Full app build. Signing is skipped until the Apple Developer account
+    # exists (ADR-0006); then set DEVELOPMENT_TEAM and switch to archive.
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - run: brew install xcodegen
+      - run: bash scripts/ios-build-core.sh
+      - run: cd ios && xcodegen generate
+      - run: >
+          cd ios && xcodebuild -project Titi.xcodeproj -scheme Titi
+          -destination 'generic/platform=iOS Simulator' -configuration Debug
+          CODE_SIGNING_ALLOWED=NO build
+      - run: >
+          cd ios && xcodebuild -project Titi.xcodeproj -scheme Titi
+          -destination 'platform=iOS Simulator,name=iPhone 17' test
+          CODE_SIGNING_ALLOWED=NO

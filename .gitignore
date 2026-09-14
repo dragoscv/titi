@@ -66,3 +66,9 @@ apps/web/AGENTS.md
 apps/web/CLAUDE.md
 packages/core-wasm/pkg/
 
+
+ios/*.xcodeproj/
+ios/TitiCore/.build/
+ios/TitiCore/Artifacts/
+ios/TitiCore/Sources/TitiCore/Generated/
+
