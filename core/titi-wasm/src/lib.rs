@@ -17,6 +17,18 @@ pub struct WasmEngine {
     inner: Engine,
 }
 
+impl WasmEngine {
+    /// Shapes sends (MTU fragmentation) before converting to JSON.
+    fn sh(&mut self, f: impl FnOnce(&mut Engine) -> Vec<Action>) -> String {
+        let acts = f(&mut self.inner);
+        conv(self.inner.shape(acts))
+    }
+    fn try_sh(&mut self, f: impl FnOnce(&mut Engine) -> Result<Vec<Action>, JsValue>) -> Result<String, JsValue> {
+        let acts = f(&mut self.inner)?;
+        Ok(conv(self.inner.shape(acts)))
+    }
+}
+
 fn class_from(v: u8) -> LinkClass {
     LinkClass::from_u8(v).unwrap_or(LinkClass::Internet)
 }
@@ -206,75 +218,74 @@ impl WasmEngine {
     }
 
     pub fn on_link_up(&mut self, link: u32, class: u8, now_ms: f64) -> String {
-        conv(self.inner.on_link_up(link, class_from(class), None, now_ms as u64))
+        self.sh(|e| e.on_link_up(link, class_from(class), None, now_ms as u64))
     }
     pub fn on_link_down(&mut self, link: u32, now_ms: f64) -> String {
-        conv(self.inner.on_link_down(link, now_ms as u64))
+        self.sh(|e| e.on_link_down(link, now_ms as u64))
     }
     pub fn on_link_stats(&mut self, link: u32, est_bps: u32, rtt_ms: u32, loss_pct: u8, now_ms: f64) -> String {
-        conv(self.inner.on_link_stats(link, est_bps, rtt_ms, loss_pct, now_ms as u64))
+        self.sh(|e| e.on_link_stats(link, est_bps, rtt_ms, loss_pct, now_ms as u64))
     }
     pub fn on_peer_seen(&mut self, link: u32, token: String, now_ms: f64) -> String {
-        conv(self.inner.on_peer_seen(link, token, now_ms as u64))
+        self.sh(|e| e.on_peer_seen(link, token, now_ms as u64))
     }
     pub fn on_peer_lost(&mut self, link: u32, token: String, now_ms: f64) -> String {
-        conv(self.inner.on_peer_lost(link, token, now_ms as u64))
+        self.sh(|e| e.on_peer_lost(link, token, now_ms as u64))
     }
     pub fn on_frame(&mut self, link: u32, token: String, bytes: &[u8], now_ms: f64) -> String {
-        conv(self.inner.on_frame(link, token, bytes, now_ms as u64))
+        self.sh(|e| e.on_frame(link, token, bytes, now_ms as u64))
     }
     /// One encoded Opus packet from WebCodecs (20 ms, 48 kHz mono).
     pub fn on_opus_in(&mut self, packet: &[u8], now_ms: f64) -> String {
-        conv(self.inner.on_opus_in(packet, now_ms as u64))
+        self.sh(|e| e.on_opus_in(packet, now_ms as u64))
     }
     pub fn tick(&mut self, now_ms: f64) -> String {
-        conv(self.inner.tick(now_ms as u64))
+        self.sh(|e| e.tick(now_ms as u64))
     }
 
     pub fn ptt_down(&mut self, prio: u8, now_ms: f64) -> String {
-        conv(self.inner.ptt_down(Priority::from_u8(prio), now_ms as u64))
+        self.sh(|e| e.ptt_down(Priority::from_u8(prio), now_ms as u64))
     }
     pub fn ptt_up(&mut self, now_ms: f64) -> String {
-        conv(self.inner.ptt_up(now_ms as u64))
+        self.sh(|e| e.ptt_up(now_ms as u64))
     }
 
     pub fn create_group(&mut self, name: String, now_ms: f64) -> Result<String, JsValue> {
-        let (_, acts) = self.inner.create_group(&name, now_ms as u64).map_err(|e| JsValue::from_str(&e.to_string()))?;
-        Ok(conv(acts))
+        self.try_sh(|e| Ok(e.create_group(&name, now_ms as u64).map_err(|e| JsValue::from_str(&e.to_string()))?.1))
     }
     pub fn leave_group(&mut self, group: &[u8], now_ms: f64) -> Result<String, JsValue> {
-        Ok(conv(self.inner.leave_group(gid(group)?, now_ms as u64)))
+        self.try_sh(|e| Ok(e.leave_group(gid(group)?, now_ms as u64)))
     }
     pub fn set_active_group(&mut self, group: &[u8]) -> Result<(), JsValue> {
         self.inner.set_active_group(gid(group)?);
         Ok(())
     }
     pub fn set_full_duplex(&mut self, group: &[u8], on: bool, now_ms: f64) -> Result<String, JsValue> {
-        Ok(conv(self.inner.set_full_duplex(gid(group)?, on, now_ms as u64)))
+        self.try_sh(|e| Ok(e.set_full_duplex(gid(group)?, on, now_ms as u64)))
     }
     pub fn invite_peer(&mut self, group: &[u8], node: &[u8], now_ms: f64) -> Result<String, JsValue> {
-        Ok(conv(self.inner.invite_peer(gid(group)?, nid(node)?, now_ms as u64)))
+        self.try_sh(|e| Ok(e.invite_peer(gid(group)?, nid(node)?, now_ms as u64)))
     }
     pub fn accept_invite(&mut self, group: &[u8], host: &[u8], now_ms: f64) -> Result<String, JsValue> {
-        Ok(conv(self.inner.accept_invite(gid(group)?, nid(host)?, now_ms as u64)))
+        self.try_sh(|e| Ok(e.accept_invite(gid(group)?, nid(host)?, now_ms as u64)))
     }
     pub fn decline_invite(&mut self, group: &[u8], host: &[u8], now_ms: f64) -> Result<String, JsValue> {
-        Ok(conv(self.inner.decline_invite(gid(group)?, nid(host)?, now_ms as u64)))
+        self.try_sh(|e| Ok(e.decline_invite(gid(group)?, nid(host)?, now_ms as u64)))
     }
     pub fn join_by_code(&mut self, code: String, now_ms: f64) -> String {
-        conv(self.inner.join_by_code(&code, now_ms as u64))
+        self.sh(|e| e.join_by_code(&code, now_ms as u64))
     }
     pub fn join_by_link(&mut self, url: String, now_ms: f64) -> String {
-        conv(self.inner.join_by_link(&url, now_ms as u64))
+        self.sh(|e| e.join_by_link(&url, now_ms as u64))
     }
     pub fn send_text(&mut self, group: &[u8], text: String, now_ms: f64) -> Result<String, JsValue> {
-        Ok(conv(self.inner.send_text(gid(group)?, &text, now_ms as u64)))
+        self.try_sh(|e| Ok(e.send_text(gid(group)?, &text, now_ms as u64)))
     }
     pub fn send_location(&mut self, group: &[u8], lat: f64, lon: f64, accuracy_m: f32, breadcrumb: bool, now_ms: f64) -> Result<String, JsValue> {
-        Ok(conv(self.inner.send_location(gid(group)?, lat, lon, accuracy_m, breadcrumb, now_ms as u64)))
+        self.try_sh(|e| Ok(e.send_location(gid(group)?, lat, lon, accuracy_m, breadcrumb, now_ms as u64)))
     }
     pub fn send_sos(&mut self, group: &[u8], lat: f64, lon: f64, note: String, cancelled: bool, now_ms: f64) -> Result<String, JsValue> {
-        Ok(conv(self.inner.send_sos(gid(group)?, lat, lon, &note, cancelled, now_ms as u64)))
+        self.try_sh(|e| Ok(e.send_sos(gid(group)?, lat, lon, &note, cancelled, now_ms as u64)))
     }
     pub fn current_code(&self, group: &[u8], now_ms: f64) -> Option<String> {
         let g = <[u8; 16]>::try_from(group).ok()?;

@@ -10,7 +10,7 @@ public let envelopeUnicast = 24
 public enum FrameType: UInt8, Sendable {
     case hello = 0x01, announce = 0x02, routeProbe = 0x03, handshake = 0x04, control = 0x05, groupControl = 0x06
     case voiceRouted = 0x10, voiceFlood = 0x11
-    case message = 0x20, ack = 0x21, inventory = 0x22
+    case message = 0x20, ack = 0x21, inventory = 0x22, fragment = 0x23
 }
 
 public struct Flags: OptionSet, Sendable {

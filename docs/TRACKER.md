@@ -104,8 +104,8 @@ Legend of surfaces: **C** core (Rust) · **B** backend · **A** Android ·
 | A-26 | Settings: name, codec profile override, battery mode, about | done | `SettingsScreen.kt`; licences screen todo |
 | A-27 | i18n EN + RO complete | done | `values/strings.xml`, `values-ro/strings.xml` |
 | A-28 | Accessibility: TalkBack labels, ≥88 dp button, haptic-only mode | done | contentDescription/stateDescription on TalkButton; haptics-only setting |
-| A-29 | `foss` flavour compiles without GMS | todo | |
-| A-30 | Unit tests (vectors), instrumentation smoke, lint clean | todo | |
+| A-29 | `foss` flavour compiles without GMS | done | ML Kit moved to `gmsImplementation`; `QrScanner` per flavour (gms = ML Kit, foss = CameraX + zxing `ui/QrDecode.kt`); `:app:compileFossDebugKotlin` OK; guard task `:app:checkFossNoGms` → "foss runtime classpath: 192 components, 0 GMS/Firebase/ML Kit" (2026-09-28 22:10); both run in `gates.ps1` |
+| A-30 | Unit tests (vectors), instrumentation smoke, lint clean | done | JVM unit tests in gates: `:core-ffi:testDebugUnitTest` (bindings vs host cdylib via JNA: invite vectors, wordlist, opus voice-note roundtrip, MTU fragmentation) 4/4, `:app:testGmsDebugUnitTest` (`QrDecodeTest`) 2/2; instrumentation `LaunchSmokeTest` (native core loads on device, MainActivity RESUMED) 2/2 on S25 RZCYA0LJ0NZ via `:app:connectedGmsDebugAndroidTest` (needs a device, so not in gates); lint 0 errors |
 | A-31 | Release signing (upload key), `bundleRelease` AAB | todo | |
 | A-32 | Two-phone LAN test A51↔S25: PTT both ways | done | logcat: FloorTaken → play #1…#151 → FloorIdle both directions, 2026-09-14 19:30 |
 | A-33 | Two-phone BLE-only test (Wi-Fi off) | done | link chip "Bluetooth LE / ble_l2cap"; voice both ways 19:46–19:47 |
@@ -120,11 +120,13 @@ Legend of surfaces: **C** core (Rust) · **B** backend · **A** Android ·
 |---|---|---|---|
 | WO-01 | Standalone module, same appId as phone, armv7 Rust core | done | `wear-debug.apk` installed; JNA loads `lib/armeabi-v7a`; LAN "bound on wlan0", BLE "l2cap listening psm=128" |
 | WO-02 | Talk page: M3 Expressive morphing PTT, level ring, rotary volume, haptics | done | UI dump "Munte / Hold to talk / 2 online"; phone logged FloorTaken→FloorIdle (2.5–3 s hold) twice |
-| WO-03 | Groups / chat (quick replies, voice notes) / actions (SOS, location, leave) / settings pages | done | compiled + rendered; SOS/voice note not yet exercised on device |
+| WO-03 | Groups / chat (quick replies, voice notes) / actions (SOS, location, leave) / settings pages | done | device 2026-09-28: quick reply "Wait for me" → S25 `ui Message` + chat bubble; SOS confirm → watch `ui Message` + `FloorGranted` (emergency floor), S25 `ui FloorTaken` + `play #1…#201`; Cancel SOS → watch `FloorIdle` + cancel message acked |
+| WO-10 | Voice notes cross every link (fragmentation) | done | on-device bug: 3.5 s note → relay "error 6: frame too large" + BLE L2CAP EOF on both peers. Fix: core `Engine::shape` splits envelopes > link MTU into paced `Fragment` (0x23) frames (ADR-0003 amended; relay treats 0x23 as voice-like in rendezvous rooms); `two_engines` tests `voice_note_larger_than_mtu_is_fragmented_and_delivered` + `…relayed_in_fragments_over_a_middle_node` pass. Device 23:52: watch 4 s note → S25 `ui Message`, chat bubble "Dragos ⌚ 4s", watch `ui MessageAcked`, no "frame too large"/EOF; tap on S25 → AudioTrack `state:started` (USAGE_MEDIA/SPEECH) |
+| WO-11 | Tapping a group on the Groups page opens its Talk page | done | bug: `page.value = PAGE_TALK` was a no-op when the request was already Talk (StateFlow dedups) → pager stayed on Groups. Fix: page request carries a sequence (`pageReq`/`go()`); device: tap Munte → "Munte / Hold to talk", tap Ceas → "Ceas / Hold to talk" |
 | WO-04 | Join by code via Samsung keyboard (RemoteInputIntentHelper) | done | watch joined phone group by code 2026-09-28 19:54 (phone: MemberJoined) |
-| WO-05 | Phone → watch "Send to watch" over Data Layer (gms) | blocked(device) | code done (`app/src/gms/.../WatchBridge.kt`, `wear/PhoneBridgeService.kt`); test phone A51 is not paired ("Wearable.API is not available"), button hides correctly |
+| WO-05 | Phone → watch "Send to watch" over Data Layer (gms) | done | watch paired with S25 Ultra (Wearable node 6c9c8ab4); S25 invite sheet showed "Send to Galaxy Watch7 (Q3KM)" → "Sent … ✓"; S25 logged `ui MemberJoined` 21:05:57; watch UI dump "Ceas / Hold to talk / 3 online". On the unpaired A51 the button stays hidden |
 | WO-06 | FGS microphone\|connectedDevice + Ongoing Activity | done | dumpsys RadioService running, allowWiu from TOP |
-| WO-07 | Tile (Talk) + complication (active group) | done (registered) | `query-services BIND_TILE_PROVIDER` lists `TalkTileService`; not yet added to a watch face |
+| WO-07 | Tile (Talk) + complication (active group) | done | tile added (`DEBUG_SURFACE add-tile` → Index 0), UI dump "Ceas / 3 online / Tap to talk", tap opens `ro.titi.wear.MainActivity` Talk page; complication "Titi group" set in the DigitalModular face editor (slot 104), face dump shows content-desc "Ceas", WearServices logged ShortTextComplicationData from `GroupComplicationService` |
 | WO-08 | Double-pinch gesture / STEM key toggle talk | done (code) | Galaxy Watch buttons are system-owned; not device-verified |
 | WO-09 | Wear lint clean | done | `:wear:lintDebug` 0 errors |
 

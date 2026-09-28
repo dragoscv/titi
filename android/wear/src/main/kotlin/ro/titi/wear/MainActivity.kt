@@ -67,17 +67,20 @@ import ro.titi.wear.ui.TitiWearTheme
  */
 class MainActivity : ComponentActivity() {
     private val app get() = application as WearApp
-    private val page = MutableStateFlow(PAGE_TALK)
+    /** Requested page + sequence: the pager only tracks the request, so asking for the page it
+     *  "already" wants (Talk, after the user swiped to Groups) must still be a new value. */
+    private val pageReq = MutableStateFlow(PAGE_TALK to 0)
+    private fun go(p: Int) { pageReq.value = p to pageReq.value.second + 1 }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        page.value = intent.pageExtra()
+        go(intent.pageExtra())
         setContent { TitiWearTheme { Root() } }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        page.value = intent.pageExtra()
+        go(intent.pageExtra())
     }
 
     override fun onResume() {
@@ -129,12 +132,13 @@ class MainActivity : ComponentActivity() {
         val settingsOrNull by app.prefs.settings.collectAsState(initial = null)
         val settings = settingsOrNull ?: return
         val fromPhone by app.pendingFromPhone.collectAsState()
-        val target by page.collectAsState()
+        val request by pageReq.collectAsState()
+        val target = request.first
 
         SwipeDismissableNavHost(navController = nav, startDestination = "home") {
             composable("home") {
                 val pager = rememberPagerState(initialPage = target, pageCount = { PAGE_COUNT })
-                LaunchedEffect(target) { pager.animateScrollToPage(target) }
+                LaunchedEffect(request) { pager.animateScrollToPage(target) }
                 // double-pinch = toggle talk on the Talk page (hands-free; no-op where unsupported)
                 val gesture = rememberOneHandedGestureConfiguration(action = OneHandedGestureAction.Primary)
                 HorizontalPagerScaffold(pagerState = pager) {
@@ -144,7 +148,7 @@ class MainActivity : ComponentActivity() {
                     ) { p ->
                         AnimatedPage(pageIndex = p, pagerState = pager) {
                             when (p) {
-                                PAGE_GROUPS -> GroupsScreen(app.engine, state, onOpen = { page.value = PAGE_TALK; page.value = PAGE_TALK }, onJoin = { nav.navigate("join") })
+                                PAGE_GROUPS -> GroupsScreen(app.engine, state, onOpen = { go(PAGE_TALK) }, onJoin = { nav.navigate("join") })
                                 PAGE_TALK -> androidx.compose.foundation.layout.Box(
                                     Modifier.oneHandedGesture(
                                         gestureConfiguration = gesture,
@@ -172,7 +176,7 @@ class MainActivity : ComponentActivity() {
         val sosAlert = state.groups.firstOrNull { it.talkerPrio >= 2 && it.floor == FloorState.Busy }
         ConfirmationDialog(
             visible = sosAlert != null && target != PAGE_TALK,
-            onDismissRequest = { page.value = PAGE_TALK },
+            onDismissRequest = { go(PAGE_TALK) },
             curvedText = null,
         ) { androidx.wear.compose.material3.Icon(Icons.Rounded.Emergency, null, tint = ro.titi.wear.ui.Titi.Emergency) }
     }

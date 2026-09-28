@@ -22,7 +22,8 @@ if (-not $env:JAVA_HOME -and (Test-Path 'C:\Program Files\Java\jdk-22')) { $env:
 $nextest = [bool](Get-Command cargo-nextest -ErrorAction SilentlyContinue)
 $rustTest = if ($nextest) { 'cargo nextest run -p titi-core --features opus' } else { 'cargo test -p titi-core --features opus' }
 $gradle = if ($IsWindows -or $env:OS -eq 'Windows_NT') { '.\gradlew.bat' } else { './gradlew' }
-$gradleTasks = @(':app:compileGmsDebugKotlin', ':app:lintGmsDebug', ':wear:compileDebugKotlin', ':wear:lintDebug')
+$gradleTasks = @(':app:compileGmsDebugKotlin', ':app:lintGmsDebug', ':wear:compileDebugKotlin', ':wear:lintDebug',
+  ':app:compileFossDebugKotlin', ':app:checkFossNoGms', ':core-ffi:testDebugUnitTest', ':app:testGmsDebugUnitTest')
 if ($Build) { $gradleTasks += @(':app:assembleGmsDebug', ':wear:assembleDebug') }
 
 $lanes = [ordered]@{

@@ -3,12 +3,6 @@ package ro.titi.app.ui.screens
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.Preview
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.mlkit.vision.MlKitAnalyzer
-import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,7 +30,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,21 +38,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import com.google.mlkit.vision.barcode.BarcodeScanner
-import com.google.mlkit.vision.barcode.BarcodeScannerOptions
-import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.common.Barcode
 import ro.titi.app.R
 import ro.titi.app.core.EngineHost
 import ro.titi.app.core.RadioState
+import ro.titi.app.ui.QrScanner
 import ro.titi.app.ui.theme.CodeStyle
 import uniffi.titi_ffi.parseInviteCode
 
@@ -122,29 +110,4 @@ fun JoinScreen(engine: EngineHost, state: RadioState, onBack: () -> Unit) {
             }
         }
     }
-}
-
-@Composable
-private fun QrScanner(onResult: (String) -> Unit) {
-    val ctx = LocalContext.current
-    val owner = LocalLifecycleOwner.current
-    val scanner: BarcodeScanner = remember { BarcodeScanning.getClient(BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build()) }
-    var done by remember { mutableStateOf(false) }
-    DisposableEffect(Unit) { onDispose { scanner.close() } }
-    AndroidView(factory = { c ->
-        val view = PreviewView(c)
-        val future = ProcessCameraProvider.getInstance(c)
-        future.addListener({
-            val provider = future.get()
-            val preview = Preview.Builder().build().also { it.surfaceProvider = view.surfaceProvider }
-            val analysis = ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build()
-            analysis.setAnalyzer(ContextCompat.getMainExecutor(c), MlKitAnalyzer(listOf(scanner), ImageAnalysis.COORDINATE_SYSTEM_ORIGINAL, ContextCompat.getMainExecutor(c)) { r ->
-                val v = r.getValue(scanner)?.firstOrNull()?.rawValue
-                if (v != null && !done) { done = true; onResult(v) }
-            })
-            provider.unbindAll()
-            provider.bindToLifecycle(owner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
-        }, ContextCompat.getMainExecutor(c))
-        view
-    }, modifier = Modifier.fillMaxSize())
 }

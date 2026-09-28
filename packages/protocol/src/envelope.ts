@@ -17,6 +17,8 @@ export const FrameType = {
   Message: 0x20,
   Ack: 0x21,
   Inventory: 0x22,
+  /** Hop-local piece of an envelope larger than the link MTU (voice notes). */
+  Fragment: 0x23,
 } as const;
 export type FrameType = (typeof FrameType)[keyof typeof FrameType];
 

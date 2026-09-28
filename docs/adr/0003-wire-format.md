@@ -20,7 +20,17 @@ flags: codec(2b) frames-1(2b) marker(1b) profile(3b)
 ```
 - Crypto layering: outer per-link Noise/ChaChaPoly AEAD (relays verify,
   dedup, TTL−1) → inner group XChaCha20-Poly1305 (relays cannot decrypt).
-- BLE fragmentation: 1-byte continuation index at the link layer, MTU-3.
+- **Fragmentation** (amended 2026-09-28): any envelope larger than the link
+    MTU (LAN 1200, BLE L2CAP 1000, relay 1200 default) is split by the core
+    (`Engine::shape`, which every host applies to each action batch) into
+    hop-local `Fragment` (0x23) envelopes, ttl 1, payload
+    `inner_src8 ‖ inner_msg_id32 ‖ index8 ‖ total8 ‖ chunk` (≤ 255 parts).
+    Fragments are paced by the core (≤ 1 per link per tick, ≤ ½ est. bandwidth)
+    so a voice note never starves live voice or trips the relay rate limit.
+    The receiver reassembles per (link, sender) with a 30 s / 1 MiB bound and
+    processes the inner envelope normally; relays re-fragment per hop.
+    Found on device: a 3.5 s voice note (~7 KB) was rejected by the relay
+    ("frame too large", 4096) and killed the BLE L2CAP link (reader cap 4096).
 
 ## Alternatives rejected
 RTP/SRTP (12 B header + second crypto layer, 47 % overhead on BLE), CBOR /

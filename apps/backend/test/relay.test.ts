@@ -70,6 +70,8 @@ describe("relay", () => {
     expect(relay.stats()).toMatchObject({ rooms: 2, members: 3 });
     relay.onMessage(ia, envelope(nodeA)); // voice → not forwarded through rendezvous
     expect(b.envelopes().length).toBe(0);
+    relay.onMessage(ia, envelope(nodeA, undefined, 0, 0x23)); // fragment of a voice note → not forwarded either
+    expect(b.envelopes().length).toBe(0);
     relay.onMessage(ia, envelope(nodeA, undefined, 0, 0x01)); // Hello → forwarded
     expect(b.envelopes().length).toBe(1);
     relay.onMessage(ib, envelope(nodeB, nodeA, 0, 0x04)); // Handshake unicast via shared room

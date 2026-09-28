@@ -285,7 +285,7 @@ export class Relay {
     // Broadcast to every room we share. Rendezvous rooms carry only
     // discovery/handshake/control so a code-room cannot be used to eavesdrop
     // on (encrypted, but still) voice volume.
-    const voiceLike = h.ftype === FrameType.VoiceRouted || h.ftype === FrameType.VoiceFlood || h.ftype === FrameType.Message;
+    const voiceLike = h.ftype === FrameType.VoiceRouted || h.ftype === FrameType.VoiceFlood || h.ftype === FrameType.Message || h.ftype === FrameType.Fragment;
     const sent = new Set<number>([m.id]);
     for (const r of m.rooms.values()) {
       if (r.rendezvous && voiceLike) continue;

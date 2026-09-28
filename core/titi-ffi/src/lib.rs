@@ -250,6 +250,20 @@ pub struct TitiEngine {
     inner: Mutex<Engine>,
 }
 
+impl TitiEngine {
+    /// Runs `f` under the lock and shapes its sends (MTU fragmentation) before conversion.
+    fn sh(&self, f: impl FnOnce(&mut Engine) -> Vec<Action>) -> Vec<FfiAction> {
+        let mut e = self.inner.lock().unwrap();
+        let acts = f(&mut e);
+        conv(e.shape(acts))
+    }
+    fn try_sh(&self, f: impl FnOnce(&mut Engine) -> Result<Vec<Action>, TitiError>) -> Result<Vec<FfiAction>, TitiError> {
+        let mut e = self.inner.lock().unwrap();
+        let acts = f(&mut e)?;
+        Ok(conv(e.shape(acts)))
+    }
+}
+
 #[uniffi::export]
 impl TitiEngine {
     /// `seed` = 32 bytes persisted identity seed, or empty to generate.
@@ -279,52 +293,51 @@ impl TitiEngine {
     }
 
     pub fn on_link_up(&self, link: u32, class: FfiLinkClass, mtu: Option<u32>, now_ms: u64) -> Vec<FfiAction> {
-        conv(self.inner.lock().unwrap().on_link_up(link, class.into(), mtu.map(|m| m as usize), now_ms))
+        self.sh(|e| e.on_link_up(link, class.into(), mtu.map(|m| m as usize), now_ms))
     }
     pub fn on_link_down(&self, link: u32, now_ms: u64) -> Vec<FfiAction> {
-        conv(self.inner.lock().unwrap().on_link_down(link, now_ms))
+        self.sh(|e| e.on_link_down(link, now_ms))
     }
     pub fn on_link_stats(&self, link: u32, est_bps: u32, rtt_ms: u32, loss_pct: u8, now_ms: u64) -> Vec<FfiAction> {
-        conv(self.inner.lock().unwrap().on_link_stats(link, est_bps, rtt_ms, loss_pct, now_ms))
+        self.sh(|e| e.on_link_stats(link, est_bps, rtt_ms, loss_pct, now_ms))
     }
     pub fn on_peer_seen(&self, link: u32, token: String, now_ms: u64) -> Vec<FfiAction> {
-        conv(self.inner.lock().unwrap().on_peer_seen(link, token, now_ms))
+        self.sh(|e| e.on_peer_seen(link, token, now_ms))
     }
     pub fn on_peer_lost(&self, link: u32, token: String, now_ms: u64) -> Vec<FfiAction> {
-        conv(self.inner.lock().unwrap().on_peer_lost(link, token, now_ms))
+        self.sh(|e| e.on_peer_lost(link, token, now_ms))
     }
     pub fn on_frame(&self, link: u32, token: String, bytes: Vec<u8>, now_ms: u64) -> Vec<FfiAction> {
-        conv(self.inner.lock().unwrap().on_frame(link, token, &bytes, now_ms))
+        self.sh(|e| e.on_frame(link, token, &bytes, now_ms))
     }
     /// `pcm_le` = PCM16 little-endian mono 48 kHz, one 20 ms tick (1920 bytes).
     pub fn on_audio_in(&self, pcm_le: Vec<u8>, now_ms: u64) -> Vec<FfiAction> {
         let pcm = le_to_pcm(&pcm_le);
-        conv(self.inner.lock().unwrap().on_audio_in(&pcm, now_ms))
+        self.sh(|e| e.on_audio_in(&pcm, now_ms))
     }
     pub fn tick(&self, now_ms: u64) -> Vec<FfiAction> {
-        conv(self.inner.lock().unwrap().tick(now_ms))
+        self.sh(|e| e.tick(now_ms))
     }
 
     pub fn ptt_down(&self, prio: FfiPriority, now_ms: u64) -> Vec<FfiAction> {
-        conv(self.inner.lock().unwrap().ptt_down(prio.into(), now_ms))
+        self.sh(|e| e.ptt_down(prio.into(), now_ms))
     }
     pub fn ptt_up(&self, now_ms: u64) -> Vec<FfiAction> {
-        conv(self.inner.lock().unwrap().ptt_up(now_ms))
+        self.sh(|e| e.ptt_up(now_ms))
     }
 
     pub fn create_group(&self, name: String, now_ms: u64) -> Result<Vec<FfiAction>, TitiError> {
-        let (_, acts) = self.inner.lock().unwrap().create_group(&name, now_ms)?;
-        Ok(conv(acts))
+        self.try_sh(|e| Ok(e.create_group(&name, now_ms)?.1))
     }
     pub fn leave_group(&self, group: Vec<u8>, now_ms: u64) -> Result<Vec<FfiAction>, TitiError> {
-        Ok(conv(self.inner.lock().unwrap().leave_group(to16(&group)?, now_ms)))
+        self.try_sh(|e| Ok(e.leave_group(to16(&group)?, now_ms)))
     }
     pub fn set_active_group(&self, group: Vec<u8>) -> Result<(), TitiError> {
         self.inner.lock().unwrap().set_active_group(to16(&group)?);
         Ok(())
     }
     pub fn set_full_duplex(&self, group: Vec<u8>, on: bool, now_ms: u64) -> Result<Vec<FfiAction>, TitiError> {
-        Ok(conv(self.inner.lock().unwrap().set_full_duplex(to16(&group)?, on, now_ms)))
+        self.try_sh(|e| Ok(e.set_full_duplex(to16(&group)?, on, now_ms)))
     }
     pub fn current_code(&self, group: Vec<u8>, now_ms: u64) -> Result<Option<String>, TitiError> {
         Ok(self.inner.lock().unwrap().current_code(&to16(&group)?, now_ms).map(|(c, secs)| format!("{c}|{secs}")))
@@ -333,33 +346,33 @@ impl TitiEngine {
         Ok(self.inner.lock().unwrap().deep_link(&to16(&group)?, now_ms, valid_ms))
     }
     pub fn invite_peer(&self, group: Vec<u8>, node: Vec<u8>, now_ms: u64) -> Result<Vec<FfiAction>, TitiError> {
-        Ok(conv(self.inner.lock().unwrap().invite_peer(to16(&group)?, to8(&node)?, now_ms)))
+        self.try_sh(|e| Ok(e.invite_peer(to16(&group)?, to8(&node)?, now_ms)))
     }
     pub fn accept_invite(&self, group: Vec<u8>, host: Vec<u8>, now_ms: u64) -> Result<Vec<FfiAction>, TitiError> {
-        Ok(conv(self.inner.lock().unwrap().accept_invite(to16(&group)?, to8(&host)?, now_ms)))
+        self.try_sh(|e| Ok(e.accept_invite(to16(&group)?, to8(&host)?, now_ms)))
     }
     pub fn decline_invite(&self, group: Vec<u8>, host: Vec<u8>, now_ms: u64) -> Result<Vec<FfiAction>, TitiError> {
-        Ok(conv(self.inner.lock().unwrap().decline_invite(to16(&group)?, to8(&host)?, now_ms)))
+        self.try_sh(|e| Ok(e.decline_invite(to16(&group)?, to8(&host)?, now_ms)))
     }
     pub fn join_by_code(&self, code: String, now_ms: u64) -> Vec<FfiAction> {
-        conv(self.inner.lock().unwrap().join_by_code(&code, now_ms))
+        self.sh(|e| e.join_by_code(&code, now_ms))
     }
     pub fn join_by_link(&self, url: String, now_ms: u64) -> Vec<FfiAction> {
-        conv(self.inner.lock().unwrap().join_by_link(&url, now_ms))
+        self.sh(|e| e.join_by_link(&url, now_ms))
     }
 
     pub fn send_text(&self, group: Vec<u8>, text: String, now_ms: u64) -> Result<Vec<FfiAction>, TitiError> {
-        Ok(conv(self.inner.lock().unwrap().send_text(to16(&group)?, &text, now_ms)))
+        self.try_sh(|e| Ok(e.send_text(to16(&group)?, &text, now_ms)))
     }
     pub fn send_voice_note(&self, group: Vec<u8>, profile: FfiProfile, duration_ms: u32, opus_packets: Vec<u8>, now_ms: u64) -> Result<Vec<FfiAction>, TitiError> {
         let p = match profile { FfiProfile::Hq => Profile::Hq, FfiProfile::Std => Profile::Std, FfiProfile::Low => Profile::Low, FfiProfile::Min => Profile::Min };
-        Ok(conv(self.inner.lock().unwrap().send_voice_note(to16(&group)?, p, duration_ms, opus_packets, now_ms)))
+        self.try_sh(|e| Ok(e.send_voice_note(to16(&group)?, p, duration_ms, opus_packets, now_ms)))
     }
     pub fn send_location(&self, group: Vec<u8>, lat: f64, lon: f64, accuracy_m: f32, breadcrumb: bool, now_ms: u64) -> Result<Vec<FfiAction>, TitiError> {
-        Ok(conv(self.inner.lock().unwrap().send_location(to16(&group)?, lat, lon, accuracy_m, breadcrumb, now_ms)))
+        self.try_sh(|e| Ok(e.send_location(to16(&group)?, lat, lon, accuracy_m, breadcrumb, now_ms)))
     }
     pub fn send_sos(&self, group: Vec<u8>, lat: f64, lon: f64, note: String, cancelled: bool, now_ms: u64) -> Result<Vec<FfiAction>, TitiError> {
-        Ok(conv(self.inner.lock().unwrap().send_sos(to16(&group)?, lat, lon, &note, cancelled, now_ms)))
+        self.try_sh(|e| Ok(e.send_sos(to16(&group)?, lat, lon, &note, cancelled, now_ms)))
     }
 
     pub fn restore_groups(&self, data: Vec<u8>, now_ms: u64) -> Result<(), TitiError> {

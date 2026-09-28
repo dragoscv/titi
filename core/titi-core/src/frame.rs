@@ -36,6 +36,8 @@ pub enum FrameType {
     Message = 0x20,
     Ack = 0x21,
     Inventory = 0x22,
+    /// Hop-local piece of an envelope larger than the link MTU (see [`fragment`]).
+    Fragment = 0x23,
 }
 
 impl TryFrom<u8> for FrameType {
@@ -53,6 +55,7 @@ impl TryFrom<u8> for FrameType {
             0x20 => Self::Message,
             0x21 => Self::Ack,
             0x22 => Self::Inventory,
+            0x23 => Self::Fragment,
             other => return Err(Error::FrameType(other)),
         })
     }
@@ -325,63 +328,120 @@ pub fn decode_route(buf: &[u8]) -> Result<(Vec<NodeId>, &[u8])> {
     Ok((r, &buf[need..]))
 }
 
-/// Link-layer fragmentation for small-MTU links (BLE GATT).
-/// `frag_id(1) ‖ index(1) ‖ total(1) ‖ chunk`.
+/// Hop-local fragmentation of envelopes larger than the link MTU (voice notes,
+/// big inventories). Payload of a `Fragment` envelope:
+/// `set(12 = inner src8 ‖ inner msg_id32) ‖ index(1) ‖ total(1) ‖ chunk`.
 pub mod fragment {
     use super::*;
-    pub const HEADER: usize = 3;
+    use std::collections::HashMap;
+    use std::hash::Hash;
 
-    pub fn split(frag_id: u8, data: &[u8], mtu: usize) -> Vec<Vec<u8>> {
-        let chunk = mtu.saturating_sub(HEADER).max(1);
+    pub const HEADER: usize = 14;
+    pub const MAX_PARTS: usize = 255;
+    /// Incomplete sets are dropped after this long.
+    pub const EXPIRE_MS: u64 = 30_000;
+    /// Upper bound on bytes held in incomplete sets (memory DoS guard).
+    pub const MAX_PENDING_BYTES: usize = 1 << 20;
+
+    pub type SetId = [u8; 12];
+
+    pub fn set_id(src: &NodeId, msg_id: u32) -> SetId {
+        let mut s = [0u8; 12];
+        s[..8].copy_from_slice(src);
+        s[8..].copy_from_slice(&msg_id.to_be_bytes());
+        s
+    }
+
+    /// Splits `data` into fragment payloads of at most `HEADER + chunk` bytes.
+    /// None when it would need more than [`MAX_PARTS`] pieces.
+    pub fn split(set: SetId, data: &[u8], chunk: usize) -> Option<Vec<Vec<u8>>> {
+        let chunk = chunk.max(1);
         let total = data.len().div_ceil(chunk).max(1);
-        assert!(total <= 255, "frame too large for fragmentation");
-        data.chunks(chunk)
-            .enumerate()
-            .map(|(i, c)| {
-                let mut v = Vec::with_capacity(HEADER + c.len());
-                v.push(frag_id);
-                v.push(i as u8);
-                v.push(total as u8);
-                v.extend_from_slice(c);
-                v
-            })
-            .collect()
+        if total > MAX_PARTS {
+            return None;
+        }
+        Some(
+            data.chunks(chunk)
+                .enumerate()
+                .map(|(i, c)| {
+                    let mut v = Vec::with_capacity(HEADER + c.len());
+                    v.extend_from_slice(&set);
+                    v.push(i as u8);
+                    v.push(total as u8);
+                    v.extend_from_slice(c);
+                    v
+                })
+                .collect(),
+        )
     }
 
-    #[derive(Default)]
-    pub struct Reassembler {
-        parts: std::collections::HashMap<u8, Partial>,
+    struct Partial {
+        total: u8,
+        parts: Vec<Option<Vec<u8>>>,
+        first_ms: u64,
+        bytes: usize,
     }
 
-    /// seq → (total, parts, first-seen ms)
-    type Partial = (u8, Vec<Option<Vec<u8>>>, u64);
+    /// Reassembles sets per sender key `K` (e.g. link + peer token).
+    pub struct Reassembler<K> {
+        sets: HashMap<(K, SetId), Partial>,
+        pending: usize,
+    }
 
-    impl Reassembler {
-        pub fn push(&mut self, frag: &[u8], now_ms: u64) -> Result<Option<Vec<u8>>> {
+    impl<K> Default for Reassembler<K> {
+        fn default() -> Self {
+            Reassembler { sets: HashMap::new(), pending: 0 }
+        }
+    }
+
+    impl<K: Eq + Hash + Clone> Reassembler<K> {
+        pub fn push(&mut self, key: K, frag: &[u8], now_ms: u64) -> Result<Option<Vec<u8>>> {
             if frag.len() < HEADER {
                 return Err(Error::Truncated { need: HEADER, got: frag.len() });
             }
-            let (id, idx, total) = (frag[0], frag[1] as usize, frag[2] as usize);
+            let mut set = [0u8; 12];
+            set.copy_from_slice(&frag[..12]);
+            let (idx, total) = (frag[12] as usize, frag[13] as usize);
             if total == 0 || idx >= total {
                 return Err(Error::Invalid("fragment index"));
             }
-            // expire stale assemblies (30 s)
-            self.parts.retain(|_, (_, _, t)| now_ms.saturating_sub(*t) < 30_000);
-            let entry = self
-                .parts
-                .entry(id)
-                .or_insert_with(|| (total as u8, vec![None; total], now_ms));
-            if entry.0 as usize != total {
-                self.parts.remove(&id);
+            let pending = &mut self.pending;
+            self.sets.retain(|_, p| {
+                let keep = now_ms.saturating_sub(p.first_ms) < EXPIRE_MS;
+                if !keep {
+                    *pending -= p.bytes;
+                }
+                keep
+            });
+            let chunk = &frag[HEADER..];
+            if self.pending + chunk.len() > MAX_PENDING_BYTES {
+                return Err(Error::Invalid("fragment buffer full"));
+            }
+            let k = (key, set);
+            let entry = self.sets.entry(k.clone()).or_insert_with(|| Partial { total: total as u8, parts: vec![None; total], first_ms: now_ms, bytes: 0 });
+            if entry.total as usize != total {
+                let p = self.sets.remove(&k).unwrap();
+                self.pending -= p.bytes;
                 return Err(Error::Invalid("fragment total mismatch"));
             }
-            entry.1[idx] = Some(frag[HEADER..].to_vec());
-            if entry.1.iter().all(Option::is_some) {
-                let (_, parts, _) = self.parts.remove(&id).unwrap();
-                Ok(Some(parts.into_iter().flatten().flatten().collect()))
+            if let Some(old) = entry.parts[idx].replace(chunk.to_vec()) {
+                entry.bytes -= old.len();
+                self.pending -= old.len();
+            }
+            entry.bytes += chunk.len();
+            self.pending += chunk.len();
+            if entry.parts.iter().all(Option::is_some) {
+                let p = self.sets.remove(&k).unwrap();
+                self.pending -= p.bytes;
+                Ok(Some(p.parts.into_iter().flatten().flatten().collect()))
             } else {
                 Ok(None)
             }
+        }
+
+        /// Bytes currently held in incomplete sets.
+        pub fn pending_bytes(&self) -> usize {
+            self.pending
         }
     }
 }
@@ -471,13 +531,32 @@ mod tests {
     #[test]
     fn fragmentation_roundtrip() {
         let data: Vec<u8> = (0..500u32).map(|i| (i % 251) as u8).collect();
-        let frags = fragment::split(7, &data, 100);
-        assert_eq!(frags.len(), 6);
-        let mut r = fragment::Reassembler::default();
+        let set = fragment::set_id(&[9; 8], 7);
+        let frags = fragment::split(set, &data, 100).unwrap();
+        assert_eq!(frags.len(), 5);
+        assert!(frags.iter().all(|f| f.len() <= fragment::HEADER + 100));
+        let mut r = fragment::Reassembler::<u32>::default();
         let mut out = None;
         for f in frags.iter().rev() {
-            out = r.push(f, 0).unwrap();
+            out = r.push(1, f, 0).unwrap();
         }
         assert_eq!(out.unwrap(), data);
+        assert_eq!(r.pending_bytes(), 0);
+    }
+
+    #[test]
+    fn fragmentation_limits_and_expiry() {
+        assert!(fragment::split([0; 12], &vec![0u8; 256], 1).is_none(), "more than 255 parts refused");
+        let set = fragment::set_id(&[1; 8], 1);
+        let frags = fragment::split(set, &[7u8; 300], 100).unwrap();
+        let mut r = fragment::Reassembler::<u8>::default();
+        assert!(r.push(1, &frags[0], 0).unwrap().is_none());
+        // same set id from another sender key is a different assembly
+        assert!(r.push(2, &frags[1], 0).unwrap().is_none());
+        assert_eq!(r.pending_bytes(), 200);
+        // stale sets are dropped
+        assert!(r.push(3, &frags[2], fragment::EXPIRE_MS + 1).unwrap().is_none());
+        assert_eq!(r.pending_bytes(), 100);
+        assert!(r.push(1, &frags[0][..5], 0).is_err(), "truncated header");
     }
 }

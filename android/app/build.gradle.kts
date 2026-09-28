@@ -105,8 +105,6 @@ dependencies {
     implementation(libs.camerax.camera2)
     implementation(libs.camerax.lifecycle)
     implementation(libs.camerax.view)
-    implementation(libs.camerax.mlkit.vision)
-    implementation(libs.mlkit.barcode)
     implementation(libs.zxing.core)
     implementation(libs.okhttp)
     implementation(libs.androidx.media)
@@ -117,6 +115,8 @@ dependencies {
     "gmsImplementation"(libs.play.services.nearby)
     "gmsImplementation"(libs.play.services.wearable)
     "gmsImplementation"(libs.kotlinx.coroutines.play.services)
+    "gmsImplementation"(libs.camerax.mlkit.vision)
+    "gmsImplementation"(libs.mlkit.barcode)
 
     // Glance/ML Kit drag in work-runtime 2.7.1 + room 2.2.5, which crash under
     // R8 full mode ("Failed to create an instance of WorkDatabase"). Pin current.
@@ -132,4 +132,26 @@ dependencies {
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
     debugImplementation(libs.compose.ui.test.manifest)
+}
+
+// A-29: the foss flavour must not resolve any Google Play Services / Firebase / ML Kit artifact.
+val checkFossNoGms by tasks.registering {
+    group = "verification"
+    description = "Fails if fossReleaseRuntimeClasspath contains GMS, Firebase or ML Kit."
+    val ids = configurations.named("fossReleaseRuntimeClasspath").flatMap { c -> c.incoming.resolutionResult.rootComponent.map { root ->
+        val seen = mutableSetOf<String>()
+        fun walk(r: org.gradle.api.artifacts.result.ResolvedComponentResult) {
+            r.dependencies.filterIsInstance<org.gradle.api.artifacts.result.ResolvedDependencyResult>().forEach { d ->
+                if (seen.add(d.selected.id.displayName)) walk(d.selected)
+            }
+        }
+        walk(root)
+        seen.toList()
+    } }
+    inputs.property("ids", ids)
+    doLast {
+        val bad = ids.get().filter { it.startsWith("com.google.android.gms:") || it.startsWith("com.google.firebase:") || it.startsWith("com.google.mlkit:") || it.startsWith("com.google.android.odml:") }
+        if (bad.isNotEmpty()) throw GradleException("foss pulls non-free Google deps:\n" + bad.joinToString("\n"))
+        println("foss runtime classpath: ${ids.get().size} components, 0 GMS/Firebase/ML Kit")
+    }
 }

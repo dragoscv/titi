@@ -19,6 +19,8 @@ struct Net {
     plays: Vec<usize>,
     /// adjacency: who can hear whom on LAN
     adj: Vec<Vec<usize>>,
+    /// largest frame put on the wire (must stay ≤ link MTU)
+    max_frame: usize,
 }
 
 fn tok(i: usize) -> String {
@@ -35,13 +37,15 @@ impl Net {
             })
             .collect();
         let adj = (0..n).map(|i| (0..n).filter(|j| *j != i).collect()).collect();
-        Net { engines, queue: VecDeque::new(), ui: vec![vec![]; n], plays: vec![0; n], adj }
+        Net { engines, queue: VecDeque::new(), ui: vec![vec![]; n], plays: vec![0; n], adj, max_frame: 0 }
     }
 
     fn apply(&mut self, from: usize, acts: Vec<Action>) {
+        let acts = self.engines[from].shape(acts);
         for a in acts {
             match a {
                 Action::Send { link, peer, bytes } => {
+                    self.max_frame = self.max_frame.max(bytes.len());
                     let targets: Vec<usize> = match &peer {
                         Some(t) => {
                             let idx: usize = t.trim_start_matches("peer").split('#').next().unwrap().parse().unwrap();
@@ -127,6 +131,70 @@ impl Net {
 
 fn pcm_tone(n: usize, f: f32) -> Vec<i16> {
     (0..n).map(|i| ((i as f32 * f).sin() * 8000.0) as i16).collect()
+}
+
+/// Invites every other node into a fresh group hosted by node 0 (direct neighbours only).
+fn group_of_all(net: &mut Net, now: u64) -> [u8; 16] {
+    let (gid, acts) = net.engines[0].create_group("Note", now).unwrap();
+    net.apply(0, acts);
+    let host = net.engines[0].node_id();
+    for i in 1..net.engines.len() {
+        let n = net.engines[i].node_id();
+        let acts = net.engines[0].invite_peer(gid, n, now);
+        net.apply(0, acts);
+        net.pump(now);
+        let acts = net.engines[i].accept_invite(gid, host, now);
+        net.apply(i, acts);
+        net.pump(now);
+    }
+    gid
+}
+
+fn voice_note_bytes(n: usize) -> Vec<u8> {
+    (0..n).map(|i| (i * 31 % 251) as u8).collect()
+}
+
+#[test]
+fn voice_note_larger_than_mtu_is_fragmented_and_delivered() {
+    let mut net = Net::new(2, &["Ana", "Ceas"]);
+    let mut now = 1_789_403_000_000u64;
+    net.bring_up(now);
+    net.run(now, now + 500, 20);
+    now += 520;
+    let gid = group_of_all(&mut net, now);
+    // ~10 s of 16 kbps opus ≈ 20 KB: 17+ fragments at LAN MTU 1200
+    let note = voice_note_bytes(20_000);
+    let acts = net.engines[1].send_voice_note(gid, titi_core::frame::Profile::Std, 10_000, note.clone(), now);
+    net.apply(1, acts);
+    // fragments are paced: one per link per tick
+    net.run(now, now + 2_000, 20);
+    assert!(net.max_frame <= 1200, "a frame exceeded the MTU: {}", net.max_frame);
+    assert!(
+        net.has_ui(0, |e| matches!(e, UiEvent::Message { body: titi_core::engine::MessageBody::VoiceNote { opus_packets, duration_ms: 10_000, .. }, .. } if *opus_packets == note)),
+        "Ana got the voice note intact"
+    );
+    assert!(net.has_ui(1, |e| matches!(e, UiEvent::MessageAcked { .. })), "sender got the ACK");
+}
+
+#[test]
+fn voice_note_is_relayed_in_fragments_over_a_middle_node() {
+    // A — B — C: the relayed Message is re-fragmented hop by hop
+    let mut net = Net::new(3, &["A", "B", "C"]);
+    let mut now = 1_789_404_000_000u64;
+    net.bring_up(now);
+    net.run(now, now + 600, 20);
+    now += 620;
+    let gid = group_of_all(&mut net, now); // all three still adjacent while inviting
+    net.adj = vec![vec![1], vec![0, 2], vec![1]];
+    let note = voice_note_bytes(6_000);
+    let acts = net.engines[0].send_voice_note(gid, titi_core::frame::Profile::Std, 3_000, note.clone(), now);
+    net.apply(0, acts);
+    net.run(now, now + 3_000, 20);
+    assert!(net.max_frame <= 1200, "max frame {}", net.max_frame);
+    assert!(
+        net.has_ui(2, |e| matches!(e, UiEvent::Message { body: titi_core::engine::MessageBody::VoiceNote { opus_packets, .. }, .. } if *opus_packets == note)),
+        "C got A's note through B"
+    );
 }
 
 #[test]
@@ -321,4 +389,53 @@ fn three_nodes_relay_voice_over_middle() {
     assert!(net.plays[2] > 30, "C heard A through B ({} frames)", net.plays[2]);
     assert!(net.plays[1] > 30, "B heard A directly ({} frames)", net.plays[1]);
     assert!(net.has_ui(2, |e| matches!(e, UiEvent::FloorTaken { name, .. } if name == "A")));
+}
+
+#[test]
+fn member_that_missed_memberjoin_is_learned_from_voice() {
+    // A hosts, B joins while C is offline (never hears B's MemberJoin flood).
+    // Later C hears B talk: authenticated group voice must add B to C's roster.
+    let mut net = Net::new(3, &["A", "B", "C"]);
+    let mut now = 1_789_404_000_000u64;
+    net.bring_up(now);
+    net.run(now, now + 600, 20);
+    now += 620;
+    let (gid, acts) = net.engines[0].create_group("Late", now).unwrap();
+    net.apply(0, acts);
+    let a = net.engines[0].node_id();
+    let b = net.engines[1].node_id();
+    let c = net.engines[2].node_id();
+    // C joins first
+    let acts = net.engines[0].invite_peer(gid, c, now);
+    net.apply(0, acts);
+    net.pump(now);
+    let acts = net.engines[2].accept_invite(gid, a, now);
+    net.apply(2, acts);
+    net.pump(now);
+    // C goes deaf; B joins
+    net.adj = vec![vec![1], vec![0], vec![]];
+    let acts = net.engines[0].invite_peer(gid, b, now);
+    net.apply(0, acts);
+    net.pump(now);
+    let acts = net.engines[1].accept_invite(gid, a, now);
+    net.apply(1, acts);
+    net.pump(now);
+    assert!(!net.engines[2].groups[&gid].members.contains_key(&b), "precondition: C missed B");
+    // C is back in range of B only; B talks
+    net.adj = vec![vec![1], vec![0, 2], vec![1]];
+    net.run(now, now + 5_000, 100);
+    now += 5_200;
+    let acts = net.engines[1].ptt_down(Priority::Normal, now);
+    net.apply(1, acts);
+    net.pump(now);
+    now += 300;
+    net.tick_all(now);
+    for _ in 0..25 {
+        now += 20;
+        let acts = net.engines[1].on_audio_in(&pcm_tone(960, 0.05), now);
+        net.apply(1, acts);
+        net.tick_all(now);
+    }
+    assert!(net.engines[2].groups[&gid].members.contains_key(&b), "C learned B from its voice: {:?}", net.ui[2]);
+    assert!(net.has_ui(2, |e| matches!(e, UiEvent::MemberJoined { node, .. } if *node == b)));
 }

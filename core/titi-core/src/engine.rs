@@ -5,16 +5,17 @@
 //! - call `on_frame(link, peer_token, bytes, now)` for every received datagram
 //! - call `on_audio_in(pcm_20ms, now)` from the capture thread at 20 ms cadence
 //! - call `tick(now)` every 20 ms (or whenever `next_tick` says)
-//! - execute every returned [`Action`]
+//! - pass every returned batch through [`Engine::shape`], then execute each [`Action`]
+//!   (shape splits envelopes larger than the link MTU into paced `Fragment` frames)
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use prost::Message;
 
 use crate::audio::{self, JitterBuffer, Packet, Pop};
 use crate::crypto::{self, GroupCipher, Pattern, ReplayWindow, Session};
 use crate::floor::{Claim, Floor, FloorEvent, Priority};
-use crate::frame::{self, flags, Codec, Envelope, FrameType, NodeId, Profile, VoiceHeader};
+use crate::frame::{self, flags, fragment, Codec, Envelope, FrameType, NodeId, Profile, VoiceHeader};
 use crate::handover::{HoEvent, Handover};
 use crate::identity::{self, Identity};
 use crate::invite::{self, Code, DeepLink};
@@ -168,9 +169,18 @@ pub struct Engine {
     last_level_ui: Ms,
     last_route_eval: Ms,
     last_peer_link: HashMap<NodeId, (LinkClass, u8, u8)>,
+    /// Fragments waiting for link budget (see `shape` / `drain_fragments`).
+    frag_out: VecDeque<(LinkId, Option<String>, Vec<u8>)>,
+    frag_credit: HashMap<LinkId, i64>,
+    frag_last_ms: Ms,
+    reasm: fragment::Reassembler<(LinkId, NodeId)>,
 }
 
 const PTT_BUFFER_MAX: usize = audio::TICK_SAMPLES * 15; // 300 ms
+/// Max bytes of queued outgoing fragments; a new oversize frame beyond it is dropped.
+const FRAG_QUEUE_MAX: usize = 4 << 20;
+/// Credit cap per link (bytes) so an idle link doesn't burst a whole note at once.
+const FRAG_BURST: i64 = 4_000;
 
 impl Engine {
     pub fn new(id: Identity, cfg: Config, seed: u64) -> Self {
@@ -202,11 +212,75 @@ impl Engine {
             last_level_ui: 0,
             last_route_eval: 0,
             last_peer_link: HashMap::new(),
+            frag_out: VecDeque::new(),
+            frag_credit: HashMap::new(),
+            frag_last_ms: 0,
+            reasm: fragment::Reassembler::default(),
         }
     }
 
     pub fn node_id(&self) -> NodeId {
         self.id.node_id()
+    }
+
+    /// Host-side post-processing of every action batch: a `Send` larger than its
+    /// link's MTU is split into hop-local `Fragment` envelopes and queued; `tick`
+    /// releases them at ≤ 1 per link per tick and ≤ half the link's estimated
+    /// bandwidth, so they never starve voice or trip the relay's rate limit.
+    pub fn shape(&mut self, acts: Vec<Action>) -> Vec<Action> {
+        let mut out = Vec::with_capacity(acts.len());
+        for a in acts {
+            let Action::Send { link, peer, bytes } = a else {
+                out.push(a);
+                continue;
+            };
+            let mtu = self.links.get(&link).map(|l| l.mtu).unwrap_or(1200);
+            if bytes.len() <= mtu {
+                out.push(Action::Send { link, peer, bytes });
+                continue;
+            }
+            let Ok(inner) = Envelope::decode(&bytes) else { continue };
+            let set = fragment::set_id(&inner.src, inner.msg_id);
+            let chunk = mtu.saturating_sub(frame::ENVELOPE_MIN + fragment::HEADER);
+            let queued: usize = self.frag_out.iter().map(|(_, _, b)| b.len()).sum();
+            let Some(parts) = fragment::split(set, &bytes, chunk) else { continue };
+            if queued + bytes.len() > FRAG_QUEUE_MAX {
+                continue;
+            }
+            for p in parts {
+                let e = Envelope { ftype: FrameType::Fragment, ttl: 1, hop_start: 1, flags: 0, msg_id: self.next_msg_id(), src: self.node_id(), dst: None, payload: &p };
+                self.frag_out.push_back((link, peer.clone(), e.encode()));
+            }
+        }
+        out
+    }
+
+    fn drain_fragments(&mut self, now: Ms) -> Vec<Action> {
+        let dt = now.saturating_sub(self.frag_last_ms).min(200) as i64;
+        self.frag_last_ms = now;
+        self.frag_credit.retain(|id, _| self.links.contains_key(id));
+        for (id, l) in &self.links {
+            let c = self.frag_credit.entry(*id).or_insert(0);
+            *c = (*c + l.stats.est_bps as i64 * dt / 16_000).min(FRAG_BURST);
+        }
+        if self.frag_out.is_empty() {
+            return vec![];
+        }
+        let mut used = HashSet::new();
+        let mut acts = vec![];
+        let mut rest = VecDeque::with_capacity(self.frag_out.len());
+        while let Some((link, peer, bytes)) = self.frag_out.pop_front() {
+            let Some(c) = self.frag_credit.get_mut(&link) else { continue }; // link gone
+            if *c <= 0 || used.contains(&link) {
+                rest.push_back((link, peer, bytes));
+                continue;
+            }
+            used.insert(link);
+            *c -= bytes.len() as i64;
+            acts.push(Action::Send { link, peer, bytes });
+        }
+        self.frag_out = rest;
+        acts
     }
 
     // ───────────────────────── links & peers ─────────────────────────
@@ -860,6 +934,11 @@ impl Engine {
             FrameType::Message => self.handle_message(link, &env, now),
             FrameType::Ack => self.handle_ack(link, &env, now),
             FrameType::Inventory => self.handle_inventory(link, token, &env, now),
+            FrameType::Fragment => match self.reasm.push((link, env.src), env.payload, now) {
+                // hop-local: never relayed; a fragment inside a fragment is refused
+                Ok(Some(inner)) if inner.get(1) != Some(&(FrameType::Fragment as u8)) => self.on_frame(link, token, &inner, now),
+                _ => vec![],
+            },
             FrameType::RouteProbe => vec![],
         }
     }
@@ -1214,6 +1293,15 @@ impl Engine {
         }
         let aad = [gid.as_slice(), &epoch.to_be_bytes(), &[kind_u8]].concat();
         let Ok(body) = g.cipher.open(&nonce, &aad, ct) else { return acts };
+        if kind != ControlKind::Leave && kind != ControlKind::MemberJoin && env.src != self.node_id() && !self.groups[&gid].members.contains_key(&env.src) {
+            let (name, hue) = self.peer_names.get(&env.src).cloned().unwrap_or_else(|| (String::new(), 200));
+            let short = u16::from_be_bytes([env.src[0], env.src[1]]);
+            let g = self.groups.get_mut(&gid).unwrap();
+            g.members.insert(env.src, Member { node: env.src, name: name.clone(), hue, pubkey: None, short, last_seen: now });
+            g.short_to_node.insert(short, env.src);
+            acts.push(Action::Ui(UiEvent::MemberJoined { group: gid, node: env.src, name }));
+            acts.push(self.persist_groups());
+        }
         acts.extend(self.handle_group_control(kind, &body, env.src, now));
         acts
     }
@@ -1385,6 +1473,19 @@ impl Engine {
         }
         let Ok((hdr, payload)) = VoiceHeader::decode(&plain) else { return acts };
         g.short_to_node.insert(hdr.talker, env.src);
+        // Membership convergence: a node that can produce group-AEAD voice holds the
+        // group key, so it is a member even if we missed its MemberJoin flood (offline).
+        let mut learned = None;
+        if !g.members.contains_key(&env.src) && env.src != me {
+            let (name, hue) = self.peer_names.get(&env.src).cloned().unwrap_or_else(|| (String::new(), 200));
+            g.members.insert(env.src, Member { node: env.src, name: name.clone(), hue, pubkey: None, short: hdr.talker, last_seen: now });
+            learned = Some(name);
+        }
+        if let Some(name) = learned {
+            acts.push(Action::Ui(UiEvent::MemberJoined { group: gid, node: env.src, name }));
+            acts.push(self.persist_groups());
+        }
+        let g = self.groups.get_mut(&gid).unwrap();
         // floor inference
         let evs = g.floor.on_voice_from(env.src, hdr.talker, now);
         // presence
@@ -1590,6 +1691,7 @@ impl Engine {
             }
             acts.extend(self.playout(gid, now));
         }
+        acts.extend(self.drain_fragments(now));
         if let Some(t) = self.flood.next_fire() {
             acts.push(Action::WakeAt(t));
         }

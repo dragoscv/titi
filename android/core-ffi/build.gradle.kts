@@ -61,11 +61,21 @@ android {
             kotlin.directories.add(bindingsOut.get().asFile.absolutePath)
         }
     }
+    testOptions {
+        unitTests.all {
+            // run the generated bindings against the host cdylib (built by cargoBuildHostFfi)
+            it.systemProperty("jna.library.path", hostLibFile.parentFile.absolutePath)
+            it.dependsOn("cargoBuildHostFfi")
+            it.inputs.file(hostLibFile)
+        }
+    }
 }
 
 dependencies {
     implementation(libs.jna) { artifact { type = "aar" } }
     implementation(libs.kotlinx.coroutines.android)
+    testImplementation(libs.junit)
+    testImplementation(libs.jna) // desktop jar: carries the host jnidispatch the AAR lacks
 }
 
 // ---- Rust build -------------------------------------------------------------
