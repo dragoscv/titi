@@ -5,6 +5,7 @@ import { Check, Mic } from "lucide-react";
 import { host } from "@/lib/engine";
 import { hueColor } from "@/lib/cn";
 import { Avatar } from "../Avatar";
+import { focusOnMount } from "../Sheet";
 
 const HUES = [40, 15, 350, 290, 220, 170, 120, 80];
 
@@ -22,7 +23,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
         <h2 className="mt-9 text-base font-semibold">What should others call you?</h2>
         <div className="mt-2.5 flex items-center gap-3.5">
           <Avatar name={name || "?"} hue={hue} size={52} />
-          <input className="flex-1 rounded-2xl border border-outline bg-surface px-4 py-3.5 text-lg outline-none focus:border-amber" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} autoFocus maxLength={24} />
+          <input className="flex-1 rounded-2xl border border-outline bg-surface px-4 py-3.5 text-lg outline-none focus:border-amber" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} ref={focusOnMount} maxLength={24} />
         </div>
         <h2 className="mt-6 text-base font-semibold">Pick your colour</h2>
         <div className="mt-2.5 flex gap-2.5">

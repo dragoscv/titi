@@ -13,16 +13,20 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "check": "turbo run typecheck lint test",
+    "gates": "pwsh -NoProfile -File scripts/gates.ps1",
     "proto:gen": "pnpm dlx @bufbuild/buf@1.73.0 generate",
     "proto:lint": "pnpm dlx @bufbuild/buf@1.73.0 lint",
     "core:test": "cargo test --manifest-path core/Cargo.toml",
     "core:vectors": "cargo run --manifest-path core/Cargo.toml -p titi-core --bin gen-vectors --features vectors",
     "core:wasm": "pwsh -NoProfile -File scripts/build-wasm.ps1",
-    "android:debug": "pwsh -NoProfile -File scripts/android-build.ps1 -Task assembleDebug",
-    "android:release": "pwsh -NoProfile -File scripts/android-build.ps1 -Task bundleRelease"
+    "android:debug": "android/gradlew.bat -p android :app:assembleGmsDebug :wear:assembleDebug",
+    "android:release": "android/gradlew.bat -p android :app:bundleGmsRelease :wear:bundleRelease"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
+    "oxlint": "1.86.0",
+    "oxlint-tsgolint": "7.0.2003",
     "turbo": "2.10.12",
     "typescript": "7.0.2"
   },

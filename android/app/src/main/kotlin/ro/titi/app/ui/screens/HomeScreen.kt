@@ -179,9 +179,10 @@ private fun GroupCard(g: GroupState, active: Boolean, onClick: () -> Unit) {
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(g.name, style = MaterialTheme.typography.titleMedium)
+            val talker = g.talkerName
             Text(
-                if (talking && g.talkerName != null) stringResource(R.string.group_busy, g.talkerName)
-                else if (g.members.size == 1) stringResource(R.string.home_member_one) else stringResource(R.string.home_members, g.members.size),
+                if (talking && talker != null) stringResource(R.string.group_busy, talker)
+                else androidx.compose.ui.res.pluralStringResource(R.plurals.members, g.members.size, g.members.size),
                 style = MaterialTheme.typography.bodySmall, color = if (talking) MaterialTheme.titi.receive else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

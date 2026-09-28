@@ -105,8 +105,9 @@ fun FfiLinkClass.icon(): ImageVector = when (this) {
 }
 
 @Composable
-fun FfiLinkClass.label(): String = stringResource(
-    when (this) {
+fun FfiLinkClass.label(): String = stringResource(labelRes())
+
+fun FfiLinkClass.labelRes(): Int = when (this) {
         FfiLinkClass.LAN -> R.string.link_lan
         FfiLinkClass.HOTSPOT -> R.string.link_hotspot
         FfiLinkClass.WIFI_AWARE -> R.string.link_aware
@@ -114,8 +115,7 @@ fun FfiLinkClass.label(): String = stringResource(
         FfiLinkClass.BLE_L2CAP, FfiLinkClass.BLE_GATT -> R.string.link_ble
         FfiLinkClass.BT_RFCOMM -> R.string.link_bt
         FfiLinkClass.INTERNET, FfiLinkClass.WEB_RTC -> R.string.link_internet
-    },
-)
+}
 
 @Composable
 fun LinkChip(link: FfiLinkClass?, bars: Int = 0, hops: Int = 0, modifier: Modifier = Modifier) {

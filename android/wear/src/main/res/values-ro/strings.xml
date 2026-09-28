@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Titi</string>
+    <string name="tile_label">Titi · Vorbește</string>
+    <string name="tile_description">Apasă și vorbește în grupul activ</string>
+    <string name="complication_label">Grup Titi</string>
+
+    <string name="groups">Grupuri</string>
+    <string name="no_groups">Niciun grup încă</string>
+    <string name="no_groups_hint">Introdu un cod de invitație sau atinge „Trimite pe ceas” în Titi pe telefon.</string>
+    <string name="join_code">Intră cu cod</string>
+    <string name="join">Intră</string>
+    <string name="code_word">Cuvântul %1$d</string>
+    <string name="code_digits">Cifre</string>
+    <string name="joining">Se intră…</string>
+
+    <string name="hold_to_talk">Ține ca să vorbești</string>
+    <string name="tap_to_talk">Atinge ca să vorbești</string>
+    <string name="talking">Vorbești</string>
+    <string name="release_to_send">Eliberează ca să oprești</string>
+    <string name="is_talking">%1$s</string>
+    <string name="listening">Asculți</string>
+    <string name="queued">La rând</string>
+    <string name="suspended">În afara razei</string>
+    <string name="muted">Microfon oprit</string>
+    <string name="mute">Oprește microfonul</string>
+    <string name="unmute">Pornește microfonul</string>
+    <string name="volume">Volum</string>
+    <string name="cd_talk">Buton de vorbit. Apasă și ține ca să transmiți.</string>
+    <string name="cd_talk_state_talking">Transmiți</string>
+    <string name="cd_talk_state_busy">Vorbește %1$s</string>
+    <string name="cd_talk_state_idle">Pregătit</string>
+
+    <string name="chat">Mesaje</string>
+    <string name="chat_empty">Niciun mesaj</string>
+    <string name="chat_voice_note">Mesaj vocal · %1$ds</string>
+    <string name="chat_location">A trimis o locație</string>
+    <string name="record_voice_note">Ține ca să înregistrezi</string>
+    <string name="recording">Se înregistrează…</string>
+    <string name="sent">Trimis</string>
+    <string name="quick_replies">Răspunsuri rapide</string>
+    <string name="reply_ok">OK 👍</string>
+    <string name="reply_on_my_way">Vin acum</string>
+    <string name="reply_wait">Așteaptă-mă</string>
+    <string name="reply_where">Unde ești?</string>
+
+    <string name="sos">SOS</string>
+    <string name="sos_hold">Ține pentru SOS</string>
+    <string name="sos_confirm">Trimiți SOS cu locația ta către %1$s?</string>
+    <string name="sos_sent">SOS trimis</string>
+    <string name="sos_active">SOS activ</string>
+    <string name="sos_cancel">Anulează SOS</string>
+    <string name="sos_from">SOS de la %1$s</string>
+    <string name="sos_cancelled">%1$s e în siguranță</string>
+
+    <string name="members">Membri</string>
+    <string name="you">Tu</string>
+    <string name="settings">Setări</string>
+    <string name="name">Nume</string>
+    <string name="use_wifi">Wi-Fi pentru voce</string>
+    <string name="use_wifi_desc">Sunet mai bun, consumă mai multă baterie</string>
+    <string name="use_internet">Releu prin internet</string>
+    <string name="use_ble">Bluetooth</string>
+    <string name="haptics_only">Doar vibrații</string>
+    <string name="leave">Părăsește grupul</string>
+    <string name="leave_confirm">Părăsești %1$s?</string>
+    <string name="cancel">Anulează</string>
+    <string name="ok">OK</string>
+
+    <string name="perm_title">Titi are nevoie de microfon</string>
+    <string name="perm_body">Ca să vorbești cu grupul. Accesul la dispozitive din apropiere găsește oamenii din jur.</string>
+    <string name="perm_allow">Permite</string>
+    <string name="perm_settings">Deschide setările</string>
+
+    <string name="notif_channel">Radio</string>
+    <string name="notif_alerts">Alerte</string>
+    <string name="notif_radio_on">Radio pornit</string>
+    <string name="notif_listening">Asculți · %1$s</string>
+    <string name="notif_talking">Vorbește %1$s</string>
+    <string name="ongoing_status">#group# · #members#</string>
+
+    <string name="link_lan">Wi‑Fi</string>
+    <string name="link_ble">Bluetooth</string>
+    <string name="link_internet">Internet</string>
+    <string name="link_none">Se caută…</string>
+    <string name="from_phone">Primit de la telefon</string>
+    <string name="double_pinch_hint">Ciupește de două ori ca să vorbești</string>
+
+    <plurals name="members_count">
+        <item quantity="one">%d membru</item>
+        <item quantity="few">%d membri</item>
+        <item quantity="other">%d de membri</item>
+    </plurals>
+    <plurals name="online_count">
+        <item quantity="one">%d conectat</item>
+        <item quantity="few">%d conectați</item>
+        <item quantity="other">%d de conectați</item>
+    </plurals>
+</resources>

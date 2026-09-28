@@ -208,7 +208,7 @@ export class Relay {
     if (m.rooms.has(hash)) return;
     // a reconnecting node replaces its stale connection (evict before we
     // touch the room: eviction may delete an emptied room)
-    for (const other of [...(this.rooms.get(hash)?.members.values() ?? [])]) {
+    for (const other of Array.from(this.rooms.get(hash)?.members.values() ?? [])) {
       if (other.nodeHex === m.nodeHex && other.id !== m.id) {
         this.leaveAll(other, false);
         other.sink.close(4000, "replaced");
@@ -246,7 +246,7 @@ export class Relay {
         expiresAt: this.now() + this.cfg.RESUME_TTL_MS,
       });
     }
-    for (const r of [...m.rooms.values()]) this.leaveRoom(m, r, false);
+    for (const r of Array.from(m.rooms.values())) this.leaveRoom(m, r, false);
   }
 
   private leaveRoom(m: Member, room: Room, park: boolean) {

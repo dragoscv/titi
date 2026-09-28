@@ -192,8 +192,11 @@ impl NeighbourTable {
 #[derive(Default)]
 pub struct Topology {
     /// node → (neighbour → (class, cost)), with freshness
-    pub adj: HashMap<NodeId, (Ms, HashMap<NodeId, (LinkClass, u32)>)>,
+    pub adj: HashMap<NodeId, (Ms, Neighbours)>,
 }
+
+/// neighbour → (class, cost)
+pub type Neighbours = HashMap<NodeId, (LinkClass, u32)>;
 
 impl Topology {
     pub fn update(&mut self, node: NodeId, neighbours: &[(NodeId, LinkClass, u32)], now: Ms) {
@@ -332,6 +335,7 @@ pub struct FloodScheduler {
 }
 
 impl FloodScheduler {
+    #[allow(clippy::too_many_arguments)]
     pub fn schedule(&mut self, key: [u8; 12], bytes: Vec<u8>, from_link: LinkId, from_peer: Option<String>, now: Ms, rng: &mut Rng, urgent: bool) {
         let jitter = if urgent { 0 } else { rng.range(FLOOD_JITTER_MIN_MS, FLOOD_JITTER_MAX_MS) };
         self.pending.push(PendingRelay { key, fire_at: now + jitter, bytes, exclude_link: from_link, exclude_peer: from_peer });

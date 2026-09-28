@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -29,7 +30,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavEntry
@@ -51,9 +51,10 @@ import ro.titi.app.ui.screens.OnboardingScreen
 import ro.titi.app.ui.screens.SettingsScreen
 import ro.titi.app.ui.Settings as SettingsRoute
 
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter") // see Scaffold below
 @Composable
 fun TitiApp(engine: EngineHost, prefs: Prefs, settings: Settings) {
-    val ctx = LocalContext.current
+    val res = androidx.compose.ui.platform.LocalResources.current
     val state by engine.state.collectAsState()
     val snack = remember { SnackbarHostState() }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
@@ -61,7 +62,7 @@ fun TitiApp(engine: EngineHost, prefs: Prefs, settings: Settings) {
         engine.toasts.collect { t ->
             val msg = when (t) {
                 is Toast.Raw -> t.text
-                is Toast.Text -> if (t.arg != null) ctx.getString(t.res, t.arg) else ctx.getString(t.res)
+                is Toast.Text -> if (t.arg != null) res.getString(t.res, t.arg) else res.getString(t.res)
             }
             scope.launch { snack.showSnackbar(msg) }
         }
@@ -74,6 +75,8 @@ fun TitiApp(engine: EngineHost, prefs: Prefs, settings: Settings) {
         if (top == Join && state.activeGroup != null) { backStack.removeLastOrNull(); backStack.add(Group(state.activeGroup!!)) }
     }
 
+    // Scaffold only hosts the snackbar (kept above the nav bar by its default insets);
+    // every screen applies safeDrawingPadding itself, so the content padding is intentionally unused.
     Scaffold(snackbarHost = { SnackbarHost(snack) }, containerColor = MaterialTheme.colorScheme.background) { _ ->
         Box(Modifier.fillMaxSize()) {
             NavDisplay(

@@ -51,6 +51,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -82,6 +83,9 @@ fun TalkButton(
 ) {
     val haptics = LocalHapticFeedback.current
     var pressed by remember { mutableStateOf(false) }
+    val onDown by androidx.compose.runtime.rememberUpdatedState(onDown)
+    val onUp by androidx.compose.runtime.rememberUpdatedState(onUp)
+    val onToggleMute by androidx.compose.runtime.rememberUpdatedState(onToggleMute)
     val spring = spring<androidx.compose.ui.unit.Dp>(stiffness = 380f, dampingRatio = 0.78f)
     val springF = spring<Float>(stiffness = 380f, dampingRatio = 0.78f)
 
@@ -134,8 +138,12 @@ fun TalkButton(
                     )
                 }
             }
-            .semantics { contentDescription = cd; stateDescription = stateDesc; role = Role.Button }
-            .pointerInput(fullDuplex, busy) {
+            .semantics {
+                contentDescription = cd; stateDescription = stateDesc; role = Role.Button
+                // TalkBack: double-tap toggles (a hold gesture is not reachable via accessibility)
+                onClick { if (fullDuplex) onToggleMute() else if (transmitting) onUp() else onDown(); true }
+            }
+            .pointerInput(fullDuplex) {
                 if (fullDuplex) {
                     awaitEachGesture {
                         awaitFirstDown()
@@ -149,17 +157,21 @@ fun TalkButton(
                         pressed = true
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         onDown()
-                        // A thumb drifts while talking: hold until the finger LIFTS, never
-                        // cancel on movement (waitForUpOrCancellation would drop the floor
-                        // after touch slop).
-                        while (true) {
-                            val ev = awaitPointerEvent(PointerEventPass.Initial)
-                            ev.changes.forEach { it.consume() }
-                            if (ev.changes.all { it.changedToUp() || !it.pressed }) break
+                        try {
+                            // A thumb drifts while talking: hold until the finger LIFTS, never
+                            // cancel on movement (waitForUpOrCancellation would drop the floor
+                            // after touch slop).
+                            while (true) {
+                                val ev = awaitPointerEvent(PointerEventPass.Initial)
+                                ev.changes.forEach { it.consume() }
+                                if (ev.changes.all { it.changedToUp() || !it.pressed }) break
+                            }
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        } finally {
+                            // also runs if the gesture is cancelled (screen left mid-hold)
+                            pressed = false
+                            onUp()
                         }
-                        pressed = false
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onUp()
                     }
                 }
             },

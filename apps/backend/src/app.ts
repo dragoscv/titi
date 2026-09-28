@@ -6,7 +6,8 @@ import { Relay, type Sink } from "./relay.ts";
 
 export function createApp(cfg: Config, relay: Relay) {
   const app = new Hono();
-  const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
+  const nodeWs = createNodeWebSocket({ app });
+  const injectWebSocket = (server: Parameters<typeof nodeWs.injectWebSocket>[0]) => nodeWs.injectWebSocket(server);
 
   app.get("/health", (c) =>
     c.json({ ok: true, service: "titi-relay", version: process.env.npm_package_version ?? "dev", ...relay.stats() }),
@@ -14,13 +15,13 @@ export function createApp(cfg: Config, relay: Relay) {
 
   app.get(
     "/v1/ws",
-    upgradeWebSocket(() => {
+    nodeWs.upgradeWebSocket(() => {
       let id = -1;
       return {
         onOpen(_evt, ws) {
           const sink: Sink = {
             send: (b) => {
-              if (ws.readyState === 1) ws.send(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer);
+              if (ws.readyState === 1) ws.send(b.slice().buffer);
             },
             close: (code, reason) => ws.close(code, reason),
           };
@@ -41,7 +42,7 @@ export function createApp(cfg: Config, relay: Relay) {
           log.debug("ws.close", { id });
         },
         onError(evt) {
-          log.warn("ws.error", { id, err: String((evt as ErrorEvent).message ?? evt.type) });
+          log.warn("ws.error", { id, err: "message" in evt && typeof evt.message === "string" ? evt.message : evt.type });
         },
       };
     }),

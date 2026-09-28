@@ -18,6 +18,10 @@ class TitiApp : Application() {
         prefs = Prefs(this)
         engine = EngineHost(this, prefs)
         createChannels()
+        androidx.lifecycle.ProcessLifecycleOwner.get().lifecycle.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
+            override fun onStart(owner: androidx.lifecycle.LifecycleOwner) { foreground = true }
+            override fun onStop(owner: androidx.lifecycle.LifecycleOwner) { foreground = false }
+        })
     }
 
     private fun createChannels() {
@@ -38,6 +42,8 @@ class TitiApp : Application() {
     companion object {
         const val CHANNEL_RADIO = "radio"
         const val CHANNEL_ALERTS = "alerts"
+        @Volatile var foreground = false
+            private set
         lateinit var instance: TitiApp
             private set
     }

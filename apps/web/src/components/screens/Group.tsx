@@ -98,36 +98,39 @@ export function Group({ id, go }: { id: string; go: (r: Route) => void }) {
       <InviteSheet open={invite} onClose={() => setInvite(false)} gid={g.id} gname={g.name} />
 
       <Sheet open={chat} onClose={() => setChat(false)} title={g.name}>
-        <ChatPanel gid={g.id} msgs={msgs} me={nodeId} />
+        <ChatPanel gid={g.id} msgs={msgs} />
       </Sheet>
     </div>
   );
 }
 
 function InviteSheet({ open, onClose, gid, gname }: { open: boolean; onClose: () => void; gid: string; gname: string }) {
+  return (
+    <Sheet open={open} onClose={onClose} title={`Invite to ${gname}`}>
+      <InviteBody gid={gid} gname={gname} />
+    </Sheet>
+  );
+}
+
+/** Mounted only while the sheet is open, so the first code/link come from lazy initialisers. */
+function InviteBody({ gid, gname }: { gid: string; gname: string }) {
   const peersMap = useStore((s) => s.peers);
   const peers = Object.values(peersMap).filter((p) => !p.inGroup);
-  const [code, setCode] = useState<[string, number] | null>(null);
+  const [code, setCode] = useState<[string, number] | null>(() => host.currentCode(gid));
   const [qr, setQr] = useState<string | null>(null);
-  const [link, setLink] = useState<string | null>(null);
+  const [link] = useState<string | null>(() => host.deepLink(gid));
   useEffect(() => {
-    if (!open) return;
-    const upd = () => setCode(host.currentCode(gid));
-    upd();
-    const t = setInterval(upd, 1000);
-    const l = host.deepLink(gid);
-    setLink(l);
-    if (l) void QRCode.toDataURL(l.replace("titi://j/", "https://titi.app/j/"), { margin: 1, width: 400, color: { dark: "#0E1013", light: "#FFFFFF" } }).then(setQr);
+    const t = setInterval(() => setCode(host.currentCode(gid)), 1000);
+    if (link) void QRCode.toDataURL(link.replace("titi://j/", "https://titi.app/j/"), { margin: 1, width: 400, color: { dark: "#0E1013", light: "#FFFFFF" } }).then(setQr);
     return () => clearInterval(t);
-  }, [open, gid]);
+  }, [gid, link]);
   const secs = code?.[1] ?? 0;
   const share = () => {
     const url = link?.replace("titi://j/", "https://titi.app/j/") ?? "";
     if (navigator.share) void navigator.share({ title: `Join ${gname} on Titi`, url }); else void navigator.clipboard.writeText(url);
   };
   return (
-    <Sheet open={open} onClose={onClose} title={`Invite to ${gname}`}>
-      <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-2">
         {peers.length > 0 && (
           <>
             <div className="text-sm text-muted">Tap someone in your room</div>
@@ -139,21 +142,21 @@ function InviteSheet({ open, onClose, gid, gname }: { open: boolean; onClose: ()
           </>
         )}
         <div className="mt-2 text-sm text-muted">Say this code</div>
-        <button className="font-mono text-[28px] font-medium tracking-wide text-amber" onClick={() => code && navigator.clipboard.writeText(code[0])}>{code?.[0].replaceAll("-", " ") ?? "…"}</button>
+        <button className="font-mono text-[28px] font-medium tracking-wide text-amber" onClick={() => { if (code) void navigator.clipboard.writeText(code[0]); }}>{code?.[0].replaceAll("-", " ") ?? "…"}</button>
         <div className="font-mono text-xs text-muted">Changes in {Math.floor(secs / 60)}:{String(secs % 60).padStart(2, "0")}</div>
         {qr && (
           <>
             <div className="mt-3 text-sm text-muted">Or scan</div>
+            {/* oxlint-disable-next-line next/no-img-element -- QR is a generated data: URL; next/image adds nothing here */}
             <img src={qr} alt="Invite QR" className="h-52 w-52 rounded-2xl bg-white p-2" />
             <button className="mt-3 inline-flex items-center gap-2 rounded-xl border border-outline px-4 py-2.5 text-sm" onClick={share}><Share2 size={16} /> Share link</button>
           </>
         )}
-      </div>
-    </Sheet>
+    </div>
   );
 }
 
-function ChatPanel({ gid, msgs, me }: { gid: string; msgs: ReturnType<typeof useStore.getState>["messages"]; me: string }) {
+function ChatPanel({ gid, msgs }: { gid: string; msgs: ReturnType<typeof useStore.getState>["messages"] }) {
   const [text, setText] = useState("");
   const peers = useStore((s) => s.peers);
   const send = () => { if (text.trim()) { host.sendText(gid, text.trim()); setText(""); } };

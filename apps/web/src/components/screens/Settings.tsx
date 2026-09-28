@@ -17,8 +17,8 @@ export function Settings({ go }: { go: (r: Route) => void }) {
       </header>
       <div className="flex flex-col gap-3 p-5">
         <Section title="Profile">
-          <label className="text-sm text-muted">Name</label>
-          <input className="mt-1 w-full rounded-xl border border-outline bg-graphite px-3.5 py-3 outline-none focus:border-amber" value={settings.name} onChange={(e) => host.saveSettings({ name: e.target.value })} maxLength={24} />
+          <label htmlFor="settings-name" className="text-sm text-muted">Name</label>
+          <input id="settings-name" className="mt-1 w-full rounded-xl border border-outline bg-graphite px-3.5 py-3 outline-none focus:border-amber" value={settings.name} onChange={(e) => host.saveSettings({ name: e.target.value })} maxLength={24} />
           <div className="mt-3 text-sm text-muted">Colour</div>
           <div className="mt-2 flex gap-2.5">
             {HUES.map((h) => (
@@ -29,8 +29,8 @@ export function Settings({ go }: { go: (r: Route) => void }) {
           </div>
         </Section>
         <Section title="Connection">
-          <label className="text-sm text-muted">Relay URL</label>
-          <input className="mt-1 w-full rounded-xl border border-outline bg-graphite px-3.5 py-3 font-mono text-xs outline-none focus:border-amber" value={settings.relayUrl} onChange={(e) => host.saveSettings({ relayUrl: e.target.value })} />
+          <label htmlFor="settings-relay" className="text-sm text-muted">Relay URL</label>
+          <input id="settings-relay" className="mt-1 w-full rounded-xl border border-outline bg-graphite px-3.5 py-3 font-mono text-xs outline-none focus:border-amber" value={settings.relayUrl} onChange={(e) => host.saveSettings({ relayUrl: e.target.value })} />
           <button className="mt-2 text-xs text-muted underline" onClick={() => host.saveSettings({ relayUrl: DEFAULT_RELAY })}>Reset to default</button>
         </Section>
         <Section title="About">

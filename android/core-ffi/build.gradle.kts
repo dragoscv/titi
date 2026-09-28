@@ -8,14 +8,22 @@ val repoRoot = rootProject.projectDir.parentFile
 val cargoManifest = repoRoot.resolve("core/Cargo.toml")
 val jniOut = layout.buildDirectory.dir("rustJniLibs")
 val bindingsOut = layout.buildDirectory.dir("generated/uniffi/kotlin")
-val buildRust = (project.findProperty("titi.buildRust") as String? ?: "true").toBoolean()
+val buildRust = providers.gradleProperty("titi.buildRust").getOrElse("true").toBoolean()
 
 fun abisFor(variant: String): List<String> {
     val key = if (variant.contains("release", ignoreCase = true)) "titi.rustAbis.release" else "titi.rustAbis.debug"
-    return (project.findProperty(key) as String? ?: "arm64-v8a").split(',').map { it.trim() }.filter { it.isNotEmpty() }
+    return providers.gradleProperty(key).getOrElse("arm64-v8a").split(',').map { it.trim() }.filter { it.isNotEmpty() }
 }
 
 val ndkVer = "28.2.13676358"
+
+val hostLibName = when {
+    org.gradle.internal.os.OperatingSystem.current().isWindows -> "titi_ffi.dll"
+    org.gradle.internal.os.OperatingSystem.current().isMacOsX -> "libtiti_ffi.dylib"
+    else -> "libtiti_ffi.so"
+}
+val hostLibFile = repoRoot.resolve("core/target/debug/$hostLibName")
+val rustSources = fileTree(repoRoot.resolve("core")) { include("**/*.rs", "**/Cargo.toml", "**/build.rs", "Cargo.lock", ".cargo/config.toml"); exclude("target/**") }
 
 /** libopus is built by cmake inside the cargo build; it needs the NDK toolchain file + ninja. */
 fun Exec.rustEnv() {
@@ -65,24 +73,26 @@ dependencies {
 val cargoNdkDebug = tasks.register<Exec>("cargoNdkDebug") {
     group = "rust"
     description = "cargo ndk build of titi-ffi (debug)"
-    onlyIf { buildRust }
+    enabled = buildRust // a plain Boolean: an onlyIf{} lambda captures the script and breaks the configuration cache
     workingDir = repoRoot.resolve("core")
     rustEnv()
     val abis = abisFor("debug").flatMap { listOf("-t", it) }
     commandLine(listOf("cargo", "ndk", "-o", jniOut.get().asFile.absolutePath, "--platform", "26") + abis + listOf("build", "-p", "titi-ffi"))
-    inputs.files(fileTree(repoRoot.resolve("core")) { include("**/*.rs", "**/Cargo.toml", "**/build.rs"); exclude("target/**") })
+    inputs.files(rustSources)
+    inputs.property("abis", abis)
     outputs.dir(jniOut)
 }
 
 val cargoNdkRelease = tasks.register<Exec>("cargoNdkRelease") {
     group = "rust"
     description = "cargo ndk build of titi-ffi (release)"
-    onlyIf { buildRust }
+    enabled = buildRust
     workingDir = repoRoot.resolve("core")
     rustEnv()
     val abis = abisFor("release").flatMap { listOf("-t", it) }
     commandLine(listOf("cargo", "ndk", "-o", jniOut.get().asFile.absolutePath, "--platform", "26") + abis + listOf("build", "-p", "titi-ffi", "--release"))
-    inputs.files(fileTree(repoRoot.resolve("core")) { include("**/*.rs", "**/Cargo.toml", "**/build.rs"); exclude("target/**") })
+    inputs.files(rustSources)
+    inputs.property("abis", abis)
     outputs.dir(jniOut)
 }
 
@@ -90,29 +100,27 @@ val cargoNdkRelease = tasks.register<Exec>("cargoNdkRelease") {
 // UDL is needed; proc-macro metadata is read from the compiled library.
 val hostLib = tasks.register<Exec>("cargoBuildHostFfi") {
     group = "rust"
-    onlyIf { buildRust }
+    enabled = buildRust
     workingDir = repoRoot.resolve("core")
     commandLine("cargo", "build", "-p", "titi-ffi", "--features", "cli")
-    inputs.files(fileTree(repoRoot.resolve("core")) { include("**/*.rs", "**/Cargo.toml"); exclude("target/**") })
-    outputs.dir(repoRoot.resolve("core/target/debug"))
+    inputs.files(rustSources)
+    // the single cdylib — declaring all of target/debug (4.5 GB) made Gradle fingerprint it every build
+    outputs.file(hostLibFile)
 }
 
 val uniffiBindgen = tasks.register<Exec>("uniffiBindgen") {
     group = "rust"
     description = "Generate Kotlin bindings for titi-ffi"
-    onlyIf { buildRust }
+    enabled = buildRust
     dependsOn(hostLib)
     workingDir = repoRoot.resolve("core")
-    val libName = when {
-        org.gradle.internal.os.OperatingSystem.current().isWindows -> "titi_ffi.dll"
-        org.gradle.internal.os.OperatingSystem.current().isMacOsX -> "libtiti_ffi.dylib"
-        else -> "libtiti_ffi.so"
-    }
     commandLine(
         "cargo", "run", "-p", "titi-ffi", "--features", "cli", "--bin", "uniffi-bindgen", "--",
-        "generate", "--library", "target/debug/$libName", "--language", "kotlin",
+        "generate", "--library", "target/debug/$hostLibName", "--language", "kotlin",
         "--out-dir", bindingsOut.get().asFile.absolutePath, "--no-format",
     )
+    // re-run whenever the cdylib (i.e. the exported API) changes
+    inputs.file(hostLibFile)
     outputs.dir(bindingsOut)
 }
 

@@ -36,7 +36,7 @@ fn main() {
         .filter_map(|l| l.split_whitespace().nth(1))
         .collect();
     assert_eq!(words.len(), 1296, "EFF short wordlist must have 1296 entries");
-    let mut src = String::from("pub const WORDS: [&str; 1296] = [\n");
+    let mut src = String::from("pub static WORDS: [&str; 1296] = [\n");
     for w in &words {
         src.push_str(&format!("    \"{w}\",\n"));
     }

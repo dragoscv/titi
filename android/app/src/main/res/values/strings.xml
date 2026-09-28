@@ -55,8 +55,6 @@
     <string name="group_hops">%1$d hops</string>
     <string name="group_via">via %1$s</string>
     <string name="group_you">You</string>
-    <string name="group_talk_warning">10 seconds left</string>
-    <string name="group_talk_timeout">Talk time limit reached</string>
     <string name="group_floor_denied">Channel busy</string>
     <string name="group_sos">SOS</string>
     <string name="group_sos_confirm">Send an SOS to everyone in %1$s with your location?</string>
@@ -75,6 +73,9 @@
     <string name="invite_nearby_label">Tap a phone nearby</string>
     <string name="invite_sent">Invitation sent to %1$s</string>
     <string name="invite_share_link">Share link</string>
+    <string name="invite_send_watch">Send to %1$s</string>
+    <string name="invite_watch_sent">Sent to %1$s ✓</string>
+    <string name="invite_watch_failed">Watch not reachable — try again</string>
     <string name="invite_offered_title">%1$s invites you</string>
     <string name="invite_offered_body">Join “%1$s” · %2$d members</string>
     <string name="invite_accept">Join</string>
@@ -87,7 +88,6 @@
     <string name="join_searching">Looking for the group nearby…</string>
     <string name="join_failed">Could not join: %1$s</string>
     <string name="join_no_peers">No Titi phones nearby yet. Make sure both are on the same Wi‑Fi or hotspot, or have Bluetooth on.</string>
-    <string name="joined">Joined %1$s</string>
 
     <!-- Chat -->
     <string name="chat_hint">Message</string>
@@ -169,7 +169,21 @@
     <string name="copied">Copied</string>
     <string name="share">Share</string>
     <string name="retry">Retry</string>
-    <string name="error_generic">Something went wrong</string>
+    <string name="error_location">Allow location access to share where you are</string>
+    <string name="alert_sos_title">SOS from %1$s</string>
+    <string name="alert_sos_body">In %1$s · tap to open</string>
+    <string name="alert_sos_cancelled">%1$s is safe — SOS cancelled</string>
+    <string name="alert_open_map">Open map</string>
+    <string name="radio_off">Radio is off</string>
+    <string name="radio_start">Turn on</string>
+    <string name="perm_open_settings">Open settings</string>
+    <string name="perm_denied_forever">Permission was denied. Enable it in Settings to continue.</string>
+    <string name="deeplink_confirm_title">Join group?</string>
+    <string name="deeplink_confirm_body">A link wants to add you to a Titi group. Only join links from people you trust.</string>
+    <plurals name="members">
+        <item quantity="one">%d member</item>
+        <item quantity="other">%d members</item>
+    </plurals>
     <string name="cd_talk_button">Talk button. Press and hold to transmit.</string>
     <string name="cd_avatar">Avatar of %1$s</string>
     <string name="cd_signal_bars">Signal %1$d of 4</string>

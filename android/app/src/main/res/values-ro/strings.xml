@@ -52,8 +52,6 @@
     <string name="group_hops">%1$d salturi</string>
     <string name="group_via">prin %1$s</string>
     <string name="group_you">Tu</string>
-    <string name="group_talk_warning">Mai ai 10 secunde</string>
-    <string name="group_talk_timeout">Timp de vorbire depășit</string>
     <string name="group_floor_denied">Canal ocupat</string>
     <string name="group_sos">SOS</string>
     <string name="group_sos_confirm">Trimiți SOS cu locația ta tuturor din %1$s?</string>
@@ -71,6 +69,9 @@
     <string name="invite_nearby_label">Atinge un telefon din apropiere</string>
     <string name="invite_sent">Invitație trimisă către %1$s</string>
     <string name="invite_share_link">Trimite link</string>
+    <string name="invite_send_watch">Trimite pe %1$s</string>
+    <string name="invite_watch_sent">Trimis pe %1$s ✓</string>
+    <string name="invite_watch_failed">Ceasul nu răspunde — încearcă din nou</string>
     <string name="invite_offered_title">%1$s te invită</string>
     <string name="invite_offered_body">Intră în „%1$s” · %2$d membri</string>
     <string name="invite_accept">Intră</string>
@@ -83,7 +84,6 @@
     <string name="join_searching">Caut grupul în apropiere…</string>
     <string name="join_failed">Nu am putut intra: %1$s</string>
     <string name="join_no_peers">Niciun telefon Titi în apropiere. Asigură‑te că ambele sunt pe același Wi‑Fi sau hotspot, sau au Bluetooth pornit.</string>
-    <string name="joined">Ai intrat în %1$s</string>
 
     <string name="chat_hint">Mesaj</string>
     <string name="chat_send">Trimite</string>
@@ -160,7 +160,22 @@
     <string name="copied">Copiat</string>
     <string name="share">Trimite</string>
     <string name="retry">Reîncearcă</string>
-    <string name="error_generic">Ceva n‑a mers</string>
+    <string name="error_location">Permite accesul la locație ca să arăți unde ești</string>
+    <string name="alert_sos_title">SOS de la %1$s</string>
+    <string name="alert_sos_body">În %1$s · atinge ca să deschizi</string>
+    <string name="alert_sos_cancelled">%1$s e în siguranță — SOS anulat</string>
+    <string name="alert_open_map">Deschide harta</string>
+    <string name="radio_off">Radioul e oprit</string>
+    <string name="radio_start">Pornește</string>
+    <string name="perm_open_settings">Deschide setările</string>
+    <string name="perm_denied_forever">Permisiunea a fost refuzată. Activeaz-o din Setări ca să continui.</string>
+    <string name="deeplink_confirm_title">Intri în grup?</string>
+    <string name="deeplink_confirm_body">Un link vrea să te adauge într-un grup Titi. Intră doar prin linkuri de la oameni de încredere.</string>
+    <plurals name="members">
+        <item quantity="one">%d membru</item>
+        <item quantity="few">%d membri</item>
+        <item quantity="other">%d de membri</item>
+    </plurals>
     <string name="cd_talk_button">Buton de vorbit. Apasă și ține ca să transmiți.</string>
     <string name="cd_avatar">Avatarul lui %1$s</string>
     <string name="cd_signal_bars">Semnal %1$d din 4</string>

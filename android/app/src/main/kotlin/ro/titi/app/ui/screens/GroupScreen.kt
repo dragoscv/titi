@@ -33,6 +33,7 @@ import androidx.compose.material.icons.rounded.Emergency
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Watch
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -53,6 +54,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,6 +71,8 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import ro.titi.app.R
 import ro.titi.app.core.EngineHost
 import ro.titi.app.core.FloorState
@@ -98,7 +103,7 @@ fun GroupScreen(engine: EngineHost, state: RadioState, id: String, onBack: () ->
             Column(Modifier.weight(1f)) {
                 Text(g.name, style = MaterialTheme.typography.titleLarge)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(if (g.members.size == 1) stringResource(R.string.home_member_one) else stringResource(R.string.home_members, g.members.size), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(androidx.compose.ui.res.pluralStringResource(R.plurals.members, g.members.size, g.members.size), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     LinkChip(g.link, bars = state.peers.values.filter { it.inGroup }.maxOfOrNull { it.bars } ?: 0, hops = state.peers.values.filter { it.inGroup }.maxOfOrNull { it.hops } ?: 0)
                 }
             }
@@ -158,10 +163,7 @@ fun GroupScreen(engine: EngineHost, state: RadioState, id: String, onBack: () ->
         Spacer(Modifier.height(20.dp))
 
         Box(Modifier.fillMaxWidth().padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
-            TalkButton(
-                floor = g.floor, fullDuplex = g.fullDuplex, muted = state.muted, talkerName = g.talkerName, levelDbfs = state.levelDbfs,
-                onDown = { engine.pttDown() }, onUp = { engine.pttUp() }, onToggleMute = { engine.setMuted(!state.muted) },
-            )
+            LiveTalkButton(engine, g, state.muted)
         }
         Spacer(Modifier.height(28.dp))
 
@@ -172,7 +174,11 @@ fun GroupScreen(engine: EngineHost, state: RadioState, id: String, onBack: () ->
                 SegmentedButton(selected = g.fullDuplex, onClick = { engine.setFullDuplex(g.id, true) }, shape = SegmentedButtonDefaults.itemShape(1, 2)) { Text(stringResource(R.string.group_mode_duplex)) }
             }
             Spacer(Modifier.width(12.dp))
-            FilledTonalIconButton({ confirmSos = true }, colors = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.titi.emergency.copy(alpha = 0.18f), contentColor = MaterialTheme.titi.emergency)) {
+            if (state.sosGroup == g.id) {
+                Button({ engine.cancelSos() }, colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MaterialTheme.titi.emergency, contentColor = Color.White)) {
+                    Text(stringResource(R.string.group_sos_cancel))
+                }
+            } else FilledTonalIconButton({ confirmSos = true }, colors = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.titi.emergency.copy(alpha = 0.18f), contentColor = MaterialTheme.titi.emergency)) {
                 Icon(Icons.Rounded.Emergency, stringResource(R.string.group_sos))
             }
         }
@@ -207,6 +213,10 @@ private fun InviteSheet(engine: EngineHost, state: RadioState, gid: String, gnam
     val ctx = LocalContext.current
     val clip = LocalClipboardManager.current
     val candidates = state.peers.values.filter { !it.inGroup }
+    val scope = rememberCoroutineScope()
+    var watch by remember { mutableStateOf<String?>(null) }
+    var watchSent by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(Unit) { watch = ro.titi.app.WatchBridge.watches(ctx).firstOrNull()?.second }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -238,17 +248,45 @@ private fun InviteSheet(engine: EngineHost, state: RadioState, gid: String, gnam
                 OutlinedButton({ ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, link.replace("titi://j/", "https://titi.app/j/")), null)) }, shape = RoundedCornerShape(14.dp)) {
                     Icon(Icons.Rounded.Share, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.invite_share_link))
                 }
+                watch?.let { w ->
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        {
+                            watchSent = null
+                            scope.launch {
+                                val me = (ctx.applicationContext as ro.titi.app.TitiApp).prefs.settings.first()
+                                watchSent = ro.titi.app.WatchBridge.sendJoin(ctx, link, me.name, me.hue)
+                            }
+                        },
+                        shape = RoundedCornerShape(14.dp),
+                    ) {
+                        Icon(Icons.Rounded.Watch, null); Spacer(Modifier.width(8.dp))
+                        Text(when (watchSent) { true -> stringResource(R.string.invite_watch_sent, w); false -> stringResource(R.string.invite_watch_failed); null -> stringResource(R.string.invite_send_watch, w) })
+                    }
+                }
             }
             Spacer(Modifier.height(32.dp))
         }
     }
 }
 
+/** Only this composable reads the 50 Hz level flow, so the rest of the screen doesn't recompose. */
+@Composable
+private fun LiveTalkButton(engine: EngineHost, g: ro.titi.app.core.GroupState, muted: Boolean) {
+    val level by engine.level.collectAsState()
+    TalkButton(
+        floor = g.floor, fullDuplex = g.fullDuplex, muted = muted, talkerName = g.talkerName, levelDbfs = level,
+        onDown = { engine.pttDown() }, onUp = { engine.pttUp() }, onToggleMute = { engine.setMuted(!muted) },
+    )
+}
+
 private fun shareLocation(ctx: android.content.Context, engine: EngineHost, gid: String) {
+    if (!ro.titi.app.util.Location.granted(ctx)) {
+        android.widget.Toast.makeText(ctx, R.string.error_location, android.widget.Toast.LENGTH_SHORT).show(); return
+    }
     ro.titi.app.util.Location.lastKnown(ctx) { lat, lon, acc -> engine.sendLocation(gid, lat, lon, acc, breadcrumb = false) }
 }
 
 private fun sendSos(ctx: android.content.Context, engine: EngineHost, gid: String) {
-    ro.titi.app.util.Location.lastKnown(ctx, allowNull = true) { lat, lon, _ -> engine.sendSos(gid, lat, lon, "", cancelled = false) }
-    engine.pttDown(uniffi.titi_ffi.FfiPriority.EMERGENCY)
+    ro.titi.app.util.Location.lastKnown(ctx, allowNull = true) { lat, lon, _ -> engine.raiseSos(gid, lat, lon) }
 }

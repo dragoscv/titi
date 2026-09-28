@@ -133,7 +133,14 @@ private fun NameStep(name: String, hue: Int, onName: (String) -> Unit, onHue: (I
 private fun PermissionsStep(onFinish: () -> Unit) {
     val ctx = LocalContext.current
     var tick by remember { mutableIntStateOf(0) }
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { tick++ }
+    var deniedForever by remember { mutableStateOf(false) }
+    val activity = ctx as? android.app.Activity
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { res ->
+        tick++
+        // denied without a rationale → the system won't show the dialog again
+        deniedForever = res.any { (p, ok) -> !ok && activity != null && !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, p) }
+    }
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) { tick++; onPauseOrDispose { } }
     @Suppress("UNUSED_EXPRESSION") tick
     val essential = Permissions.essentialGranted(ctx)
 
@@ -150,6 +157,11 @@ private fun PermissionsStep(onFinish: () -> Unit) {
                 PermRow(Icons.Rounded.Notifications, R.string.perm_notifications, R.string.perm_notifications_why, Permissions.granted(ctx, Permissions.notifications)) { launcher.launch(Permissions.notifications.toTypedArray()) }
             }
             PermRow(Icons.Rounded.LocationOn, R.string.perm_location, R.string.perm_location_why, Permissions.granted(ctx, Permissions.location)) { launcher.launch(Permissions.location.toTypedArray()) }
+            if (deniedForever && !essential) {
+                Spacer(Modifier.height(12.dp))
+                Text(stringResource(R.string.perm_denied_forever), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+                OutlinedButton({ Permissions.openAppSettings(ctx) }, shape = RoundedCornerShape(12.dp)) { Text(stringResource(R.string.perm_open_settings)) }
+            }
         }
         Button(onFinish, Modifier.fillMaxWidth().height(56.dp), enabled = essential, shape = RoundedCornerShape(18.dp)) {
             Text(stringResource(R.string.perm_finish), style = MaterialTheme.typography.titleMedium)

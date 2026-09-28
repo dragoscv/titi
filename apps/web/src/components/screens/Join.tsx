@@ -42,16 +42,20 @@ export function Join({ go }: { go: (r: Route) => void }) {
   );
 }
 
+type BarcodeDetectorCtor = new (o: { formats: string[] }) => { detect: (v: HTMLVideoElement) => Promise<{ rawValue: string }[]> };
+const getDetector = () => (window as unknown as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector;
+
 function Scanner({ onResult, onCancel }: { onResult: (t: string) => void; onCancel: () => void }) {
   const video = useRef<HTMLVideoElement>(null);
-  const [err, setErr] = useState<string | null>(null);
+  // Scanner mounts only on the client (after a tap), so window is available for the lazy initialiser
+  const [err, setErr] = useState<string | null>(() => (getDetector() ? null : "QR scanning needs Chrome/Edge/Safari 17+. Type the code instead."));
   useEffect(() => {
     let stream: MediaStream | null = null;
     let raf = 0;
-    const Detector = (window as unknown as { BarcodeDetector?: new (o: { formats: string[] }) => { detect: (v: HTMLVideoElement) => Promise<{ rawValue: string }[]> } }).BarcodeDetector;
-    if (!Detector) { setErr("QR scanning needs Chrome/Edge/Safari 17+. Type the code instead."); return; }
+    const Detector = getDetector();
+    if (!Detector) return;
     const det = new Detector({ formats: ["qr_code"] });
-    (async () => {
+    void (async () => {
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
         if (video.current) { video.current.srcObject = stream; await video.current.play(); }

@@ -280,6 +280,7 @@ impl Engine {
         Ok((id, acts))
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn make_group(&self, id: GroupId, name: String, creator: NodeId, ikm: [u8; 32], epoch: u32, k_invite: [u8; 32], now: Ms) -> Group {
         let my_short = self.short_for(&self.node_id());
         let mut members = HashMap::new();
@@ -820,7 +821,7 @@ impl Engine {
                 breadcrumb: l.breadcrumb,
             },
             proto::chat_message::Body::Sos(s) => {
-                let l = s.location.clone().unwrap_or_default();
+                let l = s.location.unwrap_or_default();
                 MessageBody::Sos { lat_e7: (l.lat * 1e7) as i64, lon_e7: (l.lon * 1e7) as i64, note: s.note.clone(), cancelled: s.cancelled }
             }
         })
@@ -1871,7 +1872,7 @@ impl Engine {
             let members: Vec<NodeId> = self.groups[&gid].members.keys().copied().filter(|n| *n != me).collect();
             for m in members {
                 let r: Option<Route> = self.topology.route(&me, &self.neighbours, &m, mesh::MAX_RELAYS);
-                let bars = r.as_ref().map(|r| bars_for(r)).unwrap_or(0);
+                let bars = r.as_ref().map(bars_for).unwrap_or(0);
                 let hops = r.as_ref().map(|r| r.hops() as u8).unwrap_or(0);
                 let class = r.as_ref().and_then(|r| self.neighbours.best_link(&r.path[0])).map(|(_, l)| l.class);
                 let g = self.groups.get_mut(&gid).unwrap();

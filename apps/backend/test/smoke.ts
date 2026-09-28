@@ -5,7 +5,7 @@ import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { PROTOCOL_VERSION, SignalSchema, WsTag } from "@titi/protocol";
 import { spawn } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
-import WebSocket from "ws";
+import { WebSocket } from "ws";
 
 const PORT = 18080;
 const remote = process.env.TITI_RELAY_URL;
@@ -15,6 +15,17 @@ const server = remote
   ? null
   : spawn(process.execPath, ["dist/index.js"], { env: { ...process.env, PORT: String(PORT), LOG_LEVEL: "debug" }, stdio: ["ignore", "pipe", "inherit"] });
 server?.stdout.on("data", (d) => process.stdout.write(`[server] ${d}`));
+
+function join(node: number) {
+  const s = create(SignalSchema, {
+    kind: { case: "roomJoin", value: { groupHash: new Uint8Array([1, 2, 3, 4]), node: { nodeId: new Uint8Array([node, 1, 2, 3, 4, 5, 6, 7]), displayName: `n${node}` } } },
+  });
+  const body = toBinary(SignalSchema, s);
+  const out = new Uint8Array(body.length + 1);
+  out[0] = WsTag.Signal;
+  out.set(body, 1);
+  return out;
+}
 
 try {
   for (let i = 0; i < 50; i++) {
@@ -28,16 +39,6 @@ try {
     await sleep(100);
   }
 
-  const join = (node: number) => {
-    const s = create(SignalSchema, {
-      kind: { case: "roomJoin", value: { groupHash: new Uint8Array([1, 2, 3, 4]), node: { nodeId: new Uint8Array([node, 1, 2, 3, 4, 5, 6, 7]), displayName: `n${node}` } } },
-    });
-    const body = toBinary(SignalSchema, s);
-    const out = new Uint8Array(body.length + 1);
-    out[0] = WsTag.Signal;
-    out.set(body, 1);
-    return out;
-  };
   const open = (n: number) =>
     new Promise<WebSocket>((res, rej) => {
       const ws = new WebSocket(`${wsBase}/v1/ws`);

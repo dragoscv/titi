@@ -20,19 +20,19 @@ pub struct Code {
     pub check: u8,
 }
 
-impl Code {
-    pub fn to_string(&self) -> String {
-        let mut s = String::new();
+impl std::fmt::Display for Code {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for (i, w) in self.words.iter().enumerate() {
             if i > 0 {
-                s.push('-');
+                f.write_str("-")?;
             }
-            s.push_str(wordlist::WORDS[*w as usize]);
+            f.write_str(wordlist::WORDS[*w as usize])?;
         }
-        s.push_str(&format!("-{:02}", self.check));
-        s
+        write!(f, "-{:02}", self.check)
     }
+}
 
+impl Code {
     /// Lenient parse: any of ` `, `-`, `_`, `.` as separators, case-insensitive,
     /// Romanian diacritics stripped, digits may be attached to the last word.
     pub fn parse(input: &str) -> Result<Self> {

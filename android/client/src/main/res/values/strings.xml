@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="group_talk_warning">10 seconds left</string>
+    <string name="group_talk_timeout">Talk time limit reached</string>
+    <string name="joined">Joined %1$s</string>
+    <string name="join_failed_generic">Could not join — check the code and try again</string>
+    <string name="error_mic">Microphone unavailable — another app may be using it</string>
+    <string name="error_generic">Something went wrong</string>
+</resources>

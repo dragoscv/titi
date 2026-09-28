@@ -5,7 +5,7 @@ import { LogIn, Plus, Settings as SettingsIcon, Wifi, Cloud, Bluetooth } from "l
 import { host } from "@/lib/engine";
 import { useStore } from "@/lib/store";
 import { Avatar } from "../Avatar";
-import { Sheet } from "../Sheet";
+import { Sheet, focusOnMount } from "../Sheet";
 import type { Route } from "../Shell";
 import type { LinkClass } from "@/lib/types";
 
@@ -83,7 +83,7 @@ export function Home({ go }: { go: (r: Route) => void }) {
       </div>
 
       <Sheet open={create} onClose={() => setCreate(false)} title="Name your group">
-        <input className="w-full rounded-2xl border border-outline bg-graphite px-4 py-3.5 text-lg outline-none focus:border-amber" placeholder="e.g. Cabana, Trail team, Ski lift" value={name} onChange={(e) => setName(e.target.value)} autoFocus maxLength={32} />
+        <input className="w-full rounded-2xl border border-outline bg-graphite px-4 py-3.5 text-lg outline-none focus:border-amber" placeholder="e.g. Cabana, Trail team, Ski lift" value={name} onChange={(e) => setName(e.target.value)} ref={focusOnMount} maxLength={32} />
         <button disabled={name.trim().length < 2} className="mt-4 h-14 w-full rounded-[18px] bg-amber font-semibold text-graphite disabled:opacity-40" onClick={() => { void host.start(); host.createGroup(name.trim()); setName(""); setCreate(false); }}>Create</button>
       </Sheet>
     </div>

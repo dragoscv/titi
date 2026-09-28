@@ -1,0 +1,250 @@
+package ro.titi.app.transport
+
+import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
+import okio.ByteString
+import okio.ByteString.Companion.toByteString
+import uniffi.titi_ffi.FfiLinkClass
+import java.util.concurrent.TimeUnit
+import kotlin.math.min
+
+/**
+ * Internet link via the Cloud Run relay (ADR-0005). One WebSocket, one room
+ * per group hash; the engine's frames are forwarded opaque. Token = hex node id
+ * of the remote peer (relay unicasts by `dst`; broadcast → `peer = null`).
+ *
+ * Reconnects with backoff and resumes the room with the server's token.
+ */
+class RelayTransport(
+    private val url: () -> String,
+    private val nodeId: () -> ByteArray,
+    private val displayName: () -> String,
+    private val hue: () -> Int,
+) : Transport {
+    override val linkId: UInt = LinkIds.INTERNET
+    override val linkClass: FfiLinkClass = FfiLinkClass.INTERNET
+    override val mtu: UInt? = null
+
+    /** All mutable state below is confined to this one thread (OkHttp callbacks hop onto it). */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private val confined = Dispatchers.IO.limitedParallelism(1)
+    private val scope = CoroutineScope(SupervisorJob() + confined + kotlinx.coroutines.CoroutineExceptionHandler { _, t -> Log.w(TAG, "relay", t) })
+    private val client get() = sharedClient
+    private var events: TransportEvents? = null
+    @Volatile private var ws: WebSocket? = null
+    private var connectJob: Job? = null
+    /** desired rooms: hex(hash) → rendezvous */
+    private var rooms: Map<String, Boolean> = emptyMap()
+    private val joinedRooms = HashSet<String>()
+    private var resumeToken: ByteArray = ByteArray(0)
+    private var attempt = 0
+    @Volatile private var enabled = false
+    @Volatile private var joined = false
+    private val peers = HashSet<String>()
+
+    override fun start(events: TransportEvents) {
+        this.events = events
+        enabled = true
+        scheduleConnect(0)
+    }
+
+    /** Network came back: skip the remaining backoff. */
+    fun onNetworkAvailable() = scope.launch { if (enabled && ws == null) { attempt = 0; scheduleConnect(0) } }
+
+    override fun stop() {
+        enabled = false
+        scope.launch {
+            connectJob?.cancel()
+            ws?.close(1000, "bye")
+            ws = null
+            if (joined) { joined = false; events?.linkDown(this@RelayTransport) }
+        }.invokeOnCompletion { scope.cancel() }
+    }
+
+    /** Desired room set: group rooms (voice) + rendezvous rooms (discovery only). */
+    fun setRooms(want: List<Pair<ByteArray, Boolean>>) { scope.launch {
+        val m = want.associate { (h, r) -> h.toHex() to r }
+        if (m == rooms) return@launch
+        ws?.let { s -> for (k in rooms.keys) if (k !in m) sendLeave(s, k) }
+        rooms = m
+        ws?.let { sendJoin(it) }
+    } }
+
+    private fun scheduleConnect(delayMs: Long) {
+        if (!enabled) return
+        connectJob?.cancel()
+        connectJob = scope.launch {
+            delay(delayMs)
+            connect()
+        }
+    }
+
+    private fun connect() {
+        val u = url()
+        val req = runCatching { Request.Builder().url(u).build() }.getOrElse { Log.w(TAG, "bad relay url"); return }
+        ws = client.newWebSocket(req, listener)
+    }
+
+    private val listener = object : WebSocketListener() {
+        override fun onOpen(webSocket: WebSocket, response: Response) { scope.launch {
+            if (webSocket !== ws) return@launch
+            attempt = 0
+            joinedRooms.clear()
+            sendJoin(webSocket)
+        } }
+
+        override fun onMessage(webSocket: WebSocket, bytes: ByteString) { scope.launch {
+            if (webSocket !== ws) return@launch
+            val b = bytes.toByteArray()
+            if (b.isEmpty()) return@launch
+            when (b[0].toInt()) {
+                TAG_SIGNAL -> onSignal(b, 1)
+                TAG_ENVELOPE -> {
+                    // src is bytes 8..16 of the envelope
+                    if (b.size < 1 + 16) return@launch
+                    val src = b.copyOfRange(1 + 8, 1 + 16).toHex()
+                    if (peers.add(src)) events?.peerSeen(this@RelayTransport, src)
+                    events?.frame(this@RelayTransport, src, b.copyOfRange(1, b.size))
+                }
+            }
+        } }
+
+        override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+            Log.w(TAG, "ws failure: ${t.message}")
+            scope.launch { if (webSocket === ws) onClosedInternal() }
+        }
+
+        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+            scope.launch { if (webSocket === ws) onClosedInternal() }
+        }
+    }
+
+    private fun onClosedInternal() {
+        ws = null
+        if (joined) {
+            joined = false
+            peers.forEach { events?.peerLost(this, it) }
+            peers.clear()
+            events?.linkDown(this)
+        }
+        if (enabled) {
+            attempt++
+            val backoff = min(30_000L, 500L * (1L shl min(attempt, 6)))
+            scheduleConnect(backoff)
+        }
+    }
+
+    private fun sendJoin(s: WebSocket) {
+        for ((k, rendezvous) in rooms) {
+            if (k in joinedRooms) continue
+            val node = MiniProto.Writer()
+                .bytes(1, nodeId())
+                .string(3, displayName())
+                .varint(4, hue().toLong())
+            val join = MiniProto.Writer()
+                .bytes(1, k.hexToBytes())
+                .message(2, node)
+                .bytes(3, resumeToken)
+                .varint(4, if (rendezvous) 1 else 0)
+            val sig = MiniProto.Writer().message(F_ROOM_JOIN, join).toByteArray()
+            s.send(byteArrayOf(TAG_SIGNAL.toByte()).plus(sig).toByteString())
+            joinedRooms.add(k)
+        }
+    }
+
+    private fun sendLeave(s: WebSocket, k: String) {
+        joinedRooms.remove(k)
+        val leave = MiniProto.Writer().bytes(1, k.hexToBytes())
+        val sig = MiniProto.Writer().message(F_ROOM_LEAVE, leave).toByteArray()
+        s.send(byteArrayOf(TAG_SIGNAL.toByte()).plus(sig).toByteString())
+    }
+
+    private fun onSignal(b: ByteArray, off: Int) {
+        val r = MiniProto.Reader(b, off)
+        while (r.next()) {
+            when (r.field) {
+                F_ROOM_JOINED -> {
+                    val m = r.message()
+                    while (m.next()) {
+                        when (m.field) {
+                            1 -> resumeToken = m.bytes()
+                            2 -> {
+                                val p = m.message()
+                                while (p.next()) { if (p.field == 1) { val id = p.bytes().toHex(); if (peers.add(id)) events?.peerSeen(this, id) } else p.skip() }
+                            }
+                            else -> m.skip()
+                        }
+                    }
+                    if (!joined) { joined = true; events?.linkUp(this) }
+                    events?.stats(this, stats())
+                }
+                F_PEER_EVENT -> {
+                    val m = r.message()
+                    var id: String? = null; var joinedFlag = false
+                    while (m.next()) {
+                        when (m.field) {
+                            1 -> { val p = m.message(); while (p.next()) { if (p.field == 1) id = p.bytes().toHex() else p.skip() } }
+                            2 -> joinedFlag = m.varint() != 0L
+                            else -> m.skip()
+                        }
+                    }
+                    id?.let {
+                        if (joinedFlag) { if (peers.add(it)) events?.peerSeen(this, it) }
+                        else if (peers.remove(it)) events?.peerLost(this, it)
+                    }
+                }
+                F_ERROR -> {
+                    val m = r.message()
+                    var code = 0L; var msg = ""
+                    while (m.next()) { when (m.field) { 1 -> code = m.varint(); 2 -> msg = m.string(); else -> m.skip() } }
+                    Log.w(TAG, "relay error $code: $msg")
+                    if (code == 5L) { resumeToken = ByteArray(0); joinedRooms.clear(); ws?.let { sendJoin(it) } }
+                }
+                else -> r.skip()
+            }
+        }
+    }
+
+    override fun send(peer: String?, bytes: ByteArray) {
+        val s = ws ?: return
+        if (!joined) return
+        // the relay routes by the envelope's own dst; peer token is informational
+        s.send(byteArrayOf(TAG_ENVELOPE.toByte()).plus(bytes).toByteString())
+    }
+
+    override fun stats(): LinkStats = LinkStats(estBps = 200_000u, rttMs = 120u, lossPct = 0u)
+
+    private fun ByteArray.toHex() = joinToString("") { "%02x".format(it) }
+    private fun String.hexToBytes() = ByteArray(length / 2) { i -> ((Character.digit(this[i * 2], 16) shl 4) or Character.digit(this[i * 2 + 1], 16)).toByte() }
+
+    companion object {
+        private const val TAG = "RelayTransport"
+        const val TAG_SIGNAL = 0x00
+        const val TAG_ENVELOPE = 0x01
+        // Signal oneof field numbers (signal.proto)
+        private const val F_ROOM_JOIN = 1
+        private const val F_ROOM_JOINED = 2
+        private const val F_ROOM_LEAVE = 3
+        private const val F_PEER_EVENT = 4
+        private const val F_ERROR = 9
+
+        /** One client for the process: its dispatcher/connection pool outlive service restarts. */
+        private val sharedClient: OkHttpClient by lazy {
+            OkHttpClient.Builder()
+                .pingInterval(25, TimeUnit.SECONDS)
+                .connectTimeout(10, TimeUnit.SECONDS)
+                .build()
+        }
+    }
+}

@@ -6,13 +6,19 @@ import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.view.WindowCompat
-import ro.titi.app.audio.Cues
+import androidx.compose.ui.res.stringResource
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import ro.titi.app.core.FloorState
 import ro.titi.app.service.RadioService
 import ro.titi.app.ui.Permissions
@@ -27,33 +33,54 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        setShowWhenLocked(true)
         handleIntent(intent)
         setContent {
             val settingsOrNull by app.prefs.settings.collectAsState(initial = null)
             val settings = settingsOrNull ?: return@setContent // keep splash until DataStore has emitted
             volumePtt = settings.volumePtt
             val ctx = LocalContext.current
-            val cues = remember { Cues(ctx) }
-            cues.pack = settings.soundPack
-            cues.hapticsOnly = settings.hapticsOnly
-            LaunchedEffect(Unit) { app.engine.cues.collect { cues.play(it) } }
             LaunchedEffect(settings.onboarded) {
                 val ok = Permissions.essentialGranted(ctx)
                 android.util.Log.i("MainActivity", "onboarded=${settings.onboarded} perms=$ok")
                 if (settings.onboarded && ok) RadioService.start(ctx)
             }
+            val pending by pendingLink.collectAsState()
+            val running by remember { app.engine.state.map { it.running }.distinctUntilChanged() }.collectAsState(initial = false)
             TitiTheme(settings.theme) {
                 TitiRoot(app.engine, app.prefs, settings)
+                val link = pending
+                if (link != null && settings.onboarded && running) {
+                    AlertDialog(
+                        onDismissRequest = { pendingLink.value = null },
+                        title = { Text(stringResource(R.string.deeplink_confirm_title)) },
+                        text = { Text(stringResource(R.string.deeplink_confirm_body)) },
+                        confirmButton = { Button({ app.engine.joinByLink(link); pendingLink.value = null }) { Text(stringResource(R.string.invite_accept)) } },
+                        dismissButton = { TextButton({ pendingLink.value = null }) { Text(stringResource(R.string.cancel)) } },
+                    )
+                }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Radio was stopped from the notification: bring it back when the user returns.
+        if (!app.engine.state.value.running && app.prefs.settingsNow().onboarded && Permissions.essentialGranted(this)) RadioService.start(this)
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // key-up never arrives if focus moves mid-hold (dialog, lock screen) — never leave the mic open
+        if (!hasFocus && volumeHeld) { volumeHeld = false; app.engine.pttUp() }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleIntent(intent)
     }
+
+    /** Deep links never join silently (any web page can fire one): hold, then confirm. */
+    private val pendingLink = MutableStateFlow<String?>(null)
 
     private fun handleIntent(i: Intent?) {
         val uri = i?.data ?: return
@@ -62,7 +89,7 @@ class MainActivity : ComponentActivity() {
             uri.host == "titi.app" && uri.path?.startsWith("/j/") == true -> "titi://j/" + uri.path!!.removePrefix("/j/")
             else -> return
         }
-        app.engine.joinByLink(link)
+        pendingLink.value = link
         i.data = null
     }
 
@@ -73,6 +100,7 @@ class MainActivity : ComponentActivity() {
             return true
         }
         if (keyCode == KeyEvent.KEYCODE_HEADSETHOOK || keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) {
+            if (event.repeatCount != 0) return true
             // BT headset button: toggle
             val e = app.engine
             if (e.state.value.active?.floor == FloorState.Talking) e.pttUp() else e.pttDown()

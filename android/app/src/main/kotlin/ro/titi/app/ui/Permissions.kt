@@ -18,5 +18,13 @@ object Permissions {
     val camera = listOf(Manifest.permission.CAMERA)
 
     fun granted(ctx: Context, perms: List<String>) = perms.all { ContextCompat.checkSelfPermission(ctx, it) == PackageManager.PERMISSION_GRANTED }
-    fun essentialGranted(ctx: Context) = granted(ctx, mic) && granted(ctx, nearby) && granted(ctx, notifications)
+    /** Notifications are requested but not required: the FGS runs without them. */
+    fun essentialGranted(ctx: Context) = granted(ctx, mic) && granted(ctx, nearby)
+
+    fun openAppSettings(ctx: Context) {
+        ctx.startActivity(
+            android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.fromParts("package", ctx.packageName, null))
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+    }
 }

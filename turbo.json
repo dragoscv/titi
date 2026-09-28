@@ -1,13 +1,29 @@
 {
-  "$schema": "https://turbo.build/schema.json",
+  "$schema": "https://turborepo.com/schema.json",
+  "globalDependencies": ["pnpm-lock.yaml", "tsconfig.base.json", ".oxlintrc.json"],
   "tasks": {
+    "transit": { "dependsOn": ["^transit"] },
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "pkg/**"]
+      "inputs": ["$TURBO_DEFAULT$", "!test/**", "!**/*.test.ts", "!**/*.md"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "pkg/**"],
+      "env": ["NEXT_PUBLIC_*"]
     },
     "dev": { "cache": false, "persistent": true },
-    "lint": {},
-    "typecheck": { "dependsOn": ["^build"] },
-    "test": { "dependsOn": ["^build"] }
+    "lint": {
+      "dependsOn": ["^transit", "^build"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.md"],
+      "outputs": []
+    },
+    "typecheck": {
+      "dependsOn": ["^transit", "^build"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.md"],
+      "outputs": ["*.tsbuildinfo"]
+    },
+    "test": {
+      "dependsOn": ["^transit", "^build"],
+      "inputs": ["src/**", "test/**", "vitest.config.ts", "tsconfig.json", "package.json"],
+      "outputs": []
+    }
   }
 }

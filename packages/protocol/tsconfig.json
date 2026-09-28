@@ -1,15 +1,10 @@
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2023",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "noUnusedLocals": true,
-    "skipLibCheck": true,
-    "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
-    "noEmit": true,
+    "tsBuildInfoFile": "./tsconfig.tsbuildinfo",
     "types": ["node"]
   },
   "include": ["src"]

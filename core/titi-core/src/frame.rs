@@ -350,8 +350,11 @@ pub mod fragment {
 
     #[derive(Default)]
     pub struct Reassembler {
-        parts: std::collections::HashMap<u8, (u8, Vec<Option<Vec<u8>>>, u64)>,
+        parts: std::collections::HashMap<u8, Partial>,
     }
+
+    /// seq → (total, parts, first-seen ms)
+    type Partial = (u8, Vec<Option<Vec<u8>>>, u64);
 
     impl Reassembler {
         pub fn push(&mut self, frag: &[u8], now_ms: u64) -> Result<Option<Vec<u8>>> {

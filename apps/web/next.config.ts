@@ -5,6 +5,8 @@ const config: NextConfig = {
   reactStrictMode: true,
   reactCompiler: true,
   turbopack: {},
+  // scripts/gates.ps1 type-checks first; Vercel (unset) still type-checks during its build
+  typescript: { ignoreBuildErrors: process.env.TITI_TYPECHECKED === "1" },
   headers: async () => [
     {
       source: "/(.*)",

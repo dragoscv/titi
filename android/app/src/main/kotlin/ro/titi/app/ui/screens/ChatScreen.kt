@@ -6,7 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,6 +60,7 @@ import ro.titi.app.ui.theme.TelemetryStyle
 import ro.titi.app.ui.theme.titi
 import uniffi.titi_ffi.FfiMessageBody
 import java.text.DateFormat
+import kotlinx.coroutines.launch
 import java.util.Date
 
 @Composable
@@ -73,6 +73,8 @@ fun ChatScreen(engine: EngineHost, state: RadioState, gid: String, onBack: () ->
     val ctx = LocalContext.current
     val recorder = remember { VoiceNoteRecorder(ctx) }
     var recording by remember { mutableStateOf(false) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    androidx.compose.runtime.DisposableEffect(recorder) { onDispose { recorder.stop() } }
     LaunchedEffect(msgs.size) { if (msgs.isNotEmpty()) list.animateScrollToItem(msgs.size - 1) }
     LaunchedEffect(gid) { engine.setActiveGroup(gid) }
 
@@ -92,9 +94,26 @@ fun ChatScreen(engine: EngineHost, state: RadioState, gid: String, onBack: () ->
                     Modifier.size(52.dp).clip(RoundedCornerShape(18.dp)).background(if (recording) MaterialTheme.titi.transmit else MaterialTheme.colorScheme.surfaceContainerHigh)
                         .pointerInput(Unit) {
                             awaitEachGesture {
-                                awaitFirstDown(); recording = true; recorder.start()
-                                waitForUpOrCancellation(); recording = false
-                                recorder.stop()?.let { (packets, ms, profile) -> engine.sendVoiceNote(gid, profile, ms, packets) }
+                                awaitFirstDown()
+                                if (!recorder.start()) {
+                                    android.widget.Toast.makeText(ctx, ro.titi.client.R.string.error_mic, android.widget.Toast.LENGTH_SHORT).show()
+                                    return@awaitEachGesture
+                                }
+                                recording = true
+                                var cancelled = false
+                                try {
+                                    // hold until the finger lifts (finger drift must not end the recording)
+                                    while (true) {
+                                        val ev = awaitPointerEvent()
+                                        if (ev.changes.all { !it.pressed }) break
+                                    }
+                                } catch (e: kotlinx.coroutines.CancellationException) { cancelled = true; throw e } finally {
+                                    recording = false
+                                    val res = recorder.stop()
+                                    if (!cancelled && res != null) scope.launch {
+                                        recorder.encode(res.first)?.let { engine.sendVoiceNote(gid, uniffi.titi_ffi.FfiProfile.STD, res.second, it) }
+                                    }
+                                }
                             }
                         },
                     contentAlignment = Alignment.Center,

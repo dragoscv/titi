@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = { title: "Privacy policy — Titi", description: "What Titi collects (almost nothing) and how voice and messages are protected." };
 
@@ -7,7 +8,7 @@ const UPDATED = "14 September 2026";
 export default function Privacy() {
   return (
     <main className="mx-auto max-w-2xl px-6 py-12 text-[15px] leading-relaxed">
-      <a href="/" className="text-sm text-amber">← Titi</a>
+      <Link href="/" className="text-sm text-amber">← Titi</Link>
       <h1 className="mt-4 text-3xl font-extrabold">Privacy policy</h1>
       <p className="mt-1 text-sm text-muted">Politica de confidențialitate · Last updated {UPDATED}</p>
 

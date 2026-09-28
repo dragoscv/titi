@@ -14,6 +14,10 @@ wasm-bindgen = { workspace = true }
 js-sys = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+# wasm-only: on the host these would flip getrandom's features between
+# `cargo build --workspace` and `cargo test -p titi-core`, rebuilding the crypto stack.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { workspace = true, features = ["wasm_js"] }
 # rand_core 0.9 / snow still pull getrandom 0.3; it needs the same feature on wasm
 getrandom03 = { package = "getrandom", version = "0.3", features = ["wasm_js"] }

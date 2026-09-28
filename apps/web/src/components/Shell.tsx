@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { host } from "@/lib/engine";
 import { useStore } from "@/lib/store";
@@ -13,6 +13,8 @@ import { Avatar } from "./Avatar";
 
 export type Route = { name: "home" } | { name: "group"; id: string } | { name: "join" } | { name: "settings" };
 
+const noSubscribe = () => () => {};
+
 export function Shell({ joinLink }: { joinLink?: string }) {
   const ready = useStore((s) => s.ready);
   const settings = useStore((s) => s.settings);
@@ -20,10 +22,12 @@ export function Shell({ joinLink }: { joinLink?: string }) {
   const invites = useStore((s) => s.invites);
   const activeGroup = useStore((s) => s.activeGroup);
   const [route, setRoute] = useState<Route>({ name: "home" });
-  const [unsupported, setUnsupported] = useState(false);
+  // browser capability: false during SSR/hydration, real value on the client
+  const unsupported = useSyncExternalStore(noSubscribe, () => !webCodecsSupported(), () => false);
+  // once a join succeeds, jump to the group (adjusted during render instead of in an effect)
+  if (route.name === "join" && activeGroup) setRoute({ name: "group", id: activeGroup });
 
   useEffect(() => {
-    if (!webCodecsSupported()) setUnsupported(true);
     void host.init();
   }, []);
   useEffect(() => {
@@ -35,9 +39,6 @@ export function Shell({ joinLink }: { joinLink?: string }) {
   useEffect(() => {
     if (ready && joinLink && settings.onboarded) { void host.start().then(() => { host.joinByLink(joinLink); setRoute({ name: "join" }); }); }
   }, [ready, joinLink, settings.onboarded]);
-  useEffect(() => {
-    if (route.name === "join" && activeGroup) setRoute({ name: "group", id: activeGroup });
-  }, [activeGroup, route.name]);
 
   if (!ready) return <Splash />;
   if (!settings.onboarded) return <Onboarding onDone={() => setRoute({ name: "home" })} />;
@@ -74,9 +75,9 @@ export function Shell({ joinLink }: { joinLink?: string }) {
 
       <AnimatePresence>
         {toast && (
-          <motion.div key={toast} className="fixed inset-x-0 bottom-6 z-50 mx-auto w-fit max-w-[90%] rounded-full bg-elevated px-4 py-2 text-sm shadow-xl" initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }} role="status">
+          <motion.output key={toast} aria-live="polite" className="fixed inset-x-0 bottom-6 z-50 mx-auto block w-fit max-w-[90%] rounded-full bg-elevated px-4 py-2 text-sm shadow-xl" initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }}>
             {toast}
-          </motion.div>
+          </motion.output>
         )}
       </AnimatePresence>
     </div>

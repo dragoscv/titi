@@ -76,7 +76,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":core-ffi"))
+    implementation(project(":client"))
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
@@ -94,6 +94,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.service)
+    implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.datastore.preferences)
@@ -114,6 +115,7 @@ dependencies {
     implementation(libs.glance.material3)
 
     "gmsImplementation"(libs.play.services.nearby)
+    "gmsImplementation"(libs.play.services.wearable)
     "gmsImplementation"(libs.kotlinx.coroutines.play.services)
 
     // Glance/ML Kit drag in work-runtime 2.7.1 + room 2.2.5, which crash under

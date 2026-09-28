@@ -34,6 +34,18 @@ uniffi = "0.32.1"
 wasm-bindgen = "0.2.128"
 js-sys = "0.3"
 
+# Fast dev/test loops: small debug info for our crates, optimised deps (argon2,
+# dalek, libopus via cmake) so tests don't crawl; build scripts/proc-macros at O3.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+opt-level = 2
+debug = false
+
+[profile.dev.build-override]
+opt-level = 3
+
 [profile.release]
 opt-level = 3
 lto = "fat"

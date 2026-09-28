@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Titi</string>
+    <string name="tile_label">Titi · Talk</string>
+    <string name="tile_description">Push-to-talk for your active group</string>
+    <string name="complication_label">Titi group</string>
+
+    <string name="groups">Groups</string>
+    <string name="no_groups">No groups yet</string>
+    <string name="no_groups_hint">Enter an invite code, or tap “Send to watch” in Titi on your phone.</string>
+    <string name="join_code">Join with code</string>
+    <string name="join">Join</string>
+    <string name="code_word">Word %1$d</string>
+    <string name="code_digits">Digits</string>
+    <string name="joining">Joining…</string>
+
+    <string name="hold_to_talk">Hold to talk</string>
+    <string name="tap_to_talk">Tap to talk</string>
+    <string name="talking">Talking</string>
+    <string name="release_to_send">Release to stop</string>
+    <string name="is_talking">%1$s</string>
+    <string name="listening">Listening</string>
+    <string name="queued">Queued</string>
+    <string name="suspended">Out of range</string>
+    <string name="muted">Muted</string>
+    <string name="mute">Mute</string>
+    <string name="unmute">Unmute</string>
+    <string name="volume">Volume</string>
+    <string name="cd_talk">Talk. Press and hold to transmit.</string>
+    <string name="cd_talk_state_talking">Transmitting</string>
+    <string name="cd_talk_state_busy">%1$s is talking</string>
+    <string name="cd_talk_state_idle">Ready</string>
+
+    <string name="chat">Messages</string>
+    <string name="chat_empty">No messages</string>
+    <string name="chat_voice_note">Voice note · %1$ds</string>
+    <string name="chat_location">Shared a location</string>
+    <string name="record_voice_note">Hold to record</string>
+    <string name="recording">Recording…</string>
+    <string name="sent">Sent</string>
+    <string name="quick_replies">Quick replies</string>
+    <string name="reply_ok">OK 👍</string>
+    <string name="reply_on_my_way">On my way</string>
+    <string name="reply_wait">Wait for me</string>
+    <string name="reply_where">Where are you?</string>
+
+    <string name="sos">SOS</string>
+    <string name="sos_hold">Hold for SOS</string>
+    <string name="sos_confirm">Send SOS with your location to %1$s?</string>
+    <string name="sos_sent">SOS sent</string>
+    <string name="sos_active">SOS active</string>
+    <string name="sos_cancel">Cancel SOS</string>
+    <string name="sos_from">SOS from %1$s</string>
+    <string name="sos_cancelled">%1$s is safe</string>
+
+    <string name="members">Members</string>
+    <string name="you">You</string>
+    <string name="settings">Settings</string>
+    <string name="name">Name</string>
+    <string name="use_wifi">Wi-Fi for voice</string>
+    <string name="use_wifi_desc">Better sound, uses more battery</string>
+    <string name="use_internet">Internet relay</string>
+    <string name="use_ble">Bluetooth</string>
+    <string name="haptics_only">Haptics only</string>
+    <string name="leave">Leave group</string>
+    <string name="leave_confirm">Leave %1$s?</string>
+    <string name="cancel">Cancel</string>
+    <string name="ok">OK</string>
+
+    <string name="perm_title">Titi needs the microphone</string>
+    <string name="perm_body">To talk to your group. Nearby access finds people around you.</string>
+    <string name="perm_allow">Allow</string>
+    <string name="perm_settings">Open settings</string>
+
+    <string name="notif_channel">Radio</string>
+    <string name="notif_alerts">Alerts</string>
+    <string name="notif_radio_on">Radio on</string>
+    <string name="notif_listening">Listening · %1$s</string>
+    <string name="notif_talking">%1$s is talking</string>
+    <string name="ongoing_status">#group# · #members#</string>
+
+    <string name="link_lan">Wi‑Fi</string>
+    <string name="link_ble">Bluetooth</string>
+    <string name="link_internet">Internet</string>
+    <string name="link_none">Searching…</string>
+    <string name="from_phone">Received from phone</string>
+    <string name="double_pinch_hint">Double pinch to talk</string>
+
+    <plurals name="members_count">
+        <item quantity="one">%d member</item>
+        <item quantity="other">%d members</item>
+    </plurals>
+    <plurals name="online_count">
+        <item quantity="one">%d online</item>
+        <item quantity="other">%d online</item>
+    </plurals>
+</resources>

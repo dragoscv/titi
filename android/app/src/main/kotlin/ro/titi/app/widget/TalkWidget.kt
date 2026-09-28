@@ -46,7 +46,14 @@ class TalkWidget : GlanceAppWidget() {
 
 class TalkAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        context.startForegroundService(Intent(context, RadioService::class.java).setAction(RadioService.ACTION_PTT_TOGGLE))
+        val app = context.applicationContext as ro.titi.app.TitiApp
+        if (app.engine.state.value.running) {
+            val e = app.engine
+            if (e.state.value.active?.floor == ro.titi.app.core.FloorState.Talking) e.pttUp() else e.pttDown()
+        } else {
+            // radio off: open the app (a mic service may only start from a visible activity)
+            context.startActivity(Intent(context, ro.titi.app.MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
     }
 }
 

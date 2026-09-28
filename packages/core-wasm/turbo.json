@@ -1,0 +1,19 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "inputs": [
+        "package.json",
+        "$TURBO_ROOT$/core/Cargo.toml",
+        "$TURBO_ROOT$/core/Cargo.lock",
+        "$TURBO_ROOT$/core/.cargo/config.toml",
+        "$TURBO_ROOT$/core/titi-core/**",
+        "$TURBO_ROOT$/core/titi-wasm/**",
+        "$TURBO_ROOT$/proto/**",
+        "$TURBO_ROOT$/scripts/build-wasm.ps1"
+      ],
+      "outputs": ["pkg/**"]
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "import", "oxc"],
+  "categories": { "correctness": "error", "suspicious": "warn" },
+  "rules": {
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/await-thenable": "error"
+  },
+  "ignorePatterns": [
+    "**/dist/**",
+    "**/.next/**",
+    "**/pkg/**",
+    "**/gen/**",
+    "**/next-env.d.ts",
+    "apps/web/public/sw.js"
+  ],
+  "overrides": [
+    {
+      "files": ["apps/web/**/*.{ts,tsx}"],
+      "plugins": ["typescript", "react", "nextjs", "jsx-a11y", "import"],
+      "env": { "browser": true },
+      "rules": {
+        "react/rules-of-hooks": "error",
+        "react/exhaustive-deps": "warn",
+        "react/react-in-jsx-scope": "off"
+      }
+    }
+  ]
+}

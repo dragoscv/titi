@@ -2,6 +2,9 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect } from "react";
 
+/** Callback ref: focus the primary input when it mounts (replaces autoFocus, e.g. when a sheet opens). */
+export const focusOnMount = (el: HTMLElement | null) => { el?.focus(); };
+
 export function Sheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title?: string; children: React.ReactNode }) {
   useEffect(() => {
     if (!open) return;
@@ -14,11 +17,11 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
       {open && (
         <>
           <motion.div className="fixed inset-0 z-40 bg-black/60" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
-          <motion.div
-            role="dialog"
+          <motion.dialog
+            open
             aria-modal
             aria-label={title}
-            className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-md rounded-t-[28px] bg-surface p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+            className="fixed inset-x-0 bottom-0 z-50 m-0 mx-auto w-full max-w-md rounded-t-[28px] border-0 bg-surface p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-[inherit]"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
@@ -31,7 +34,7 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-outline" />
             {title && <h2 className="mb-4 text-2xl font-bold">{title}</h2>}
             {children}
-          </motion.div>
+          </motion.dialog>
         </>
       )}
     </AnimatePresence>

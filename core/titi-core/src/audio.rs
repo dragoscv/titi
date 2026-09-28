@@ -323,7 +323,7 @@ mod tests {
         let b = vec![30000i16; 4];
         let mut out = vec![0i16; 4];
         mix(&[&a, &b], &mut out);
-        assert!(out[0] > 30000 && out[0] <= 32767);
+        assert!(out[0] > 30000, "soft clip keeps loudness without wrapping");
     }
 
     #[test]

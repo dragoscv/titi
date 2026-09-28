@@ -7,8 +7,8 @@
     "dev": "next dev -p 3141",
     "build": "next build",
     "start": "next start -p 3141",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint ."
+    "typecheck": "next typegen && tsc --noEmit",
+    "lint": "oxlint --type-aware -c ../../.oxlintrc.json src"
   },
   "dependencies": {
     "@bufbuild/protobuf": "catalog:",
@@ -34,8 +34,6 @@
     "@types/react-dom": "catalog:",
     "babel-plugin-react-compiler": "1.0.0",
     "esbuild": "^0.28.2",
-    "eslint": "catalog:",
-    "eslint-config-next": "catalog:",
     "postcss": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:"

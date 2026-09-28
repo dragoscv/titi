@@ -110,6 +110,23 @@ Legend of surfaces: **C** core (Rust) · **B** backend · **A** Android ·
 | A-32 | Two-phone LAN test A51↔S25: PTT both ways | done | logcat: FloorTaken → play #1…#151 → FloorIdle both directions, 2026-09-14 19:30 |
 | A-33 | Two-phone BLE-only test (Wi-Fi off) | done | link chip "Bluetooth LE / ble_l2cap"; voice both ways 19:46–19:47 |
 | A-34 | Handover test: BLE → LAN mid-transmission | done | Wi-Fi re-enabled during a 6 s A51 talk; S25 chip → Wi-Fi, 250+ frames played, no gap/crash |
+| A-35 | Audit 2026-09-28: API guards (VibratorManager/commDevice ≥ 31, setShowWhenLocked ≥ 27), mic FGS safe start + START_NOT_STICKY, TalkButton always releases floor, notification churn (distinctUntilChanged), engine-thread confinement, BLE/LAN ordered TX queues, relay single-thread state, deep-link confirm, SOS cancel, headset MediaSession, permission settings fallback, plurals | done | `:app:compileGmsDebugKotlin` + `:app:lintGmsDebug` 0 errors (2026-09-28 20:20) |
+| A-36 | Shared `:client` library (core/audio/transport/data/util) used by phone + watch | done | `android/client`; both apps build |
+| A-37 | Checked notifications: every `notify` via `util/Notify.post` (POST_NOTIFICATIONS revocable) | done | lint MissingPermission 0 |
+
+## 4b. Wear OS (`android/wear`) — Galaxy Watch 7 (SM-L315F, Wear OS 6 / One UI 8, armeabi-v7a)
+
+| ID | Item | Status | Evidence |
+|---|---|---|---|
+| WO-01 | Standalone module, same appId as phone, armv7 Rust core | done | `wear-debug.apk` installed; JNA loads `lib/armeabi-v7a`; LAN "bound on wlan0", BLE "l2cap listening psm=128" |
+| WO-02 | Talk page: M3 Expressive morphing PTT, level ring, rotary volume, haptics | done | UI dump "Munte / Hold to talk / 2 online"; phone logged FloorTaken→FloorIdle (2.5–3 s hold) twice |
+| WO-03 | Groups / chat (quick replies, voice notes) / actions (SOS, location, leave) / settings pages | done | compiled + rendered; SOS/voice note not yet exercised on device |
+| WO-04 | Join by code via Samsung keyboard (RemoteInputIntentHelper) | done | watch joined phone group by code 2026-09-28 19:54 (phone: MemberJoined) |
+| WO-05 | Phone → watch "Send to watch" over Data Layer (gms) | blocked(device) | code done (`app/src/gms/.../WatchBridge.kt`, `wear/PhoneBridgeService.kt`); test phone A51 is not paired ("Wearable.API is not available"), button hides correctly |
+| WO-06 | FGS microphone\|connectedDevice + Ongoing Activity | done | dumpsys RadioService running, allowWiu from TOP |
+| WO-07 | Tile (Talk) + complication (active group) | done (registered) | `query-services BIND_TILE_PROVIDER` lists `TalkTileService`; not yet added to a watch face |
+| WO-08 | Double-pinch gesture / STEM key toggle talk | done (code) | Galaxy Watch buttons are system-owned; not device-verified |
+| WO-09 | Wear lint clean | done | `:wear:lintDebug` 0 errors |
 
 ## 5. Web PWA (`apps/web`)
 
@@ -157,6 +174,7 @@ Legend of surfaces: **C** core (Rust) · **B** backend · **A** Android ·
 | O-05 | Closed testing 12 testers × 14 days (new-account rule) | in progress | track "Alpha" 4698786537336980903, release 1 (0.1.0), list "Titi friends"; **sent for review 2026-09-14** (14 changes). Need ≥12 opted-in testers for 14 days before production |
 | O-06 | Production rollout | blocked | gated by O-05 (Play new-account rule) |
 | O-07 | Backend Cloud Run live; web live | done | relay https://titi-relay-x3clqgvrdq-ew.a.run.app; web https://titi-dragos-projects-aeb8856e.vercel.app |
+| O-08 | `scripts/gates.ps1`: 2 parallel lanes (turbo typecheck+lint+test ‖ clippy→cargo test→gradle compile+lint), per-gate timing; oxlint type-aware replaces ESLint; turbo inputs/cache; Cargo dev deps opt-level; Gradle configuration cache | done | cold 341 s → warm/cached **36 s** wall, all green (2026-09-28 20:20) |
 
 ## 8. Reality check (final)
 
@@ -168,6 +186,6 @@ Legend of surfaces: **C** core (Rust) · **B** backend · **A** Android ·
 | R-04 | Ripple: docs, i18n both locales, ADRs match code | todo |
 
 ## Deferred (V1.5+)
-SFU for large internet duplex groups · Wear OS / watchOS · Android Auto /
+SFU for large internet duplex groups · watchOS · Android Auto /
 CarPlay · sub-channels · MLS group forward secrecy · rotating node ids ·
 Codec2/Lyra ULTRA profile · NFC invites.

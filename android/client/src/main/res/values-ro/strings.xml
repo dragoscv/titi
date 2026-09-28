@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="group_talk_warning">Mai ai 10 secunde</string>
+    <string name="group_talk_timeout">Timp de vorbire depășit</string>
+    <string name="joined">Ai intrat în %1$s</string>
+    <string name="join_failed_generic">Nu am putut intra — verifică codul și încearcă din nou</string>
+    <string name="error_mic">Microfonul nu e disponibil — poate îl folosește altă aplicație</string>
+    <string name="error_generic">Ceva n‑a mers</string>
+</resources>
