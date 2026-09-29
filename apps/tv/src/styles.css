@@ -1,0 +1,15 @@
+@import "tailwindcss";
+@import "@titi/app-ui/theme.css";
+@source "../../../packages/app-ui/src";
+
+/* armv7 TV GPU: no backdrop blur, fixed 1920×1080 canvas, no scrollbars */
+html[data-platform="tv"],
+html[data-platform="tv"] body {
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  cursor: none;
+}
+html[data-platform="tv"] * {
+  backdrop-filter: none !important;
+}

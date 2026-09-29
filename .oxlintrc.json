@@ -17,7 +17,7 @@
   ],
   "overrides": [
     {
-      "files": ["apps/web/**/*.{ts,tsx}"],
+      "files": ["apps/web/**/*.{ts,tsx}", "apps/desktop/src/**/*.{ts,tsx}", "apps/tv/src/**/*.{ts,tsx}", "packages/app-ui/**/*.{ts,tsx}"],
       "plugins": ["typescript", "react", "nextjs", "jsx-a11y", "import"],
       "env": { "browser": true },
       "rules": {

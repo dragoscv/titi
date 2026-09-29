@@ -1,0 +1,34 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=1920">
+<style>body{background:#0e1013;color:#f2f4f7;font:28px sans-serif;padding:60px}pre{font-size:24px;white-space:pre-wrap}</style></head>
+<body><h1>Titi probe</h1><pre id="o">running…</pre>
+<script>
+(async function(){
+  var r = {};
+  function set(k,v){ r[k]=v; document.getElementById('o').textContent = JSON.stringify(r,null,1); }
+  set('ua', navigator.userAgent);
+  set('screen', screen.width+'x'+screen.height+' inner '+innerWidth+'x'+innerHeight+' dpr '+devicePixelRatio);
+  set('wasm', typeof WebAssembly);
+  try { set('wasmBigInt', WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,0,0,1,6,1,96,1,126,1,126,3,2,1,0,7,5,1,1,102,0,0,10,6,1,4,0,32,0,11]))); } catch(e){ set('wasmBigInt', String(e)); }
+  set('AudioWorklet', typeof AudioWorkletNode);
+  set('AudioEncoder', typeof AudioEncoder);
+  set('AudioDecoder', typeof AudioDecoder);
+  try { if (typeof AudioDecoder!=='undefined') set('opusDec', (await AudioDecoder.isConfigSupported({codec:'opus',sampleRate:48000,numberOfChannels:1})).supported); } catch(e){ set('opusDec', String(e)); }
+  try { if (typeof AudioEncoder!=='undefined') set('opusEnc', (await AudioEncoder.isConfigSupported({codec:'opus',sampleRate:48000,numberOfChannels:1,bitrate:24000})).supported); } catch(e){ set('opusEnc', String(e)); }
+  set('getUserMedia', !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
+  try { var d = await navigator.mediaDevices.enumerateDevices(); set('devices', d.map(function(x){return x.kind+':'+x.label}).join(', ')); } catch(e){ set('devices', String(e)); }
+  set('oklch', CSS.supports('color','oklch(50% 0.1 100)'));
+  set('colorMix', CSS.supports('color','color-mix(in oklab, red, blue)'));
+  set('layer', typeof CSSLayerBlockRule);
+  set('webapis', typeof webapis);
+  try { set('tizenVer', tizen.systeminfo.getCapability('http://tizen.org/feature/platform.version')); } catch(e){ set('tizenVer', String(e)); }
+  try { if (typeof webapis!=='undefined' && webapis.microphone) set('mics', JSON.stringify(webapis.microphone.getMicrophones ? 'api' : 'none')); } catch(e){ set('mics', String(e)); }
+  try { tizen.tvinputdevice.registerKeyBatch(['MediaPlayPause','ColorF0Red']); set('keys','registered'); } catch(e){ set('keys', String(e)); }
+  var last = 0, cnt = 0;
+  document.addEventListener('keydown', function(e){ cnt++; set('keydown', e.keyCode+' '+e.key+' repeat='+e.repeat+' n='+cnt+' dt='+(Date.now()-last)); last=Date.now(); });
+  document.addEventListener('keyup', function(e){ set('keyup', e.keyCode+' '+e.key+' after '+(Date.now()-last)+'ms'); });
+  try { var ws = new WebSocket('wss://titi-relay-x3clqgvrdq-ew.a.run.app/v1/ws'); ws.onopen=function(){set('ws','open'); ws.close();}; ws.onerror=function(){set('ws','error');}; } catch(e){ set('ws', String(e)); }
+  console.log('PROBE ' + JSON.stringify(r));
+  setInterval(function(){ console.log('PROBE ' + JSON.stringify(r)); }, 3000);
+})();
+</script></body></html>

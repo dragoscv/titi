@@ -225,6 +225,9 @@ class EngineHost(private val ctx: Context, private val prefs: Prefs) : Transport
     fun joinByCode(code: String) = post {
         // sit in the code's relay rendezvous rooms for 2 min and retry until a member appears
         pendingCode = code to (System.currentTimeMillis() + 120_000)
+        // done = a group we did not have before the join exists (checking the *active* group's
+        // member count ended the join instantly whenever an existing group was active)
+        val before = _state.value.groups.map { it.id }.toSet()
         syncRelayRoom()
         apply(engine.joinByCode(code, now()))
         codeJob?.cancel()
@@ -233,7 +236,7 @@ class EngineHost(private val ctx: Context, private val prefs: Prefs) : Transport
                 delay(3000)
                 val p = pendingCode ?: break
                 if (System.currentTimeMillis() > p.second) { pendingCode = null; syncRelayRoom(); break }
-                if (_state.value.active?.members?.size ?: 0 > 1) { pendingCode = null; syncRelayRoom(); break }
+                if (_state.value.groups.any { it.id !in before }) { pendingCode = null; syncRelayRoom(); break }
                 runCatching { apply(engine.joinByCode(p.first, now())) }.onFailure { Log.w(TAG, "joinByCode", it) }
             }
         }

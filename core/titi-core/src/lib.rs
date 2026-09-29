@@ -25,6 +25,8 @@ pub mod frame;
 pub mod handover;
 pub mod identity;
 pub mod invite;
+#[cfg(feature = "json")]
+pub mod json;
 pub mod link;
 pub mod mesh;
 pub mod store;

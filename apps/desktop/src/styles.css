@@ -1,0 +1,15 @@
+@import "tailwindcss";
+@import "@titi/app-ui/theme.css";
+@source "../../../packages/app-ui/src";
+@source "./";
+
+/* Windows 11: Mica shows through a translucent graphite base (native window material). */
+html[data-platform="desktop"],
+html[data-platform="desktop"] body {
+  background: color-mix(in oklab, var(--color-graphite) 78%, transparent);
+}
+html[data-overlay="1"],
+html[data-overlay="1"] body {
+  background: transparent;
+  overflow: hidden;
+}

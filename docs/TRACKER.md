@@ -149,6 +149,51 @@ Legend of surfaces: **C** core (Rust) · **B** backend · **A** Android ·
 | W-13 | Vitest (vectors) + Playwright smoke | todo | |
 | W-14 | Deployed (Vercel), live URL verified | done | https://titi-dragos-projects-aeb8856e.vercel.app — `/`, `/j/[token]`, `/~offline`, manifest, assetlinks, sw all 200; joined A51's group by code from the live site (5 members) |
 
+## 5b. Shared UI (`packages/app-ui`)
+
+| ID | Item | Status | Evidence |
+|---|---|---|---|
+| U-01 | `TitiHost` interface + late-bound `host`, shared reducer, store, screens moved out of apps/web | done | web + app-ui typecheck OK (4.2 s) |
+| U-02 | `titi-core::json` view models (feature `json`) shared by wasm + desktop | done | unit tests `json::tests` |
+| U-03 | Capture worklet inlined (Blob URL) so packaged hosts work | done | Tizen capture works (TV talked, desktop played 101+ frames) |
+| U-04 | React Compiler actually active in Vite hosts (plugin-react v6 ignores `babel:`) | done | `memo_cache_sentinel` in TV bundle |
+
+## 5c. Desktop (`apps/desktop`, Tauri 2.12)
+
+| ID | Item | Status | Evidence |
+|---|---|---|---|
+| DK-01 | Native engine thread + LAN multicast (all IPv4 ifaces, re-join) + WSS relay (rustls/ring) + cpal audio | done | `tauri dev`: "lan bound :41414 on 4 interface(s)", "relay connected"; LAN sessions with S25 (.243) and watch (.242) |
+| DK-02 | Global hold-to-talk (LL keyboard + mouse hooks), learnable key | done (hook) | "ptt hooks: keyboard=true mouse=true"; `ptt::tests` |
+| DK-03 | Tray (open/mute/quit), close-to-tray, overlay pill, notifications, autostart, single instance, `titi://` | done (code) | overlay/tray compiled; not screenshot-verified |
+| DK-04 | Mica window on Windows 11 | done | screenshot `.copilot-tmp/desk1.png` |
+| DK-05 | Desktop ↔ Tizen voice over relay, both directions | done | TV played 145 packets from desktop; desktop "play #101" from TV |
+| DK-06 | Desktop → Google TV voice over LAN | done | GTV logcat FloorTaken → play #1…#151 → FloorIdle |
+| DK-07 | Clippy -D warnings + unit tests in gates (`desktop` lane) | done | 4/4 tests |
+| DK-08 | NSIS installer + firewall rule hook, MSIX/Store | todo | `tauri.conf.json` + `windows/hooks.nsh` written, bundle not built |
+| DK-09 | BLE GATT profile Windows ↔ Android | todo | Windows has no L2CAP CoC (ADR-0008) |
+| DK-10 | macOS / Linux builds | todo | same crate; needs CI runners |
+
+## 5d. Samsung Tizen (`apps/tv`)
+
+| ID | Item | Status | Evidence |
+|---|---|---|---|
+| TZ-01 | Capability probe on Odyssey G8 (Tizen 9 / Chromium 120) | done | WebCodecs Opus ✓, AudioWorklet ✓, builtin mic ✓, WSS ✓ |
+| TZ-02 | Packaged .wgt, CSP for wasm, deploy script + CDP eval/console/screenshot tools | done | `scripts/tv-deploy.ps1`, `tv-eval.mjs`, `tv-console.mjs`, `tv-shot.mjs` |
+| TZ-03 | 10-foot TvShell: rail/stage, hold-OK talk + watchdog, invite QR/code, join, invite banner | done | screenshot `.copilot-tmp/tv-home.png`; group "Sufragerie" created on TV |
+| TZ-04 | Phone/desktop join TV group by code; voice phone→TV, desktop↔TV | done | relay logs; TV played 145/147 packets |
+| TZ-05 | Relay heartbeat (half-open WS) | done | TV resumed receiving after redeploy (rx 176) |
+| TZ-06 | Seller Office submission | todo | needs partner account + assets |
+
+## 5e. Google TV (`android/tv`)
+
+| ID | Item | Status | Evidence |
+|---|---|---|---|
+| GT-01 | `:tv` module, Compose for TV, leanback, banner, same appId, armv7 | done | `:tv:assembleDebug :tv:lintDebug` BUILD SUCCESSFUL, 0 lint errors |
+| GT-02 | Installed on Chromecast with Google TV (Android 14) | done | screenshot `.copilot-tmp/gtv-home.png` |
+| GT-03 | Join by code with the remote; plays group voice (room speaker) | done | logcat "ui Joined", play #1…#151 |
+| GT-04 | Talk from TV when a USB/BT mic exists | done (code) | Chromecast has no mic — not device-verified |
+| GT-05 | Play Console Android TV track | todo | needs TV screenshots + review |
+
 ## 6. iOS (`ios/`) — skeleton now, CI after Apple enrolment
 
 | ID | Item | Status | Evidence |

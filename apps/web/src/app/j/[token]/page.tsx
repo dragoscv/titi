@@ -1,6 +1,6 @@
-import { Shell } from "@/components/Shell";
+import { App } from "../../App";
 
 export default async function JoinPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  return <Shell joinLink={`titi://j/${token}`} />;
+  return <App joinLink={`titi://j/${token}`} />;
 }

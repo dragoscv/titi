@@ -1,6 +1,6 @@
 # Titi — Architecture
 
-Offline-first walkie-talkie for Android, iOS and web. Works with **no cellular
+Offline-first walkie-talkie for Android (phone, Wear OS, Google TV), iOS, web, desktop (Tauri: Windows/macOS/Linux) and Samsung Tizen TVs — see ADR-0008. Works with **no cellular
 and no internet** over whatever radio two phones share, upgrades to internet
 when available, and hands over between links without dropping the
 conversation.

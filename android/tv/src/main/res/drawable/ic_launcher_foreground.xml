@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- speech-bubble body shaped like a bird -->
+    <path
+        android:fillColor="#FFB020"
+        android:pathData="M36,38 C36,29 43,23 54,23 C66,23 74,30 74,40 C74,50 66,57 54,57 L50,57 L42,66 L43,57 C39,55 36,48 36,38 Z" />
+    <!-- eye -->
+    <path
+        android:fillColor="#0E1013"
+        android:pathData="M60,36 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0 Z" />
+    <!-- beak -->
+    <path
+        android:fillColor="#D98E00"
+        android:pathData="M73,39 L81,42 L73,45 Z" />
+    <!-- antenna -->
+    <path
+        android:strokeColor="#FFB020"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:pathData="M52,23 L46,12" />
+    <path
+        android:fillColor="#FFB020"
+        android:pathData="M46,12 a3,3 0 1,0 0.01,0 Z" />
+    <!-- signal arcs -->
+    <path
+        android:strokeColor="#2DD4BF"
+        android:strokeWidth="2.6"
+        android:strokeLineCap="round"
+        android:pathData="M31,20 A16,16 0 0,1 40,10" />
+    <path
+        android:strokeColor="#2DD4BF"
+        android:strokeWidth="2.6"
+        android:strokeLineCap="round"
+        android:pathData="M25,14 A24,24 0 0,1 38,4" />
+</vector>

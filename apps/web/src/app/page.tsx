@@ -1,5 +1,5 @@
-import { Shell } from "@/components/Shell";
+import { App } from "./App";
 
 export default function Page() {
-  return <Shell />;
+  return <App />;
 }

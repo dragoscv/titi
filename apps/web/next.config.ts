@@ -4,6 +4,7 @@ import { withSerwist } from "@serwist/turbopack";
 const config: NextConfig = {
   reactStrictMode: true,
   reactCompiler: true,
+  transpilePackages: ["@titi/app-ui"],
   turbopack: {},
   // scripts/gates.ps1 type-checks first; Vercel (unset) still type-checks during its build
   typescript: { ignoreBuildErrors: process.env.TITI_TYPECHECKED === "1" },

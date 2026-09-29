@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="https://titi.app/tv" version="0.1.0" viewmodes="maximized">
+  <tizen:application id="TitiTvApp0.Titi" package="TitiTvApp0" required_version="8.0"/>
+  <tizen:profile name="tv-samsung"/>
+  <content src="index.html"/>
+  <icon src="icon.png"/>
+  <name>Titi</name>
+  <description>Offline-first push-to-talk radio. Hear your group on the big screen; hold OK to talk.</description>
+  <feature name="http://tizen.org/feature/screen.size.normal.1080.1920"/>
+  <access origin="*" subdomains="true"/>
+  <!-- default widget CSP is script-src 'self' which blocks WebAssembly compile -->
+  <tizen:content-security-policy>default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: mediastream:; connect-src 'self' wss://titi-relay-x3clqgvrdq-ew.a.run.app wss://*.run.app</tizen:content-security-policy>
+  <tizen:allow-navigation>titi-relay-x3clqgvrdq-ew.a.run.app</tizen:allow-navigation>
+  <tizen:privilege name="http://tizen.org/privilege/internet"/>
+  <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+  <tizen:privilege name="http://tizen.org/privilege/mediacapture"/>
+  <tizen:privilege name="http://developer.samsung.com/privilege/microphone"/>
+  <tizen:metadata key="http://samsung.com/tv/metadata/use.network" value="true"/>
+  <tizen:metadata key="http://samsung.com/tv/metadata/prelaunch.support" value="true"/>
+  <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"/>
+</widget>

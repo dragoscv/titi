@@ -19,4 +19,4 @@ plugins {
 }
 
 rootProject.name = "titi"
-include(":app", ":wear", ":client", ":core-ffi")
+include(":app", ":wear", ":tv", ":client", ":core-ffi")

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Titi</string>
+    <string name="default_tv_name">Google TV</string>
+
+    <string name="notif_channel">Radio</string>
+    <string name="notif_alerts">Alerts</string>
+    <string name="notif_radio_on">Titi radio is on</string>
+    <string name="notif_listening">Listening to %1$s</string>
+    <string name="notif_talking">%1$s is talking</string>
+    <string name="sos_from">SOS from %1$s</string>
+    <string name="sos_cancelled">%1$s cancelled the SOS</string>
+
+    <string name="join_group">Join a group</string>
+    <string name="rail_hint">↑↓ choose · → actions · hold OK to talk · Back exits</string>
+    <string name="channel">Channel</string>
+    <string name="connecting">connecting…</string>
+    <string name="is_talking">%1$s is talking</string>
+    <string name="you_are_talking">You are talking</string>
+    <string name="channel_free">Channel free</string>
+    <string name="open_mic_live">Open mic · live</string>
+    <string name="open_mic_muted">Open mic · muted</string>
+    <string name="you">You</string>
+    <string name="tv_short">TV</string>
+
+    <string name="action_hold_to_talk">Hold OK to talk</string>
+    <string name="action_open_mic">Open mic</string>
+    <string name="action_push_to_talk">Push to talk</string>
+    <string name="action_invite">Invite</string>
+    <string name="action_listening">Listening · talk from your phone</string>
+    <string name="no_mic_hint">No microphone on this TV — hold Talk on your phone</string>
+
+    <string name="empty_title">Turn this screen into a room radio</string>
+    <string name="empty_body">On your phone open Titi → a group → Invite, then choose “Join a group” here and type the code, or invite this TV from the nearby list.</string>
+
+    <string name="invite_join">Join “%1$s”</string>
+    <string name="invite_hint">Scan with a phone camera or say the code · changes in %1$d:%2$02d</string>
+    <string name="invite_banner_title">%1$s invites this TV</string>
+    <string name="invite_banner_body">to “%1$s” · OK to join · Back to ignore</string>
+    <string name="close_hint">Press Back to close</string>
+    <string name="cd_qr">QR code for the invite link</string>
+
+    <string name="join_title">Join with a code</string>
+    <string name="join_body">Three words and two digits from the host’s screen.</string>
+    <string name="join_placeholder">word word word 00</string>
+    <string name="join_ok">Join</string>
+    <string name="join_looking">Looking for the group…</string>
+    <string name="join_invalid">Type three words and two digits</string>
+    <string name="create_group">Create a group</string>
+    <string name="create_default_name">Living room</string>
+
+    <plurals name="members_count">
+        <item quantity="one">%d member</item>
+        <item quantity="other">%d members</item>
+    </plurals>
+</resources>

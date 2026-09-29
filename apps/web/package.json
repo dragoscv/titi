@@ -11,25 +11,16 @@
     "lint": "oxlint --type-aware -c ../../.oxlintrc.json src"
   },
   "dependencies": {
-    "@bufbuild/protobuf": "catalog:",
     "@serwist/turbopack": "9.5.12",
-    "@titi/core-wasm": "workspace:*",
-    "@titi/protocol": "workspace:*",
-    "clsx": "catalog:",
-    "lucide-react": "catalog:",
-    "motion": "catalog:",
     "next": "catalog:",
-    "qrcode": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "serwist": "catalog:",
-    "tailwind-merge": "catalog:",
-    "zustand": "catalog:"
+    "@titi/app-ui": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "catalog:",
     "@types/node": "catalog:",
-    "@types/qrcode": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "babel-plugin-react-compiler": "1.0.0",

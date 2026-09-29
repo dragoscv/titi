@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Titi</string>
+    <string name="default_tv_name">Google TV</string>
+
+    <string name="notif_channel">Radio</string>
+    <string name="notif_alerts">Alerte</string>
+    <string name="notif_radio_on">Radioul Titi este pornit</string>
+    <string name="notif_listening">Asculți %1$s</string>
+    <string name="notif_talking">%1$s vorbește</string>
+    <string name="sos_from">SOS de la %1$s</string>
+    <string name="sos_cancelled">%1$s a anulat SOS-ul</string>
+
+    <string name="join_group">Intră într-un grup</string>
+    <string name="rail_hint">↑↓ alege · → acțiuni · ține OK apăsat ca să vorbești · Înapoi iese</string>
+    <string name="channel">Canal</string>
+    <string name="connecting">se conectează…</string>
+    <string name="is_talking">%1$s vorbește</string>
+    <string name="you_are_talking">Tu vorbești</string>
+    <string name="channel_free">Canal liber</string>
+    <string name="open_mic_live">Microfon deschis · activ</string>
+    <string name="open_mic_muted">Microfon deschis · fără sunet</string>
+    <string name="you">Tu</string>
+    <string name="tv_short">TV</string>
+
+    <string name="action_hold_to_talk">Ține OK ca să vorbești</string>
+    <string name="action_open_mic">Microfon deschis</string>
+    <string name="action_push_to_talk">Apasă și vorbește</string>
+    <string name="action_invite">Invită</string>
+    <string name="action_listening">Asculți · vorbește de pe telefon</string>
+    <string name="no_mic_hint">Televizorul nu are microfon — ține apăsat Vorbește pe telefon</string>
+
+    <string name="empty_title">Transformă acest ecran într-un radio de cameră</string>
+    <string name="empty_body">Pe telefon deschide Titi → un grup → Invită, apoi alege aici „Intră într-un grup” și tastează codul sau invită acest televizor din lista celor din apropiere.</string>
+
+    <string name="invite_join">Intră în „%1$s”</string>
+    <string name="invite_hint">Scanează cu camera telefonului sau spune codul · se schimbă în %1$d:%2$02d</string>
+    <string name="invite_banner_title">%1$s invită acest televizor</string>
+    <string name="invite_banner_body">în „%1$s” · OK ca să intri · Înapoi ca să ignori</string>
+    <string name="close_hint">Apasă Înapoi ca să închizi</string>
+    <string name="cd_qr">Cod QR pentru linkul de invitație</string>
+
+    <string name="join_title">Intră cu un cod</string>
+    <string name="join_body">Trei cuvinte și două cifre de pe ecranul gazdei.</string>
+    <string name="join_placeholder">cuvânt cuvânt cuvânt 00</string>
+    <string name="join_ok">Intră</string>
+    <string name="join_looking">Căutăm grupul…</string>
+    <string name="join_invalid">Tastează trei cuvinte și două cifre</string>
+    <string name="create_group">Creează un grup</string>
+    <string name="create_default_name">Sufragerie</string>
+
+    <plurals name="members_count">
+        <item quantity="one">%d membru</item>
+        <item quantity="few">%d membri</item>
+        <item quantity="other">%d de membri</item>
+    </plurals>
+</resources>

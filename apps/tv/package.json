@@ -1,0 +1,32 @@
+{
+  "name": "@titi/tv",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Samsung Tizen TV / smart-monitor app (10-foot UI over the shared app-ui + wasm core)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --type-aware -c ../../.oxlintrc.json src"
+  },
+  "dependencies": {
+    "@titi/app-ui": "workspace:*",
+    "@titi/core-wasm": "workspace:*",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@babel/core": "8.0.6",
+    "@rolldown/plugin-babel": "0.2.4",
+    "@tailwindcss/vite": "4.3.3",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "6.1.1",
+    "babel-plugin-react-compiler": "1.0.0",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "8.3.1"
+  }
+}

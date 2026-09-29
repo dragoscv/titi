@@ -3,13 +3,14 @@
   Run every quality gate with per-gate timing. Two lanes run in parallel:
     js     : turbo typecheck + lint + test (cached, parallel across packages)
     native : clippy -> rust tests -> gradle compile+lint (serial: cargo shares core/target's lock)
+    desktop: Tauri crate clippy -D warnings + unit tests (own target dir, so it runs in parallel)
 .EXAMPLE
   pwsh -NoProfile -File scripts/gates.ps1            # everything
   pwsh -NoProfile -File scripts/gates.ps1 -Only js   # one lane
   pwsh -NoProfile -File scripts/gates.ps1 -Build     # also production builds
 #>
 param(
-  [ValidateSet('all', 'js', 'native')] [string] $Only = 'all',
+  [ValidateSet('all', 'js', 'native', 'desktop')] [string] $Only = 'all',
   [switch] $Build
 )
 $ErrorActionPreference = 'Stop'
@@ -20,15 +21,19 @@ New-Item -ItemType Directory -Force $logDir | Out-Null
 if (-not $env:JAVA_HOME -and (Test-Path 'C:\Program Files\Java\jdk-22')) { $env:JAVA_HOME = 'C:\Program Files\Java\jdk-22' }
 
 $nextest = [bool](Get-Command cargo-nextest -ErrorAction SilentlyContinue)
-$rustTest = if ($nextest) { 'cargo nextest run -p titi-core --features opus' } else { 'cargo test -p titi-core --features opus' }
+$rustTest = if ($nextest) { 'cargo nextest run -p titi-core --features opus,json' } else { 'cargo test -p titi-core --features opus,json' }
 $gradle = if ($IsWindows -or $env:OS -eq 'Windows_NT') { '.\gradlew.bat' } else { './gradlew' }
 $gradleTasks = @(':app:compileGmsDebugKotlin', ':app:lintGmsDebug', ':wear:compileDebugKotlin', ':wear:lintDebug',
-  ':app:compileFossDebugKotlin', ':app:checkFossNoGms', ':core-ffi:testDebugUnitTest', ':app:testGmsDebugUnitTest')
-if ($Build) { $gradleTasks += @(':app:assembleGmsDebug', ':wear:assembleDebug') }
+  ':app:compileFossDebugKotlin', ':app:checkFossNoGms', ':core-ffi:testDebugUnitTest', ':app:testGmsDebugUnitTest',
+  ':tv:compileDebugKotlin', ':tv:lintDebug')
+if ($Build) { $gradleTasks += @(':app:assembleGmsDebug', ':wear:assembleDebug', ':tv:assembleDebug') }
 
 $lanes = [ordered]@{
   js     = @(
     @{ Name = 'turbo-check'; Dir = '.'; Cmd = 'pnpm turbo run typecheck lint test --output-logs=errors-only' }
+  )
+  desktop = @(
+    @{ Name = 'desktop-rust'; Dir = '.'; Cmd = 'pwsh -NoProfile -File scripts/desktop-check.ps1' }
   )
   native = @(
     @{ Name = 'clippy';    Dir = 'core';    Cmd = 'cargo clippy --workspace --all-targets --features titi-ffi/cli -- -D warnings' }

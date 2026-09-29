@@ -1,0 +1,55 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Titi",
+  "version": "0.1.0",
+  "identifier": "ro.titi.desktop",
+  "build": {
+    "beforeDevCommand": "pnpm vite",
+    "devUrl": "http://localhost:3142",
+    "beforeBuildCommand": "pnpm vite build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Titi",
+        "width": 420,
+        "height": 780,
+        "minWidth": 360,
+        "minHeight": 560,
+        "transparent": true,
+        "decorations": true,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' blob:; connect-src ipc: http://ipc.localhost; font-src 'self' data:"
+    }
+  },
+  "plugins": {
+    "deep-link": { "desktop": { "schemes": ["titi"] } }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "msi"],
+    "publisher": "Titi",
+    "category": "SocialNetworking",
+    "shortDescription": "Offline-first walkie-talkie",
+    "longDescription": "Titi turns nearby devices into a private push-to-talk radio over Wi-Fi and the internet, end-to-end encrypted.",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico", "icons/icon.png"],
+    "windows": {
+      "webviewInstallMode": { "type": "downloadBootstrapper" },
+      "nsis": {
+        "installMode": "perMachine",
+        "installerHooks": "./windows/hooks.nsh",
+        "languages": ["English", "Romanian"],
+        "displayLanguageSelector": true
+      },
+      "wix": { "language": ["en-US"] }
+    },
+    "macOS": { "minimumSystemVersion": "12.0" },
+    "linux": { "deb": { "depends": ["libwebkit2gtk-4.1-0", "libasound2"] } }
+  }
+}
