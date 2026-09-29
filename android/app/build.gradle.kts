@@ -14,6 +14,8 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+        // only ABIs we build titi_ffi for; drops JNA's x86/mips/armeabi and ML Kit's x86 blobs
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
@@ -70,6 +72,11 @@ android {
         resources.excludes += setOf("META-INF/*.kotlin_module", "META-INF/LICENSE*", "META-INF/AL2.0", "META-INF/LGPL2.1")
         jniLibs.useLegacyPackaging = false
     }
+    lint {
+        abortOnError = true
+        // tests are compiled + run by the gates; linting them re-analyzes ~13 s for no findings
+        ignoreTestSources = true
+    }
     bundle {
         language.enableSplit = false
     }
@@ -81,12 +88,9 @@ dependencies {
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.graphics)
-    implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.foundation)
     implementation(libs.compose.animation)
     implementation(libs.compose.material3)
-    implementation(libs.compose.material.icons.extended)
-    debugImplementation(libs.compose.ui.tooling)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
@@ -149,9 +153,14 @@ val checkFossNoGms by tasks.registering {
         seen.toList()
     } }
     inputs.property("ids", ids)
+    // an output makes the check up-to-date when the classpath is unchanged (it re-ran on every gate)
+    val stamp = layout.buildDirectory.file("reports/checkFossNoGms.txt")
+    outputs.file(stamp)
     doLast {
         val bad = ids.get().filter { it.startsWith("com.google.android.gms:") || it.startsWith("com.google.firebase:") || it.startsWith("com.google.mlkit:") || it.startsWith("com.google.android.odml:") }
         if (bad.isNotEmpty()) throw GradleException("foss pulls non-free Google deps:\n" + bad.joinToString("\n"))
-        println("foss runtime classpath: ${ids.get().size} components, 0 GMS/Firebase/ML Kit")
+        val msg = "foss runtime classpath: ${ids.get().size} components, 0 GMS/Firebase/ML Kit"
+        stamp.get().asFile.writeText(msg + "\n")
+        println(msg)
     }
 }

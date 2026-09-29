@@ -25,6 +25,7 @@ class TvApp : Application() {
         autoOnboard()
         engine = EngineHost(this, prefs)
         createChannels()
+        ro.titi.app.util.RadioLifecycle.install(prefs) { stopService(android.content.Intent(this, RadioService::class.java)) }
     }
 
     /** TVs have no comfortable keyboard: name the node after the device once, before the engine reads it. */

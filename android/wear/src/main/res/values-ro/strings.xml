@@ -96,4 +96,14 @@
         <item quantity="few">%d conectați</item>
         <item quantity="other">%d de conectați</item>
     </plurals>
+    <string name="settings_keep_running">Rulează în fundal</string>
+    <string name="settings_keep_running_desc">Oprit: nicio iconiță pe cadran; stația merge doar cât Titi e deschisă.</string>
+    <string name="settings_quit">Închide Titi</string>
+    <string name="settings_quality">Calitate voce</string>
+    <string name="settings_battery">Economisire baterie</string>
+    <string name="settings_volume_ptt">Butonul fizic vorbește</string>
+    <string name="quality_auto">Auto</string>
+    <string name="quality_hq">Înaltă</string>
+    <string name="quality_std">Standard</string>
+    <string name="quality_low">Scăzută</string>
 </resources>

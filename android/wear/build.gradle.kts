@@ -17,6 +17,8 @@ android {
         // Watch builds live in their own versionCode range (Play multi-APK rule).
         versionCode = 200_000_001
         versionName = "0.1.0"
+        // only ABIs we build titi_ffi for; drops JNA's x86/mips/armeabi and ML Kit's x86 blobs
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
     androidResources {
         localeFilters += listOf("en", "ro")
@@ -57,6 +59,8 @@ android {
     }
     lint {
         abortOnError = true
+        // tests are compiled + run by the gates; linting them re-analyzes ~20 s per module for no findings
+        ignoreTestSources = true
         checkDependencies = false
     }
 }
@@ -68,13 +72,9 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.foundation)
     implementation(libs.compose.animation)
-    implementation(libs.compose.material.icons.extended)
-    implementation(libs.compose.ui.tooling.preview)
-    debugImplementation(libs.compose.ui.tooling)
     implementation(libs.wear.compose.material3)
     implementation(libs.wear.compose.foundation)
     implementation(libs.wear.compose.navigation)
-    implementation(libs.wear.compose.ui.tooling)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MSIX for the Microsoft Store (ADR-0008 §7). Identity Name/Publisher are
+     placeholders until the name is reserved in Partner Center; the Store
+     re-signs the upload, local builds are signed with a dev cert. -->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  xmlns:desktop2="http://schemas.microsoft.com/appx/manifest/desktop/windows10/2"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap10 desktop desktop2 rescap">
+
+  <Identity Name="ro.titi.desktop" Publisher="CN=Titi" Version="0.1.0.0" ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>Titi</DisplayName>
+    <PublisherDisplayName>Titi</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26200.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+    <Resource Language="ro-ro" />
+  </Resources>
+
+  <Applications>
+    <Application Id="Titi" Executable="titi.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="Titi" Description="Offline-first walkie-talkie" BackgroundColor="transparent"
+        Square150x150Logo="Assets\MedTile.png" Square44x44Logo="Assets\AppList.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\WideTile.png" />
+      </uap:VisualElements>
+      <Extensions>
+        <uap:Extension Category="windows.protocol">
+          <uap:Protocol Name="titi"><uap:DisplayName>Titi invite</uap:DisplayName></uap:Protocol>
+        </uap:Extension>
+        <desktop:Extension Category="windows.startupTask">
+          <desktop:StartupTask TaskId="TitiStartup" Enabled="false" DisplayName="Titi" />
+        </desktop:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Extensions>
+    <!-- same rule as the NSIS hook: LAN discovery on Private/Domain networks only -->
+    <desktop2:Extension Category="windows.firewallRules">
+      <desktop2:FirewallRules Executable="titi.exe">
+        <desktop2:Rule Direction="in" IPProtocol="UDP" Profile="private" />
+        <desktop2:Rule Direction="in" IPProtocol="UDP" Profile="domain" />
+      </desktop2:FirewallRules>
+    </desktop2:Extension>
+  </Extensions>
+
+  <Capabilities>
+    <Capability Name="internetClient" />
+    <Capability Name="privateNetworkClientServer" />
+    <rescap:Capability Name="runFullTrust" />
+    <DeviceCapability Name="microphone" />
+    <DeviceCapability Name="bluetooth" />
+  </Capabilities>
+</Package>

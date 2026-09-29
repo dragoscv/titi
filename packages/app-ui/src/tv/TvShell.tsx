@@ -5,7 +5,7 @@
 // needed (join by code shown on-screen; phone scans the QR).
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { AudioLines, Mic, Radio, Users, MessageSquare, Plus, QrCode } from "lucide-react";
+import { AudioLines, Mic, Radio, Users, MessageSquare, Plus, QrCode, Settings as SettingsIcon, Power } from "lucide-react";
 import QRCode from "qrcode";
 import { host } from "../platform";
 import { useStore, type GroupState } from "../store";
@@ -29,7 +29,7 @@ export function TvShell() {
   const [focus, setFocus] = useState(0);
   const [pane, setPane] = useState<Pane>("groups");
   const [action, setAction] = useState(0);
-  const [sheet, setSheet] = useState<"none" | "invite" | "create" | "join">("none");
+  const [sheet, setSheet] = useState<"none" | "invite" | "create" | "join" | "settings">("none");
   const talking = useRef(false);
   const lastRepeat = useRef(0);
   const talkStart = useRef(0);
@@ -79,7 +79,7 @@ export function TvShell() {
       const k = e.keyCode;
       if (invites[0] && k === KEY.OK) { e.preventDefault(); host.acceptInvite(invites[0].group, invites[0].host); return; }
       if (invites[0] && k === KEY.BACK) { e.preventDefault(); host.declineInvite(invites[0].group, invites[0].host); return; }
-      const isTalkKey = k === KEY.PLAY_PAUSE || k === KEY.RED || (k === KEY.OK && pane === "actions" && action === 0) || (k === KEY.OK && pane === "groups" && groups.length > 0);
+      const isTalkKey = k === KEY.PLAY_PAUSE || k === KEY.RED || (k === KEY.OK && pane === "actions" && action === 0) || (k === KEY.OK && pane === "groups" && focus < groups.length);
       if (isTalkKey && sel) {
         e.preventDefault();
         if (sel.fullDuplex) { if (!e.repeat) host.setMuted(!useStore.getState().muted); return; }
@@ -90,12 +90,13 @@ export function TvShell() {
       }
       switch (k) {
         case KEY.UP: e.preventDefault(); if (pane === "groups") setFocus((f) => Math.max(0, f - 1)); else setAction((a) => Math.max(0, a - 1)); break;
-        case KEY.DOWN: e.preventDefault(); if (pane === "groups") setFocus((f) => Math.min(groups.length, f + 1)); else setAction((a) => Math.min(actions.length - 1, a + 1)); break;
+        case KEY.DOWN: e.preventDefault(); if (pane === "groups") setFocus((f) => Math.min(groups.length + 1, f + 1)); else setAction((a) => Math.min(actions.length - 1, a + 1)); break;
         case KEY.RIGHT: e.preventDefault(); if (sel) setPane("actions"); break;
         case KEY.LEFT: e.preventDefault(); setPane("groups"); break;
         case KEY.OK:
           e.preventDefault();
-          if (pane === "groups" && focus >= groups.length) setSheet("join");
+          if (pane === "groups" && focus === groups.length) setSheet("join");
+          else if (pane === "groups" && focus === groups.length + 1) setSheet("settings");
           else if (pane === "actions" && sel) {
             const id = actions[action]?.id;
             if (id === "invite") setSheet("invite");
@@ -104,7 +105,7 @@ export function TvShell() {
           break;
         case KEY.BACK:
           if (pane === "actions") { e.preventDefault(); setPane("groups"); }
-          else { try { (window as unknown as { tizen?: { application: { getCurrentApplication(): { exit(): void } } } }).tizen?.application.getCurrentApplication().exit(); } catch { /* not tizen */ } }
+          else host.quit?.();
           break;
       }
     };
@@ -130,8 +131,11 @@ export function TvShell() {
           </div>
         </div>
         {groups.map((g, i) => <GroupRow key={g.id} g={g} focused={pane === "groups" && focus === i} selected={sel?.id === g.id} />)}
-        <div className={`flex items-center gap-4 rounded-[26px] px-6 py-5 text-2xl transition-transform duration-150 ${pane === "groups" && focus >= groups.length ? "scale-[1.04] bg-elevated ring-4 ring-amber" : "bg-surface text-muted"}`}>
+        <div className={`flex items-center gap-4 rounded-[26px] px-6 py-5 text-2xl transition-transform duration-150 ${pane === "groups" && focus === groups.length ? "scale-[1.04] bg-elevated ring-4 ring-amber" : "bg-surface text-muted"}`}>
           <Plus size={32} /> Join a group
+        </div>
+        <div className={`flex items-center gap-4 rounded-[26px] px-6 py-5 text-2xl transition-transform duration-150 ${pane === "groups" && focus === groups.length + 1 ? "scale-[1.04] bg-elevated ring-4 ring-amber" : "bg-surface text-muted"}`}>
+          <SettingsIcon size={32} /> Settings
         </div>
         <div className="mt-auto text-lg text-muted">↑↓ choose · → actions · hold OK to talk · Back exits</div>
       </aside>
@@ -147,6 +151,7 @@ export function TvShell() {
             <motion.div className="w-[900px] rounded-[40px] bg-surface p-14" initial={{ scale: 0.92, y: 30 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }} transition={{ type: "spring", stiffness: 320, damping: 30 }}>
               {sheet === "invite" && sel && <InvitePanel gid={sel.id} name={sel.name} />}
               {sheet === "join" && <JoinPanel />}
+              {sheet === "settings" && <SettingsPanel />}
               <div className="mt-10 text-center text-xl text-muted">Press Back to close</div>
             </motion.div>
           </motion.div>
@@ -300,6 +305,36 @@ function JoinPanel() {
         aria-label="Invite code"
       />
       <div className={`mt-4 text-2xl ${ok ? "text-teal" : "text-muted"}`}>{ok ? "Press OK to join" : "Type the code with the on-screen keyboard"}</div>
+    </div>
+  );
+}
+
+
+/** Every setting the TV host honours, operable with the remote: ↑/↓ move, OK changes. */
+function SettingsPanel() {
+  const settings = useStore((s) => s.settings);
+  const first = useRef<HTMLButtonElement>(null);
+  useEffect(() => { first.current?.focus(); }, []);
+  const rooms = ["Living room TV", "Bedroom TV", "Kitchen TV", "Office TV"];
+  const nextRoom = rooms[(rooms.indexOf(settings.name) + 1) % rooms.length]!;
+  const vols = [0.25, 0.5, 0.75, 1];
+  const nextVol = vols.find((v) => v > settings.volume + 0.01) ?? vols[0]!;
+  const nav = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.keyCode !== KEY.UP && e.keyCode !== KEY.DOWN) return;
+    e.preventDefault();
+    const btns = Array.from(e.currentTarget.querySelectorAll("button"));
+    const i = btns.indexOf(document.activeElement as HTMLButtonElement);
+    btns[Math.max(0, Math.min(btns.length - 1, i + (e.keyCode === KEY.DOWN ? 1 : -1)))]?.focus();
+  };
+  const row = "flex w-full items-center justify-between rounded-[22px] bg-elevated px-8 py-5 text-3xl outline-none focus:bg-amber focus:text-graphite";
+  return (
+    <div role="menu" tabIndex={-1} onKeyDown={nav}>
+      <h2 className="mb-6 text-[44px] font-bold">Settings</h2>
+      <div className="flex flex-col gap-3">
+        <button ref={first} type="button" className={row} onClick={() => host.saveSettings({ name: nextRoom })}><span>Name</span><b>{settings.name}</b></button>
+        <button type="button" className={row} onClick={() => host.saveSettings({ volume: nextVol })}><span>Speaker volume</span><b>{Math.round(settings.volume * 100)}%</b></button>
+        {host.quit && <button type="button" className={row} onClick={() => host.quit?.()}><span className="flex items-center gap-4"><Power size={32} /> Quit Titi</span><span /></button>}
+      </div>
     </div>
   );
 }

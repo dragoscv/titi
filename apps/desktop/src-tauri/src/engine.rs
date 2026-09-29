@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
-use titi_core::engine::{Action, Config, Engine, UiEvent};
+use titi_core::engine::{Action, Config, Engine, MessageBody, UiEvent};
 use titi_core::floor::Priority;
 use titi_core::identity::{group_hash, Identity};
 use titi_core::json::{self, hex, unhex, JsUi};
@@ -51,6 +51,8 @@ pub struct Settings {
     pub ptt_key: String,
     pub overlay: bool,
     pub autostart: bool,
+    /// Window close button hides to the tray (radio stays on) instead of quitting.
+    pub close_to_tray: bool,
     pub input_device: String,
     pub output_device: String,
     pub lan: bool,
@@ -68,6 +70,7 @@ impl Default for Settings {
             ptt_key: "F13".into(),
             overlay: true,
             autostart: false,
+            close_to_tray: true,
             input_device: String::new(),
             output_device: String::new(),
             lan: true,
@@ -76,13 +79,20 @@ impl Default for Settings {
     }
 }
 
+/// Things worth a system notification (ids are hex).
+pub enum Alert {
+    Invite { group: String, host: String, host_name: String, name: String, members: u32 },
+    Text { group: String, group_name: String, from_name: String, text: String },
+    Sos { group: String, from_name: String, note: String, cancelled: bool },
+}
+
 /// Where the host sends things the UI / shell cares about.
 pub trait Sink: Send + 'static {
     fn ui(&self, ev_json: String);
     fn groups(&self, groups_json: String);
     fn level(&self, dbfs: f32);
     fn floor(&self, talking: bool, talker: Option<String>);
-    fn notify(&self, title: &str, body: &str);
+    fn alert(&self, a: Alert);
 }
 
 pub struct Host {
@@ -146,6 +156,19 @@ impl Host {
             UiEvent::FloorGranted => self.sink.floor(true, None),
             UiEvent::FloorTaken { holder, name, .. } if *holder != self.eng.node_id() => self.sink.floor(true, Some(name.clone())),
             UiEvent::FloorIdle { .. } => self.sink.floor(false, None),
+            UiEvent::InviteOffered { group, name, host, host_name, members } => {
+                self.sink.alert(Alert::Invite { group: hex(group), host: hex(host), host_name: host_name.clone(), name: name.clone(), members: *members })
+            }
+            UiEvent::Message { group, from, body, .. } if *from != self.eng.node_id() => {
+                let g = self.eng.groups.get(group);
+                let from_name = g.and_then(|g| g.members.get(from)).map(|m| m.name.clone()).unwrap_or_else(|| hex(from)[..6].to_string());
+                let group_name = g.map(|g| g.name.clone()).unwrap_or_default();
+                match body {
+                    MessageBody::Text(t) => self.sink.alert(Alert::Text { group: hex(group), group_name, from_name, text: t.clone() }),
+                    MessageBody::Sos { note, cancelled, .. } => self.sink.alert(Alert::Sos { group: hex(group), from_name, note: note.clone(), cancelled: *cancelled }),
+                    _ => {}
+                }
+            }
             _ => {}
         }
         let refresh = matches!(e, UiEvent::Joined { .. } | UiEvent::MemberJoined { .. } | UiEvent::MemberLeft { .. });

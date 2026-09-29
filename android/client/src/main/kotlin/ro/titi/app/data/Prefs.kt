@@ -37,6 +37,8 @@ data class Settings(
     val relayUrl: String = DEFAULT_RELAY,
     /** Watch only: request Wi-Fi for voice instead of the Bluetooth proxy to the phone. */
     val useWifiVoice: Boolean = true,
+    /** Keep the radio (foreground service + ongoing notification) alive after leaving the app. */
+    val keepRunning: Boolean = true,
 ) {
     companion object {
         const val DEFAULT_RELAY = "wss://titi-relay-x3clqgvrdq-ew.a.run.app/v1/ws"
@@ -61,6 +63,7 @@ class Prefs(private val ctx: Context) {
         val batterySaver = booleanPreferencesKey("battery_saver")
         val relayUrl = stringPreferencesKey("relay_url")
         val useWifiVoice = booleanPreferencesKey("use_wifi_voice")
+        val keepRunning = booleanPreferencesKey("keep_running")
     }
 
     val settings: Flow<Settings> = ctx.store.data.map { it.toSettings() }
@@ -82,6 +85,7 @@ class Prefs(private val ctx: Context) {
         batterySaver = this[K.batterySaver] ?: false,
         relayUrl = this[K.relayUrl] ?: Settings.DEFAULT_RELAY,
         useWifiVoice = this[K.useWifiVoice] ?: true,
+        keepRunning = this[K.keepRunning] ?: true,
     )
 
     suspend fun update(block: (Settings) -> Settings) {
@@ -102,6 +106,7 @@ class Prefs(private val ctx: Context) {
             p[K.batterySaver] = s.batterySaver
             p[K.relayUrl] = s.relayUrl
             p[K.useWifiVoice] = s.useWifiVoice
+            p[K.keepRunning] = s.keepRunning
         }
     }
 

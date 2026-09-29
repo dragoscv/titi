@@ -63,6 +63,9 @@ class MainActivity : ComponentActivity() {
         if (micUsable.value && !g.fullDuplex) app.engine.pttUp()
     }
 
+    /** Settings → Quit: stop the radio service and close the app until it is opened again. */
+    fun quit() = ro.titi.app.util.RadioLifecycle.quit(this) { stopService(android.content.Intent(this, RadioService::class.java)) }
+
     /** Play/Pause and the red key talk from anywhere on screen. */
     private fun isTalkMediaKey(code: Int) = code == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || code == KeyEvent.KEYCODE_PROG_RED
 

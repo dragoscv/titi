@@ -38,6 +38,7 @@ class WearApp : Application() {
             override fun onStop(owner: LifecycleOwner) { foreground = false }
         })
         refreshSurfacesOnChange()
+        ro.titi.app.util.RadioLifecycle.install(prefs) { RadioService.stop(this) }
     }
 
     /** Tile + complication follow the radio state (debounced: both are IPC to the system UI). */

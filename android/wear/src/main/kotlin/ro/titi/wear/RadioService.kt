@@ -227,6 +227,11 @@ class RadioService : LifecycleService() {
                 .onFailure { Log.w(TAG, "start refused", it) }
         }
 
+        /** Stops the radio and removes the ongoing activity (watch-face icon). */
+        fun stop(ctx: Context) {
+            ctx.stopService(Intent(ctx, RadioService::class.java))
+        }
+
         fun toggleTalk(app: WearApp) {
             val e = app.engine
             if (e.state.value.active?.floor == FloorState.Talking) e.pttUp() else e.pttDown()

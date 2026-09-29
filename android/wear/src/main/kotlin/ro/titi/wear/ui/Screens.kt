@@ -18,6 +18,7 @@ import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Logout
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -262,7 +263,7 @@ fun RecordScreen(engine: EngineHost, state: RadioState, onDone: () -> Unit) {
 // ---- Group actions (page 3): SOS, location, members, settings ------------------------
 
 @Composable
-fun ActionsScreen(engine: EngineHost, state: RadioState, prefs: Prefs, settings: Settings, onSettings: () -> Unit) {
+fun ActionsScreen(engine: EngineHost, state: RadioState, prefs: Prefs, settings: Settings, onSettings: () -> Unit, onQuit: () -> Unit) {
     val g = state.active
     val list = rememberTransformingLazyColumnState()
     val spec = rememberTransformationSpec()
@@ -325,6 +326,7 @@ fun ActionsScreen(engine: EngineHost, state: RadioState, prefs: Prefs, settings:
                     label = { Text(stringResource(R.string.settings)) },
                 )
             }
+            item { QuitButton(Modifier.transformedHeight(this, spec), SurfaceTransformation(spec), onQuit) }
         }
     }
     if (g != null) {
@@ -353,7 +355,7 @@ fun ActionsScreen(engine: EngineHost, state: RadioState, prefs: Prefs, settings:
 }
 
 @Composable
-fun SettingsScreen(prefs: Prefs, settings: Settings) {
+fun SettingsScreen(prefs: Prefs, settings: Settings, onQuit: () -> Unit) {
     val list = rememberTransformingLazyColumnState()
     val spec = rememberTransformationSpec()
     val scope = rememberCoroutineScope()
@@ -361,12 +363,36 @@ fun SettingsScreen(prefs: Prefs, settings: Settings) {
     ScreenScaffold(scrollState = list) { pad ->
         TransformingLazyColumn(state = list, contentPadding = pad) {
             item { ListHeader(Modifier.transformedHeight(this, spec)) { Text(stringResource(R.string.settings)) } }
+            item { Toggle(stringResource(R.string.settings_keep_running), stringResource(R.string.settings_keep_running_desc), settings.keepRunning, Modifier.transformedHeight(this, spec), SurfaceTransformation(spec)) { v -> set { it.copy(keepRunning = v) } } }
+            item {
+                val next = ro.titi.app.data.QualityOverride.entries.let { e -> e[(settings.quality.ordinal + 1) % e.size] }
+                FilledTonalButton(
+                    onClick = { set { it.copy(quality = next) } },
+                    modifier = Modifier.fillMaxWidth().transformedHeight(this, spec).minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding),
+                    transformation = SurfaceTransformation(spec),
+                    label = { Text(stringResource(R.string.settings_quality)) },
+                    secondaryLabel = { Text(stringResource(when (settings.quality) { ro.titi.app.data.QualityOverride.Auto -> R.string.quality_auto; ro.titi.app.data.QualityOverride.Hq -> R.string.quality_hq; ro.titi.app.data.QualityOverride.Std -> R.string.quality_std; ro.titi.app.data.QualityOverride.Low -> R.string.quality_low })) },
+                )
+            }
+            item { Toggle(stringResource(R.string.settings_battery), null, settings.batterySaver, Modifier.transformedHeight(this, spec), SurfaceTransformation(spec)) { v -> set { it.copy(batterySaver = v) } } }
             item { Toggle(stringResource(R.string.use_wifi), stringResource(R.string.use_wifi_desc), settings.useWifiVoice, Modifier.transformedHeight(this, spec), SurfaceTransformation(spec)) { v -> set { it.copy(useWifiVoice = v) } } }
             item { Toggle(stringResource(R.string.use_internet), null, settings.useInternet, Modifier.transformedHeight(this, spec), SurfaceTransformation(spec)) { v -> set { it.copy(useInternet = v) } } }
             item { Toggle(stringResource(R.string.use_ble), null, settings.useBle, Modifier.transformedHeight(this, spec), SurfaceTransformation(spec)) { v -> set { it.copy(useBle = v) } } }
             item { Toggle(stringResource(R.string.haptics_only), null, settings.hapticsOnly, Modifier.transformedHeight(this, spec), SurfaceTransformation(spec)) { v -> set { it.copy(hapticsOnly = v) } } }
+            item { QuitButton(Modifier.transformedHeight(this, spec), SurfaceTransformation(spec), onQuit) }
         }
     }
+}
+
+@Composable
+private fun TransformingLazyColumnItemScope.QuitButton(modifier: Modifier, transformation: SurfaceTransformation, onQuit: () -> Unit) {
+    FilledTonalButton(
+        onClick = onQuit,
+        modifier = modifier.fillMaxWidth().minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding),
+        transformation = transformation,
+        icon = { Icon(Icons.Rounded.PowerSettingsNew, null) },
+        label = { Text(stringResource(R.string.settings_quit)) },
+    )
 }
 
 @Composable

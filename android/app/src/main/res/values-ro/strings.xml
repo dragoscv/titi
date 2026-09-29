@@ -139,7 +139,7 @@
     <string name="settings_transport_ble">Bluetooth LE</string>
     <string name="settings_transport_hotspot">Permite găzduirea unui hotspot</string>
     <string name="settings_battery">Economisire baterie</string>
-    <string name="settings_battery_desc">Căutare mai rară, calitate redusă pe Bluetooth.</string>
+    <string name="settings_battery_desc">Calitate mai mică a vocii și nu mai retransmite vocea altor membri.</string>
     <string name="settings_theme">Temă</string>
     <string name="settings_theme_system">Sistem</string>
     <string name="settings_theme_dark">Întunecată</string>
@@ -179,4 +179,9 @@
     <string name="cd_talk_button">Buton de vorbit. Apasă și ține ca să transmiți.</string>
     <string name="cd_avatar">Avatarul lui %1$s</string>
     <string name="cd_signal_bars">Semnal %1$d din 4</string>
+    <string name="settings_app">Aplicație</string>
+    <string name="settings_keep_running">Rulează în fundal</string>
+    <string name="settings_keep_running_desc">Stația rămâne pornită (cu notificarea ei) după ce ieși din Titi. Oprit: Titi ascultă doar cât e deschisă.</string>
+    <string name="settings_quit">Închide Titi</string>
+    <string name="settings_quit_desc">Oprește stația și elimină notificarea până redeschizi Titi.</string>
 </resources>

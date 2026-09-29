@@ -147,7 +147,7 @@
     <string name="settings_transport_ble">Bluetooth LE</string>
     <string name="settings_transport_hotspot">Allow hosting a hotspot</string>
     <string name="settings_battery">Battery saver</string>
-    <string name="settings_battery_desc">Slower discovery, lower quality on Bluetooth.</string>
+    <string name="settings_battery_desc">Lower voice quality and stop forwarding other members\' voice.</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_theme_system">System</string>
     <string name="settings_theme_dark">Dark</string>
@@ -187,4 +187,9 @@
     <string name="cd_talk_button">Talk button. Press and hold to transmit.</string>
     <string name="cd_avatar">Avatar of %1$s</string>
     <string name="cd_signal_bars">Signal %1$d of 4</string>
+    <string name="settings_app">App</string>
+    <string name="settings_keep_running">Run in the background</string>
+    <string name="settings_keep_running_desc">Keep the radio on (and its notification) after you leave Titi. Off: Titi only listens while it is open.</string>
+    <string name="settings_quit">Quit Titi</string>
+    <string name="settings_quit_desc">Stops the radio and removes the notification until you open Titi again.</string>
 </resources>

@@ -94,4 +94,14 @@
         <item quantity="one">%d online</item>
         <item quantity="other">%d online</item>
     </plurals>
+    <string name="settings_keep_running">Run in background</string>
+    <string name="settings_keep_running_desc">Off: no icon on the watch face; the radio only runs while Titi is open.</string>
+    <string name="settings_quit">Quit Titi</string>
+    <string name="settings_quality">Voice quality</string>
+    <string name="settings_battery">Battery saver</string>
+    <string name="settings_volume_ptt">Hardware button talks</string>
+    <string name="quality_auto">Auto</string>
+    <string name="quality_hq">High</string>
+    <string name="quality_std">Standard</string>
+    <string name="quality_low">Low</string>
 </resources>

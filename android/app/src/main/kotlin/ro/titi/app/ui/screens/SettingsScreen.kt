@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,7 +50,7 @@ import ro.titi.app.ui.theme.TelemetryStyle
 import ro.titi.app.ui.theme.hueColor
 
 @Composable
-fun SettingsScreen(prefs: Prefs, engine: EngineHost, s: Settings, onBack: () -> Unit) {
+fun SettingsScreen(prefs: Prefs, engine: EngineHost, s: Settings, onBack: () -> Unit, onQuit: () -> Unit) {
     val scope = rememberCoroutineScope()
     fun set(f: (Settings) -> Settings) = scope.launch { prefs.update(f) }
 
@@ -100,8 +101,17 @@ fun SettingsScreen(prefs: Prefs, engine: EngineHost, s: Settings, onBack: () -> 
             Section(R.string.settings_transports) {
                 Toggle(R.string.settings_transport_internet, s.useInternet) { v -> set { it.copy(useInternet = v) } }
                 Toggle(R.string.settings_transport_ble, s.useBle) { v -> set { it.copy(useBle = v) } }
-                Toggle(R.string.settings_transport_hotspot, s.allowHotspot) { v -> set { it.copy(allowHotspot = v) } }
                 Toggle(R.string.settings_battery, s.batterySaver, R.string.settings_battery_desc) { v -> set { it.copy(batterySaver = v) } }
+            }
+            Section(R.string.settings_app) {
+                Toggle(R.string.settings_keep_running, s.keepRunning, R.string.settings_keep_running_desc) { v -> set { it.copy(keepRunning = v) } }
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.material3.OutlinedButton(onQuit, Modifier.fillMaxWidth()) {
+                    Icon(Icons.Rounded.PowerSettingsNew, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.settings_quit))
+                }
+                Text(stringResource(R.string.settings_quit_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
             }
             Section(R.string.settings_theme) {
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {

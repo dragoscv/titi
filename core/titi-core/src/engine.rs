@@ -132,11 +132,13 @@ pub struct Config {
     pub avatar_hue: u16,
     pub kdf: crypto::KdfParams,
     pub relay_capable: bool,
+    /// User quality setting: never encode better than this (None = automatic).
+    pub max_profile: Option<Profile>,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        Config { display_name: "Titi".into(), avatar_hue: 40, kdf: crypto::KdfParams::SPEC, relay_capable: true }
+        Config { display_name: "Titi".into(), avatar_hue: 40, kdf: crypto::KdfParams::SPEC, relay_capable: true, max_profile: None }
     }
 }
 
@@ -793,6 +795,12 @@ impl Engine {
     }
 
     fn current_profile(&self, gid: &GroupId) -> Profile {
+        let auto = self.auto_profile(gid);
+        // Profile orders best→worst (Hq < Min): the ceiling is the max of the two
+        self.cfg.max_profile.map_or(auto, |cap| auto.max(cap))
+    }
+
+    fn auto_profile(&self, gid: &GroupId) -> Profile {
         let Some(g) = self.groups.get(gid) else { return Profile::Std };
         let me = self.node_id();
         let mut worst = Profile::Hq;

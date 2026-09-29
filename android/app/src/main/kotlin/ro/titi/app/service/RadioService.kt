@@ -255,7 +255,8 @@ class RadioService : LifecycleService() {
                 .onFailure { android.util.Log.w("RadioService", "start refused", it) }
         }
         fun stop(ctx: Context) {
-            ctx.startService(Intent(ctx, RadioService::class.java).setAction(ACTION_STOP))
+            // stopService is legal from the background (startService with an action is not, API 26+)
+            ctx.stopService(Intent(ctx, RadioService::class.java))
         }
     }
 }

@@ -138,7 +138,19 @@ class EngineHost(private val ctx: Context, private val prefs: Prefs) : Transport
         if (prefs.identitySeed() == null) prefs.saveIdentitySeed(engine.identitySeed())
         prefs.groupsBlob()?.let { runCatching { engine.restoreGroups(it, now()) }.onFailure { e -> Log.w(TAG, "restore", e) } }
         refreshGroups()
-        scope.launch { prefs.settings.collect { s -> cuePlayer.pack = s.soundPack; cuePlayer.hapticsOnly = s.hapticsOnly } }
+        scope.launch {
+            prefs.settings.collect { s ->
+                cuePlayer.pack = s.soundPack; cuePlayer.hapticsOnly = s.hapticsOnly
+                val cap = when (s.quality) {
+                    ro.titi.app.data.QualityOverride.Auto -> if (s.batterySaver) FfiProfile.LOW else null
+                    ro.titi.app.data.QualityOverride.Hq -> FfiProfile.HQ
+                    ro.titi.app.data.QualityOverride.Std -> FfiProfile.STD
+                    ro.titi.app.data.QualityOverride.Low -> FfiProfile.LOW
+                }
+                // battery saver: don't spend radio time forwarding other members' voice
+                post { engine.setMaxProfile(cap); engine.setRelayCapable(!s.batterySaver) }
+            }
+        }
         scope.launch { _cues.collect { cuePlayer.play(it) } }
     }
 

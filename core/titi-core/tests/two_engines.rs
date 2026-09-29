@@ -32,7 +32,7 @@ impl Net {
         let engines = (0..n)
             .map(|i| {
                 let id = Identity::from_seed(&[(i + 1) as u8; 32]);
-                let cfg = Config { display_name: names[i].into(), avatar_hue: 40, kdf: titi_core::crypto::KdfParams::LIGHT, relay_capable: true };
+                let cfg = Config { display_name: names[i].into(), avatar_hue: 40, kdf: titi_core::crypto::KdfParams::LIGHT, relay_capable: true, max_profile: None };
                 Engine::new(id, cfg, 1000 + i as u64)
             })
             .collect();
@@ -438,4 +438,29 @@ fn member_that_missed_memberjoin_is_learned_from_voice() {
     }
     assert!(net.engines[2].groups[&gid].members.contains_key(&b), "C learned B from its voice: {:?}", net.ui[2]);
     assert!(net.has_ui(2, |e| matches!(e, UiEvent::MemberJoined { node, .. } if *node == b)));
+}
+
+fn capture_profile(acts: &[Action]) -> Option<titi_core::frame::Profile> {
+    acts.iter().find_map(|a| match a { Action::Capture { active: true, profile } => Some(*profile), _ => None })
+}
+
+#[test]
+fn quality_setting_caps_the_capture_profile() {
+    use titi_core::frame::Profile;
+    let mut net = Net::new(2, &["Ana", "Ceas"]);
+    let mut now = 1_789_405_000_000u64;
+    net.bring_up(now);
+    net.run(now, now + 500, 20);
+    now += 520;
+    let _gid = group_of_all(&mut net, now);
+    let auto = capture_profile(&net.engines[0].ptt_down(Priority::Normal, now)).expect("capture on");
+    let _ = net.engines[0].ptt_up(now + 100);
+    assert!(auto <= Profile::Std, "automatic profile on LAN is Std or better, got {auto:?}");
+    net.engines[0].cfg.max_profile = Some(Profile::Low);
+    let capped = capture_profile(&net.engines[0].ptt_down(Priority::Normal, now + 2_000)).expect("capture on");
+    assert_eq!(capped, Profile::Low, "user cap Low wins over a better automatic profile");
+    let _ = net.engines[0].ptt_up(now + 2_100);
+    net.engines[0].cfg.max_profile = Some(Profile::Hq);
+    let loose = capture_profile(&net.engines[0].ptt_down(Priority::Normal, now + 4_000)).expect("capture on");
+    assert_eq!(loose, auto, "a cap above the automatic profile changes nothing");
 }

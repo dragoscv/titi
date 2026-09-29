@@ -46,6 +46,8 @@ import androidx.compose.material.icons.rounded.MicOff
 import androidx.compose.material.icons.rounded.QrCode2
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Sms
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -81,6 +83,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.map
 import ro.titi.app.core.EngineHost
@@ -94,7 +97,7 @@ import ro.titi.tv.MainActivity
 import ro.titi.tv.R
 import uniffi.titi_ffi.FfiMessageBody
 
-private enum class Sheet { None, Invite, Join }
+private enum class Sheet { None, Invite, Join, Settings }
 
 /** Overscan-safe margins for a 960×540 dp canvas. */
 private val SafeH = 48.dp
@@ -152,6 +155,7 @@ fun TvRoot(engine: EngineHost, prefs: Prefs, activity: MainActivity) {
                 onTalkDown = activity::talkDown,
                 onTalkUp = activity::talkUp,
                 onJoin = { sheet = Sheet.Join },
+                onSettings = { sheet = Sheet.Settings },
                 onCreate = { engine.createGroup(res.getString(R.string.create_default_name)) },
                 onRight = { if (sel != null) runCatching { talkReq.requestFocus() } },
             )
@@ -175,6 +179,7 @@ fun TvRoot(engine: EngineHost, prefs: Prefs, activity: MainActivity) {
         Sheet.Join -> SheetDialog(onDismiss = { sheet = Sheet.None }) {
             JoinPanel(onJoin = { code -> engine.joinByCode(code); toast = res.getString(R.string.join_looking); sheet = Sheet.None })
         }
+        Sheet.Settings -> settings?.let { s -> SheetDialog(onDismiss = { sheet = Sheet.None }) { SettingsPanel(prefs, engine, s, onQuit = activity::quit) } }
         Sheet.None -> Unit
     }
 }
@@ -191,6 +196,7 @@ private fun Rail(
     onTalkDown: () -> Unit,
     onTalkUp: () -> Unit,
     onJoin: () -> Unit,
+    onSettings: () -> Unit,
     onCreate: () -> Unit,
     onRight: () -> Unit,
 ) {
@@ -229,6 +235,7 @@ private fun Rail(
                 RailAction(Icons.Rounded.Login, stringResource(R.string.join_group), onJoin, if (groups.isEmpty()) Modifier.focusRequester(firstReq) else Modifier)
             }
             item(key = "create") { RailAction(Icons.Rounded.Add, stringResource(R.string.create_group), onCreate) }
+            item(key = "settings") { RailAction(Icons.Rounded.Settings, stringResource(R.string.settings), onSettings) }
         }
         Text(stringResource(R.string.rail_hint), color = Tv.Muted, fontSize = 9.sp, modifier = Modifier.padding(top = 8.dp))
     }
@@ -509,6 +516,55 @@ private fun InvitePanel(engine: EngineHost, gid: String, name: String) {
 }
 
 
+
+/** Every TV setting, D-pad only: OK toggles / cycles. */
+@Composable
+private fun SettingsPanel(prefs: Prefs, engine: EngineHost, s: ro.titi.app.data.Settings, onQuit: () -> Unit) {
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    fun set(f: (ro.titi.app.data.Settings) -> ro.titi.app.data.Settings) { scope.launch { prefs.update(f) } }
+    val first = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
+    val on = stringResource(R.string.on)
+    val off = stringResource(R.string.off)
+    val qualities = listOf(R.string.quality_auto, R.string.quality_hq, R.string.quality_std, R.string.quality_low)
+    val sounds = listOf(R.string.sound_bird, R.string.sound_radio, R.string.sound_minimal)
+    Text(stringResource(R.string.settings), color = Tv.Ink, fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 12.dp))
+    Column(Modifier.focusGroup(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        SettingRow(stringResource(R.string.settings_name), s.name, Modifier.focusRequester(first)) {
+            // cycle through room names (no keyboard needed); the device name stays the default
+            val rooms = listOf(s.name, "Living room TV", "Bedroom TV", "Kitchen TV", "Office TV").distinct()
+            val next = rooms[(rooms.indexOf(s.name) + 1) % rooms.size]
+            set { it.copy(name = next) }; engine.setDisplayName(next, s.hue)
+        }
+        SettingRow(stringResource(R.string.settings_keep_running), if (s.keepRunning) on else off) { set { it.copy(keepRunning = !it.keepRunning) } }
+        SettingRow(stringResource(R.string.settings_internet), if (s.useInternet) on else off) { set { it.copy(useInternet = !it.useInternet) } }
+        SettingRow(stringResource(R.string.settings_ble), if (s.useBle) on else off) { set { it.copy(useBle = !it.useBle) } }
+        SettingRow(stringResource(R.string.settings_quality), stringResource(qualities[s.quality.ordinal])) {
+            set { it.copy(quality = ro.titi.app.data.QualityOverride.entries[(it.quality.ordinal + 1) % 4]) }
+        }
+        SettingRow(stringResource(R.string.settings_sounds), stringResource(sounds[s.soundPack.ordinal])) {
+            set { it.copy(soundPack = ro.titi.app.data.SoundPack.entries[(it.soundPack.ordinal + 1) % 3]) }
+        }
+        SettingRow(stringResource(R.string.settings_quit), "", icon = Icons.Rounded.PowerSettingsNew, onClick = onQuit)
+    }
+}
+
+@Composable
+private fun SettingRow(label: String, value: String, modifier: Modifier = Modifier, icon: ImageVector? = null, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        shape = tileShape(12.dp),
+        colors = ClickableSurfaceDefaults.colors(containerColor = Tv.Elevated, contentColor = Tv.Ink, focusedContainerColor = Tv.Amber, focusedContentColor = Tv.Graphite),
+        border = amberFocusBorder(12.dp),
+    ) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) { Icon(icon, null, Modifier.size(18.dp)); Spacer(Modifier.width(10.dp)) }
+            Text(label, fontSize = 14.sp, modifier = Modifier.weight(1f))
+            Text(value, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
 
 @Composable
 private fun JoinPanel(onJoin: (String) -> Unit) {

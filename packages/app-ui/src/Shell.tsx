@@ -20,6 +20,17 @@ export function Shell({ joinLink }: { joinLink?: string }) {
   const activeGroup = useStore((s) => s.activeGroup);
   const pendingLink = useStore((s) => s.pendingLink);
   const [route, setRoute] = useState<Route>({ name: "home" });
+  // OS shell asked for a screen (jump list entry, toast button): react to the store, not in render
+  useEffect(() => {
+    const take = (s: ReturnType<typeof useStore.getState>) => {
+      const r = s.pendingRoute;
+      if (!r || !s.ready || !s.settings.onboarded) return;
+      s.set({ pendingRoute: null });
+      if (r !== "join") host.setActiveGroup(r);
+      setRoute(r === "join" ? { name: "join" } : { name: "group", id: r });
+    };
+    return useStore.subscribe(take);
+  }, []);
   const unsupported = !useStore((s) => s.voiceSupported);
   // once a join succeeds, jump to the group (adjusted during render instead of in an effect)
   if (route.name === "join" && activeGroup) setRoute({ name: "group", id: activeGroup });

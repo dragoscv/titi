@@ -50,6 +50,8 @@ export interface TitiHost {
   /** Optional platform extras. */
   audioDevices?(): Promise<{ inputs: AudioDevice[]; outputs: AudioDevice[] }>;
   capturePttKey?(): Promise<string | null>;
+  /** Stop the radio and exit the app completely (desktop, TV). Absent on web: close the tab. */
+  quit?(): void;
 }
 
 let impl: TitiHost | null = null;

@@ -164,14 +164,37 @@ Legend of surfaces: **C** core (Rust) · **B** backend · **A** Android ·
 |---|---|---|---|
 | DK-01 | Native engine thread + LAN multicast (all IPv4 ifaces, re-join) + WSS relay (rustls/ring) + cpal audio | done | `tauri dev`: "lan bound :41414 on 4 interface(s)", "relay connected"; LAN sessions with S25 (.243) and watch (.242) |
 | DK-02 | Global hold-to-talk (LL keyboard + mouse hooks), learnable key | done (hook) | "ptt hooks: keyboard=true mouse=true"; `ptt::tests` |
-| DK-03 | Tray (open/mute/quit), close-to-tray, overlay pill, notifications, autostart, single instance, `titi://` | done (code) | overlay/tray compiled; not screenshot-verified |
+| DK-03 | Tray (open/talk/mute/quit), close-to-tray, overlay pill, notifications, autostart, single instance, `titi://` | done | installed build 2026-09-29: A51 talking → overlay window visible at bottom-centre, its DOM "Ana is talking"; tray tooltip "Titi — Ana is talking" (UIA); tray menu items not screenshot-verified |
 | DK-04 | Mica window on Windows 11 | done | screenshot `.copilot-tmp/desk1.png` |
 | DK-05 | Desktop ↔ Tizen voice over relay, both directions | done | TV played 145 packets from desktop; desktop "play #101" from TV |
 | DK-06 | Desktop → Google TV voice over LAN | done | GTV logcat FloorTaken → play #1…#151 → FloorIdle |
 | DK-07 | Clippy -D warnings + unit tests in gates (`desktop` lane) | done | 4/4 tests |
-| DK-08 | NSIS installer + firewall rule hook, MSIX/Store | todo | `tauri.conf.json` + `windows/hooks.nsh` written, bundle not built |
+| DK-08 | NSIS installer + firewall rule hook, MSIX/Store | done (MSIX voice open) | `scripts/desktop-bundle.ps1` → `Titi_0.1.0_x64-setup.exe` 3.2 MB; silent per-machine install to `C:\Program Files\Titi`, rule "Titi LAN" UDP Private/Domain only; installed app ↔ A51 over LAN both ways (desktop play #151 / A51 FloorTaken→play→FloorIdle). MSIX via `scripts/desktop-msix.ps1` (winapp 0.7, `windows/msix/Package.appxmanifest`, firewallRules extension, dev cert) installs + runs from WindowsApps with 3 LAN peers; voice through the MSIX build not yet verified; Store identity is a placeholder until the Partner Center name is reserved |
+| DK-11 | Windows 11 shell: taskbar thumbnail Talk/Mute, jump list (groups + tasks), actionable toasts, explicit AUMID, file log | done | `src/winshell.rs`; jump list on screen: Sufragerie / Mute-unmute / Join (custom category refused when "recent items" is off → listed under Tasks); `--toggle-mute` task → log `mute true`; thumbbar WM_COMMAND THBN_CLICKED → Mute toggled, Talk → A51 FloorTaken/play #151/FloorIdle; toast "Open / Hold to talk" in Action Center, Open → log `toast action open:<gid>`; log `%LOCALAPPDATA%\Titi\logs\titi.log` |
 | DK-09 | BLE GATT profile Windows ↔ Android | todo | Windows has no L2CAP CoC (ADR-0008) |
 | DK-10 | macOS / Linux builds | todo | same crate; needs CI runners |
+
+## 5f. Quit + settings on every platform (user request 2026-09-29)
+
+| ID | Item | Status | Evidence |
+|---|---|---|---|
+| QS-01 | Watch: Quit button (Actions page + Settings) stops the radio service, removes the ongoing activity / watch-face icon, closes the app | todo | |
+| QS-02 | Watch: "Run in background" switch — off = no FGS/icon while Titi is closed | todo | |
+| QS-03 | Phone: Settings → App: Run in background + Quit Titi | todo | |
+| QS-04 | Google TV: Settings sheet (name, background, internet, BLE, quality, sounds, Quit) | todo | |
+| QS-05 | Desktop: Settings → App: start with computer, run in background (close = quit when off), Quit; tray "Quit Titi" uses the same clean path | todo | |
+| QS-06 | Tizen: rail Settings (name, volume, Quit); Back exits through the same shutdown | todo | |
+| QS-07 | Every stored setting is honoured: quality cap + battery saver reach the engine (`Config.max_profile`, `relay_capable`), dead "allow hotspot" toggle removed until A-16 exists | todo | core test `quality_setting_caps_the_capture_profile` |
+| QS-08 | Web: settings audit (no quit: the tab is the app) | todo | |
+
+## 5g. Build speed + size budgets (2026-09-29)
+
+| ID | Item | Status | Evidence |
+|---|---|---|---|
+| PF-01 | Gradle warm gate: lint re-ran ~90 s every run (daemon JDK differed per shell → lint `javaVersion` input changed) | done | `android/gradle/gradle-daemon-jvm.properties` pins 22; `ignoreTestSources` on all lint blocks; `checkFossNoGms` gets an output. Warm no-op 71 s → 15 s (`scripts/perf-gradle.ps1`), full warm `gates.ps1` 96–103 s → 41.5 s |
+| PF-02 | `run-build.ps1` hung for hours after a build that cold-started a daemon (pipe EOF never came) | done | waits on the process + tails a file; cold Gradle daemon build returned at 31 s with its exit code |
+| PF-03 | APK size: drop icons-extended (vendored 21 icons, `scripts/vendor-icons.mjs`), ABI filters, no ui-tooling | done | debug: phone 54.8 → 45.5 MB, watch 85.6 → 50.9, TV 29.2 → 17.8 |
+| PF-04 | Size + time budgets as gates (`scripts/size-budgets.ps1` lane; `-BudgetSec 180` wall budget) | done | `gates.ps1` → `size budgets: ok`, all gates passed 41.5 s |
 
 ## 5d. Samsung Tizen (`apps/tv`)
 

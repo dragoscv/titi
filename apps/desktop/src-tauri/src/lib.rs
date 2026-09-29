@@ -7,6 +7,8 @@ pub mod engine;
 pub mod lan;
 pub mod ptt;
 pub mod relay;
+#[cfg(windows)]
+pub mod winshell;
 
 use std::sync::atomic::Ordering;
 use std::sync::mpsc;
@@ -15,9 +17,10 @@ use serde::Serialize;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
+#[cfg(not(windows))]
 use tauri_plugin_notification::NotificationExt;
 
-use engine::{now_ms, Cmd, EngineTx, Host, Settings, Sink};
+use engine::{now_ms, Alert, Cmd, EngineTx, Host, Settings, Sink};
 
 struct AppState {
     tx: EngineTx,
@@ -42,6 +45,10 @@ impl Sink for TauriSink {
         let _ = self.0.emit("titi://ui", ev);
     }
     fn groups(&self, g: String) {
+        #[cfg(windows)]
+        if let Ok(v) = serde_json::from_str::<Vec<serde_json::Value>>(&g) {
+            winshell::set_jump_list(v.iter().filter_map(|x| Some((x["id"].as_str()?.to_string(), x["name"].as_str()?.to_string()))).collect());
+        }
         let _ = self.0.emit("titi://groups", g);
     }
     fn level(&self, dbfs: f32) {
@@ -51,9 +58,87 @@ impl Sink for TauriSink {
         let _ = self.0.emit("titi://floor", FloorEv { talking, talker: talker.clone() });
         update_tray(&self.0, talking, talker.as_deref());
         show_overlay(&self.0, talking && talker.is_some());
+        #[cfg(windows)]
+        winshell::set_state(&self.0, Some(talking && talker.is_none()), None);
     }
-    fn notify(&self, title: &str, body: &str) {
-        let _ = self.0.notification().builder().title(title).body(body).show();
+    fn alert(&self, a: Alert) {
+        if main_focused(&self.0) && !matches!(a, Alert::Sos { .. }) {
+            return; // the in-app banner / chat already shows it
+        }
+        show_alert(&self.0, a);
+    }
+}
+
+fn main_focused(app: &AppHandle) -> bool {
+    app.get_webview_window("main").and_then(|w| w.is_focused().ok()).unwrap_or(false)
+}
+
+/// Actionable toast on Windows (Join / Not now, Open, Talk); plain notification elsewhere.
+fn show_alert(app: &AppHandle, a: Alert) {
+    let (title, body) = match &a {
+        Alert::Invite { host_name, name, members, .. } => (format!("{host_name} invites you"), format!("Join “{name}” · {members} members")),
+        Alert::Text { from_name, group_name, text, .. } => (format!("{from_name} · {group_name}"), text.clone()),
+        Alert::Sos { from_name, note, cancelled, .. } => (if *cancelled { format!("{from_name} is safe") } else { format!("SOS from {from_name}") }, if note.is_empty() { "Emergency".into() } else { note.clone() }),
+    };
+    #[cfg(windows)]
+    {
+        let (buttons, default_action) = match &a {
+            Alert::Invite { group, host, .. } => (vec![("Join".to_string(), format!("accept:{group}:{host}")), ("Not now".to_string(), format!("decline:{group}:{host}"))], format!("open:{group}")),
+            Alert::Text { group, .. } => (vec![("Open".to_string(), format!("open:{group}")), ("Hold to talk".to_string(), format!("talk:{group}"))], format!("open:{group}")),
+            Alert::Sos { group, .. } => (vec![("Open".to_string(), format!("open:{group}"))], format!("open:{group}")),
+        };
+        let h = app.clone();
+        winshell::toast(winshell::ToastSpec { title, body, buttons, default_action }, move |arg| toast_action(&h, &arg));
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = app.notification().builder().title(title).body(body).show();
+    }
+}
+
+/// Toast button / body → engine + UI. Runs on a WinRT thread.
+fn toast_action(app: &AppHandle, arg: &str) {
+    log::info!("toast action {arg}");
+    let Some(st) = app.try_state::<AppState>() else { return };
+    let mut it = arg.split(':');
+    match (it.next(), it.next(), it.next()) {
+        (Some("accept"), Some(g), Some(host)) => { let (g, host) = (g.to_string(), host.to_string()); let _ = call(&st.tx, move |h| { if let (Ok(g), Ok(n)) = (Host::gid(&g), Host::nid(&host)) { h.run(|e, t| e.accept_invite(g, n, t)) } }); let _ = app.emit("titi://route", arg.split(':').nth(1).unwrap_or_default()); show_main(app); }
+        (Some("decline"), Some(g), Some(host)) => { let (g, host) = (g.to_string(), host.to_string()); let _ = call(&st.tx, move |h| { if let (Ok(g), Ok(n)) = (Host::gid(&g), Host::nid(&host)) { h.run(|e, t| e.decline_invite(g, n, t)) } }); }
+        (Some("open"), Some(g), _) => { let _ = app.emit("titi://route", g); show_main(app); }
+        // a toast button can't be held: start a talk, stop with the thumbbar / hotkey / tray (60 s cap in the engine)
+        (Some("talk"), Some(g), _) => { let g = g.to_string(); let _ = call(&st.tx, move |h| { if let Ok(g) = Host::gid(&g) { h.eng.set_active_group(g); h.push_groups(); } }); let _ = st.tx.send(Cmd::PttDown(0)); }
+        _ => {}
+    }
+}
+
+/// Single source of truth for mute: engine → UI + thumbbar + tray label.
+fn set_muted(app: &AppHandle, muted: bool) {
+    log::info!("mute {muted}");
+    if let Some(st) = app.try_state::<AppState>() {
+        let _ = call(&st.tx, move |h| h.set_muted(muted));
+    }
+    let _ = app.emit("titi://muted", muted);
+    if let Some(m) = app.try_state::<MuteItem>() {
+        let _ = m.0.set_text(if muted { "Unmute microphone" } else { "Mute microphone" });
+    }
+    #[cfg(windows)]
+    winshell::set_state(app, None, Some(muted));
+}
+
+fn toggle_mute(app: &AppHandle) {
+    let now = app.try_state::<AppState>().and_then(|st| call(&st.tx, |h| h.muted).ok()).unwrap_or(false);
+    set_muted(app, !now);
+}
+
+struct MuteItem(MenuItem<tauri::Wry>);
+
+/// argv from the jump list / a second instance: --group=<id>, --join, --toggle-mute.
+fn handle_args(app: &AppHandle, args: &[String]) {
+    log::info!("args {:?}", &args[1.min(args.len())..]);
+    for a in args {
+        if let Some(g) = a.strip_prefix("--group=") { let _ = app.emit("titi://route", g); show_main(app); }
+        else if a == "--join" { let _ = app.emit("titi://route", "join"); show_main(app); }
+        else if a == "--toggle-mute" { toggle_mute(app); }
     }
 }
 
@@ -73,6 +158,25 @@ fn show_overlay(app: &AppHandle, on: bool) {
 }
 
 struct OverlayPref(std::sync::atomic::AtomicBool);
+struct CloseToTray(std::sync::atomic::AtomicBool);
+
+/// The one exit path (tray Quit, Settings → Quit, window close with close-to-tray off):
+/// release the floor, stop the engine thread, then exit the process.
+fn quit(app: &AppHandle) {
+    log::info!("quit");
+    if let Some(st) = app.try_state::<AppState>() {
+        let (tx, rx) = mpsc::channel::<()>();
+        let _ = st.tx.send(Cmd::Call(Box::new(move |_| { let _ = tx.send(()); })));
+        let _ = rx.recv_timeout(std::time::Duration::from_secs(2)); // queued PTT/audio drained
+        let _ = st.tx.send(Cmd::Quit);
+    }
+    app.exit(0);
+}
+
+#[tauri::command]
+fn titi_quit(app: AppHandle) {
+    quit(&app);
+}
 
 // ---- commands: UI → engine --------------------------------------------------
 
@@ -90,6 +194,7 @@ fn titi_init(st: State<AppState>) -> Result<InitInfo, String> {
 fn titi_save_settings(app: AppHandle, st: State<AppState>, settings: Settings) -> Result<(), String> {
     ptt::set_binding(&settings.ptt_key);
     if let Some(p) = app.try_state::<OverlayPref>() { p.0.store(settings.overlay, Ordering::Relaxed) }
+    if let Some(p) = app.try_state::<CloseToTray>() { p.0.store(settings.close_to_tray, Ordering::Relaxed) }
     {
         use tauri_plugin_autostart::ManagerExt;
         let al = app.autolaunch();
@@ -104,8 +209,8 @@ fn titi_ptt(st: State<AppState>, down: bool, prio: Option<u8>) -> Result<(), Str
 }
 
 #[tauri::command]
-fn titi_mute(st: State<AppState>, muted: bool) -> Result<(), String> {
-    call(&st.tx, move |h| h.set_muted(muted))
+fn titi_mute(app: AppHandle, muted: bool) {
+    set_muted(&app, muted);
 }
 
 #[tauri::command]
@@ -160,13 +265,21 @@ fn titi_parse_code(text: String) -> bool {
 fn titi_debug(st: State<AppState>) -> Result<serde_json::Value, String> {
     call(&st.tx, |h| {
         let peers: Vec<serde_json::Value> = h.eng.sessions.values().map(|s| serde_json::json!({ "link": s.link, "token": s.token, "node": s.node.map(|n| titi_core::json::hex(&n)) })).collect();
-        serde_json::json!({ "node": h.node_hex(), "played": h.played, "sessions": peers, "groups": h.eng.groups.len() })
+        serde_json::json!({ "node": h.node_hex(), "played": h.played, "sessions": peers, "groups": h.eng.groups.len(), "muted": h.muted })
     })
 }
 
 #[tauri::command]
 fn titi_cue(st: State<AppState>, kind: String) -> Result<(), String> {
     call(&st.tx, move |h| h.cue(&kind))
+}
+
+/// Verification hook: raise the same toast a remote text message would.
+#[tauri::command]
+fn titi_shell_test(app: AppHandle, st: State<AppState>) -> Result<(), String> {
+    let g = call(&st.tx, |h| h.eng.groups.values().next().map(|g| (titi_core::json::hex(&g.id), g.name.clone())))?.ok_or("no group")?;
+    show_alert(&app, Alert::Text { group: g.0, group_name: g.1, from_name: "Titi test".into(), text: "Toast with actions".into() });
+    Ok(())
 }
 
 #[derive(Serialize)]
@@ -181,14 +294,6 @@ async fn titi_devices() -> Devices {
 #[tauri::command]
 async fn titi_learn_ptt() -> Option<String> {
     tauri::async_runtime::spawn_blocking(ptt::learn).await.ok().flatten()
-}
-
-#[tauri::command]
-fn titi_notify(app: AppHandle, title: String, body: String) {
-    let focused = app.get_webview_window("main").and_then(|w| w.is_focused().ok()).unwrap_or(false);
-    if !focused {
-        let _ = app.notification().builder().title(title).body(body).show();
-    }
 }
 
 fn show_main(app: &AppHandle) {
@@ -209,13 +314,34 @@ fn handle_links(app: &AppHandle, urls: Vec<String>) {
     }
 }
 
+/// Installed builds have no console: log to %LOCALAPPDATA%\Titi\logs\titi.log
+/// (MSIX redirects it into the package's LocalCache). One rotation at 2 MB.
+fn init_logging() {
+    let mut b = env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info,tao=warn,wry=warn"));
+    if let Some(dir) = dirs::data_local_dir().map(|d| d.join("Titi").join("logs")) {
+        let path = dir.join("titi.log");
+        let _ = std::fs::create_dir_all(&dir);
+        if std::fs::metadata(&path).map(|m| m.len() > 2 << 20).unwrap_or(false) {
+            let _ = std::fs::rename(&path, dir.join("titi.1.log"));
+        }
+        if let Ok(f) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+            b.target(env_logger::Target::Pipe(Box::new(f)));
+        }
+    }
+    b.init();
+}
+
 pub fn run() {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info,tao=warn,wry=warn")).init();
+    init_logging();
+    #[cfg(windows)]
+    winshell::set_process_aumid();
     // tungstenite's rustls build ships no default provider; pick ring once, process-wide
     let _ = rustls::crypto::ring::default_provider().install_default();
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, argv, _| {
-            show_main(app);
+            // jump-list tasks re-launch the exe with flags; toggling mute must not pop the window
+            if !argv.iter().any(|a| a == "--toggle-mute") { show_main(app); }
+            handle_args(app, &argv);
             handle_links(app, argv.into_iter().filter(|a| a.contains("titi://") || a.contains("/j/")).collect());
         }))
         .plugin(tauri_plugin_deep_link::init())
@@ -227,6 +353,7 @@ pub fn run() {
             let started = engine::spawn(dir, Box::new(TauriSink(app.handle().clone())));
             ptt::set_binding(&started.settings.ptt_key);
             app.manage(OverlayPref(std::sync::atomic::AtomicBool::new(started.settings.overlay)));
+            app.manage(CloseToTray(std::sync::atomic::AtomicBool::new(started.settings.close_to_tray)));
             let h2 = app.handle().clone();
             ptt::install(started.tx.clone(), move |down| { let _ = h2.emit("titi://ptt-key", down); });
             app.manage(AppState { tx: started.tx.clone(), node_id: started.node_id.clone() });
@@ -253,12 +380,30 @@ pub fn run() {
                 }
             }
             if std::env::args().any(|a| a == "--minimized") { let _ = main.hide(); }
+            #[cfg(windows)]
+            if let Ok(hwnd) = main.hwnd() {
+                let (h, tx) = (app.handle().clone(), started.tx.clone());
+                winshell::install_thumbbar(hwnd.0 as isize, move |a| match a {
+                    // taskbar buttons are clicks, not holds: toggle talking
+                    winshell::ThumbAction::Talk => { let _ = tx.send(if winshell::talking() { Cmd::PttUp } else { Cmd::PttDown(0) }); }
+                    winshell::ThumbAction::Mute => toggle_mute(&h),
+                });
+            }
+            {
+                let args: Vec<String> = std::env::args().collect();
+                let h = app.handle().clone();
+                if args.iter().any(|a| a.starts_with("--group=") || a == "--join" || a == "--toggle-mute") {
+                    std::thread::spawn(move || { std::thread::sleep(std::time::Duration::from_millis(1500)); handle_args(&h, &args) });
+                }
+            }
 
             // tray
             let open = MenuItem::with_id(app, "open", "Open Titi", true, None::<&str>)?;
+            let talk = MenuItem::with_id(app, "talk", "Talk / stop talking", true, None::<&str>)?;
             let mute = MenuItem::with_id(app, "mute", "Mute microphone", true, None::<&str>)?;
-            let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&open, &mute, &PredefinedMenuItem::separator(app)?, &quit])?;
+            let quit_item = MenuItem::with_id(app, "quit", "Quit Titi", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&open, &talk, &mute, &PredefinedMenuItem::separator(app)?, &quit_item])?;
+            app.manage(MuteItem(mute.clone()));
             let tx = started.tx.clone();
             TrayIconBuilder::with_id("main")
                 .icon(app.default_window_icon().cloned().expect("icon"))
@@ -267,8 +412,15 @@ pub fn run() {
                 .show_menu_on_left_click(false)
                 .on_menu_event(move |app, e| match e.id.as_ref() {
                     "open" => show_main(app),
-                    "mute" => { let _ = app.emit("titi://toggle-mute", ()); }
-                    "quit" => { let _ = tx.send(Cmd::Quit); app.exit(0) }
+                    "mute" => toggle_mute(app),
+                    "talk" => {
+                        #[cfg(windows)]
+                        let on = winshell::talking();
+                        #[cfg(not(windows))]
+                        let on = false;
+                        let _ = tx.send(if on { Cmd::PttUp } else { Cmd::PttDown(0) });
+                    }
+                    "quit" => quit(app),
                     _ => {}
                 })
                 .on_tray_icon_event(|t, e| {
@@ -298,13 +450,17 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|w, e| {
-            // closing the main window keeps Titi in the tray (radio stays on)
             if let tauri::WindowEvent::CloseRequested { api, .. } = e {
-                if w.label() == "main" { api.prevent_close(); let _ = w.hide(); }
+                if w.label() == "main" {
+                    api.prevent_close();
+                    // "Run in the background": close hides to the tray (radio stays on); off: quit for real
+                    let to_tray = w.app_handle().try_state::<CloseToTray>().map(|c| c.0.load(Ordering::Relaxed)).unwrap_or(true);
+                    if to_tray { let _ = w.hide(); } else { quit(w.app_handle()) }
+                }
             }
         })
         .invoke_handler(tauri::generate_handler![
-            titi_init, titi_save_settings, titi_ptt, titi_mute, titi_create_group, titi_group_op, titi_join, titi_code, titi_deep_link, titi_parse_code, titi_cue, titi_devices, titi_learn_ptt, titi_notify, titi_debug
+            titi_init, titi_save_settings, titi_ptt, titi_mute, titi_create_group, titi_group_op, titi_join, titi_code, titi_deep_link, titi_parse_code, titi_cue, titi_devices, titi_learn_ptt, titi_debug, titi_shell_test, titi_quit
         ])
         .run(tauri::generate_context!())
         .expect("error while running titi");

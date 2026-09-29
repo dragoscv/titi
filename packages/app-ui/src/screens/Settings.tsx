@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, Power } from "lucide-react";
 import { host, type AudioDevice } from "../platform";
 import { DEFAULT_RELAY, useStore } from "../store";
 import { hueColor } from "../cn";
@@ -39,7 +39,16 @@ export function Settings({ go }: { go: (r: Route) => void }) {
           <Section title="Push to talk">
             <PttKey />
             <Toggle label="Floating talker bubble" hint="Shows who is talking when Titi is in the tray" on={settings.overlay} set={(v) => host.saveSettings({ overlay: v })} />
-            <Toggle label="Start with Windows" hint="Launch minimised to the tray so the radio is always on" on={settings.autostart} set={(v) => host.saveSettings({ autostart: v })} />
+          </Section>
+        )}
+        {host.quit && (
+          <Section title="App">
+            {caps.globalPtt && <Toggle label="Start with the computer" hint="Launch minimised to the tray so the radio is always on" on={settings.autostart} set={(v) => host.saveSettings({ autostart: v })} />}
+            {caps.globalPtt && <Toggle label="Run in the background" hint="Closing the window keeps Titi in the tray. Off: closing the window quits Titi." on={settings.closeToTray} set={(v) => host.saveSettings({ closeToTray: v })} />}
+            <button type="button" onClick={() => host.quit?.()} className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-outline font-semibold hover:border-danger hover:text-danger">
+              <Power size={18} /> Quit Titi
+            </button>
+            <p className="mt-2 text-xs text-muted">Stops the radio and closes Titi completely until you open it again.</p>
           </Section>
         )}
         <Section title="Connection">

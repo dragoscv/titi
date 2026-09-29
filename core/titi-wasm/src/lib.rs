@@ -202,7 +202,7 @@ impl WasmEngine {
         } else {
             Identity::generate()
         };
-        let cfg = Config { display_name, avatar_hue, kdf: titi_core::crypto::KdfParams::LIGHT, relay_capable: false };
+        let cfg = Config { display_name, avatar_hue, kdf: titi_core::crypto::KdfParams::LIGHT, relay_capable: false, max_profile: None };
         WasmEngine { inner: Engine::new(id, cfg, rng_seed) }
     }
 

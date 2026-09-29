@@ -98,7 +98,12 @@ fun TitiApp(engine: EngineHost, prefs: Prefs, settings: Settings) {
                         }
                         is Chat -> NavEntry(key) { ChatScreen(engine, state, key.id, onBack = { backStack.removeLastOrNull() }) }
                         is Join -> NavEntry(key) { JoinScreen(engine, state, onBack = { backStack.removeLastOrNull() }) }
-                        is SettingsRoute -> NavEntry(key) { SettingsScreen(prefs, engine, settings, onBack = { backStack.removeLastOrNull() }) }
+                        is SettingsRoute -> NavEntry(key) {
+                            val act = androidx.activity.compose.LocalActivity.current
+                            SettingsScreen(prefs, engine, settings, onBack = { backStack.removeLastOrNull() }, onQuit = {
+                                act?.let { a -> ro.titi.app.util.RadioLifecycle.quit(a) { ro.titi.app.service.RadioService.stop(a) } }
+                            })
+                        }
                         else -> NavEntry(key) { Text("?") }
                     }
                 },

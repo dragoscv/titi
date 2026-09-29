@@ -10,5 +10,6 @@ try {
   (window as unknown as { tizen?: Tizen }).tizen?.tvinputdevice?.registerKeyBatch(["MediaPlayPause", "ColorF0Red", "ColorF1Green"]);
 } catch { /* not on Tizen (browser dev) */ }
 
-installHost(new WebHost({ kind: "tv", tenFoot: true }));
+const tizenExit = () => (window as unknown as { tizen?: { application: { getCurrentApplication(): { exit(): void } } } }).tizen?.application.getCurrentApplication().exit();
+installHost(new WebHost({ kind: "tv", tenFoot: true, exit: tizenExit }));
 createRoot(document.getElementById("root")!).render(<TvShell />);

@@ -10,8 +10,10 @@
   pwsh -NoProfile -File scripts/gates.ps1 -Build     # also production builds
 #>
 param(
-  [ValidateSet('all', 'js', 'native', 'desktop')] [string] $Only = 'all',
-  [switch] $Build
+  [ValidateSet('all', 'js', 'native', 'desktop', 'size')] [string] $Only = 'all',
+  [switch] $Build,
+  # warm-cache wall-time budget (2026-09-29: ~60-100 s warm); a regression past it fails the gate
+  [int] $BudgetSec = 180
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -39,6 +41,10 @@ $lanes = [ordered]@{
     @{ Name = 'clippy';    Dir = 'core';    Cmd = 'cargo clippy --workspace --all-targets --features titi-ffi/cli -- -D warnings' }
     @{ Name = 'rust-test'; Dir = 'core';    Cmd = $rustTest }
     @{ Name = 'gradle';    Dir = 'android'; Cmd = "$gradle $($gradleTasks -join ' ') --console=plain" }
+  )
+  # artifact size budgets (reports 'skip' for artifacts not built in this tree)
+  size = @(
+    @{ Name = 'size-budgets'; Dir = '.'; Cmd = 'pwsh -NoProfile -File scripts/size-budgets.ps1' }
   )
 }
 if ($Build) {
@@ -69,4 +75,8 @@ $results | Sort-Object Seconds -Descending | Format-Table Gate, Seconds, Exit, L
 'wall: {0:N1}s  logs: {1}' -f $total.Elapsed.TotalSeconds, $logDir | Write-Host
 $failed = @($results | Where-Object { $_.Exit -ne 0 })
 if ($failed.Count -gt 0) { Write-Host ('FAILED: ' + ($failed.Gate -join ', ')) -ForegroundColor Red; exit 1 }
+if (-not $Build -and $Only -eq 'all' -and $total.Elapsed.TotalSeconds -gt $BudgetSec) {
+  Write-Host ("TIME BUDGET: {0:N0}s > {1}s (warm). Profile: pwsh scripts/perf-gradle.ps1" -f $total.Elapsed.TotalSeconds, $BudgetSec) -ForegroundColor Red; exit 1
+}
 Write-Host 'all gates passed' -ForegroundColor Green
+exit 0

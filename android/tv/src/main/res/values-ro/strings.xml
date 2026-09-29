@@ -54,4 +54,21 @@
         <item quantity="few">%d membri</item>
         <item quantity="other">%d de membri</item>
     </plurals>
+    <string name="settings">Setări</string>
+    <string name="settings_name">Nume</string>
+    <string name="settings_keep_running">Rulează în fundal</string>
+    <string name="settings_internet">Releu prin internet</string>
+    <string name="settings_ble">Bluetooth</string>
+    <string name="settings_quality">Calitate voce</string>
+    <string name="settings_sounds">Sunete</string>
+    <string name="settings_quit">Închide Titi</string>
+    <string name="on">Pornit</string>
+    <string name="off">Oprit</string>
+    <string name="quality_auto">Auto</string>
+    <string name="quality_hq">Înaltă</string>
+    <string name="quality_std">Standard</string>
+    <string name="quality_low">Scăzută</string>
+    <string name="sound_bird">Pasăre</string>
+    <string name="sound_radio">Stație</string>
+    <string name="sound_minimal">Minimal</string>
 </resources>

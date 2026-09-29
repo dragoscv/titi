@@ -33,8 +33,13 @@ export class WebHost implements TitiHost {
     syncRooms: () => this.syncRoom(),
   };
 
-  constructor(opts: { kind?: "web" | "tv"; tenFoot?: boolean } = {}) {
+  /** Present only when the platform can end the app (Tizen widget exit). */
+  readonly quit?: () => void;
+
+  constructor(opts: { kind?: "web" | "tv"; tenFoot?: boolean; exit?: () => void } = {}) {
     this.kind = opts.kind ?? "web";
+    const exit = opts.exit;
+    if (exit) this.quit = () => { this.shutdown(); exit(); };
     const hasWindow = typeof window !== "undefined";
     this.caps = {
       lan: false,
@@ -94,6 +99,17 @@ export class WebHost implements TitiHost {
   }
 
   stopTicking() { if (this.tick) { clearInterval(this.tick); this.tick = null; } }
+
+  /** Release the floor, close mic + relay and stop the engine clock (before the app exits). */
+  shutdown() {
+    if (!this.started) return;
+    try { this.apply(this.eng.ptt_up(now())); } catch { /* engine already gone */ }
+    void this.capture.stop();
+    this.relay.stop();
+    this.stopTicking();
+    this.started = false;
+    useStore.getState().set({ running: false });
+  }
 
   saveSettings(p: Partial<Settings>) {
     const s = { ...useStore.getState().settings, ...p };

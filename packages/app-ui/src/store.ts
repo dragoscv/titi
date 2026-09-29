@@ -31,6 +31,8 @@ export interface Settings {
   overlay: boolean;
   /** Desktop: launch at login, minimised to tray */
   autostart: boolean;
+  /** Desktop: the window close button keeps Titi in the tray (else it quits) */
+  closeToTray: boolean;
   /** Desktop/TV: selected audio devices ("" = system default) */
   inputDevice: string;
   outputDevice: string;
@@ -49,6 +51,7 @@ export const defaultSettings: Settings = {
   pttKey: "",
   overlay: true,
   autostart: false,
+  closeToTray: true,
   inputDevice: "",
   outputDevice: "",
   lan: true,
@@ -73,6 +76,8 @@ interface State {
   pttKeyDown: boolean;
   /** Deep link delivered by the OS while running (desktop/tv) */
   pendingLink: string | null;
+  /** Screen requested by the OS shell (jump list, toast, tray): group id or "join" */
+  pendingRoute: string | null;
   toast: string | null;
   error: string | null;
   set: (p: Partial<State> | ((s: State) => Partial<State>)) => void;
@@ -95,6 +100,7 @@ export const useStore = create<State>((set) => ({
   muted: false,
   pttKeyDown: false,
   pendingLink: null,
+  pendingRoute: null,
   toast: null,
   error: null,
   set: (p) => set(typeof p === "function" ? p : () => p),

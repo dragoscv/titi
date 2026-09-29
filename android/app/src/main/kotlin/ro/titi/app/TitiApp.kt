@@ -22,6 +22,7 @@ class TitiApp : Application() {
             override fun onStart(owner: androidx.lifecycle.LifecycleOwner) { foreground = true }
             override fun onStop(owner: androidx.lifecycle.LifecycleOwner) { foreground = false }
         })
+        ro.titi.app.util.RadioLifecycle.install(prefs) { ro.titi.app.service.RadioService.stop(this) }
     }
 
     private fun createChannels() {

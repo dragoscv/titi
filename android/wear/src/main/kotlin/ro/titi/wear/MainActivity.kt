@@ -103,6 +103,9 @@ class MainActivity : ComponentActivity() {
         return super.onKeyDown(keyCode, event)
     }
 
+    /** Stops the radio (ongoing activity + watch-face icon go away) and closes the app. */
+    private fun quit() = ro.titi.app.util.RadioLifecycle.quit(this) { RadioService.stop(this) }
+
     private fun micGranted() = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
     private fun Intent.pageExtra() = getIntExtra(EXTRA_PAGE, PAGE_TALK - 1).let { if (it < 0) PAGE_TALK else it + 1 }.coerceIn(0, PAGE_COUNT - 1)
@@ -157,7 +160,7 @@ class MainActivity : ComponentActivity() {
                                     ),
                                 ) { TalkScreen(app.engine, state, onNoGroup = { nav.navigate("join") }) }
                                 PAGE_CHAT -> if (state.active != null) ChatScreen(app.engine, state, onRecord = { nav.navigate("record") }) else EmptyPage()
-                                PAGE_ACTIONS -> ActionsScreen(app.engine, state, app.prefs, settings, onSettings = { nav.navigate("settings") })
+                                PAGE_ACTIONS -> ActionsScreen(app.engine, state, app.prefs, settings, onSettings = { nav.navigate("settings") }, onQuit = ::quit)
                             }
                         }
                     }
@@ -165,7 +168,7 @@ class MainActivity : ComponentActivity() {
             }
             composable("join") { JoinScreen(app.engine) { nav.popBackStack() } }
             composable("record") { RecordScreen(app.engine, state) { nav.popBackStack() } }
-            composable("settings") { SettingsScreen(app.prefs, settings) }
+            composable("settings") { SettingsScreen(app.prefs, settings, onQuit = ::quit) }
         }
 
         SuccessConfirmationDialog(

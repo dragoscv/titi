@@ -291,6 +291,14 @@ impl TitiEngine {
         e.cfg.display_name = name;
         e.cfg.avatar_hue = hue;
     }
+    /// Quality setting: `None` = automatic, else never encode better than `p`.
+    pub fn set_max_profile(&self, p: Option<FfiProfile>) {
+        self.inner.lock().unwrap().cfg.max_profile = p.map(|p| match p { FfiProfile::Hq => Profile::Hq, FfiProfile::Std => Profile::Std, FfiProfile::Low => Profile::Low, FfiProfile::Min => Profile::Min });
+    }
+    /// Battery saver: stop forwarding other members' voice (still talks/listens itself).
+    pub fn set_relay_capable(&self, on: bool) {
+        self.inner.lock().unwrap().cfg.relay_capable = on;
+    }
 
     pub fn on_link_up(&self, link: u32, class: FfiLinkClass, mtu: Option<u32>, now_ms: u64) -> Vec<FfiAction> {
         self.sh(|e| e.on_link_up(link, class.into(), mtu.map(|m| m as usize), now_ms))

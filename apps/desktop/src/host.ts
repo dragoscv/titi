@@ -15,7 +15,7 @@ export class DesktopHost implements TitiHost {
     cue: (k: CueKind) => void invoke("titi_cue", { kind: k }),
     refreshGroups: () => {},
     syncRooms: () => {},
-    notify: (title: string, body: string) => void invoke("titi_notify", { title, body }),
+    // toasts are raised natively (actionable, work with the window hidden) — see winshell.rs
   };
 
   async init() {
@@ -26,6 +26,8 @@ export class DesktopHost implements TitiHost {
     await listen<number>("titi://level", (e) => useStore.getState().set({ levelDbfs: e.payload }));
     await listen<boolean>("titi://ptt-key", (e) => useStore.getState().set({ pttKeyDown: e.payload }));
     await listen<string>("titi://deeplink", (e) => useStore.getState().set({ pendingLink: e.payload }));
+    await listen<string>("titi://route", (e) => useStore.getState().set({ pendingRoute: e.payload }));
+    await listen<boolean>("titi://muted", (e) => useStore.getState().set({ muted: e.payload }));
     await listen("titi://toggle-mute", () => this.setMuted(!useStore.getState().muted));
     const info = await invoke<InitInfo>("titi_init");
     useStore.getState().set({ ready: true, running: true, nodeId: info.nodeId, settings: { ...defaultSettings, ...info.settings }, platform: "desktop", voiceSupported: true });
@@ -60,6 +62,7 @@ export class DesktopHost implements TitiHost {
   async parseCode(text: string) { return invoke<boolean>("titi_parse_code", { text }); }
   async audioDevices() { return invoke<{ inputs: AudioDevice[]; outputs: AudioDevice[] }>("titi_devices"); }
   async capturePttKey() { return invoke<string | null>("titi_learn_ptt"); }
+  quit() { void invoke("titi_quit"); }
 
   private err = (e: unknown) => useStore.getState().set({ toast: String(e) });
 }
