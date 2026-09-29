@@ -1,6 +1,7 @@
 {
   "name": "@titi/tv",
   "version": "0.1.0",
+  "license": "AGPL-3.0-only",
   "private": true,
   "type": "module",
   "description": "Samsung Tizen TV / smart-monitor app (10-foot UI over the shared app-ui + wasm core)",

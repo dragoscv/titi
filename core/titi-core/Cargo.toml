@@ -3,6 +3,7 @@ name = "titi-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+publish = false
 rust-version.workspace = true
 description = "Titi protocol core: framing, crypto, mesh, floor control, audio"
 

@@ -10,7 +10,7 @@
   pwsh -NoProfile -File scripts/gates.ps1 -Build     # also production builds
 #>
 param(
-  [ValidateSet('all', 'js', 'native', 'desktop', 'size')] [string] $Only = 'all',
+  [ValidateSet('all', 'js', 'native', 'desktop', 'size', 'security', 'e2e')] [string] $Only = 'all',
   [switch] $Build,
   # warm-cache wall-time budget (2026-09-29: ~60-100 s warm); a regression past it fails the gate
   [int] $BudgetSec = 180
@@ -46,13 +46,23 @@ $lanes = [ordered]@{
   size = @(
     @{ Name = 'size-budgets'; Dir = '.'; Cmd = 'pwsh -NoProfile -File scripts/size-budgets.ps1' }
   )
+  # secrets in history, npm advisories, Rust advisories/licences/sources
+  security = @(
+    @{ Name = 'gitleaks';   Dir = '.';    Cmd = 'gitleaks git --no-banner --redact --exit-code 1 .' }
+    @{ Name = 'pnpm-audit'; Dir = '.';    Cmd = 'pnpm audit --audit-level high' }
+    @{ Name = 'cargo-deny'; Dir = 'core'; Cmd = 'cargo deny check advisories bans licenses sources' }
+  )
+  # real browsers through a local relay (opt-in: -Only e2e, or -Build runs it after the web build)
+  e2e = @(
+    @{ Name = 'e2e'; Dir = '.'; Cmd = 'pwsh -NoProfile -File scripts/e2e.ps1' }
+  )
 }
 if ($Build) {
   # the gate already type-checked; next.config.ts skips its duplicate check when this is set
   $env:TITI_TYPECHECKED = '1'
   $lanes.js += @{ Name = 'turbo-build'; Dir = '.'; Cmd = 'pnpm turbo run build --output-logs=errors-only' }
 }
-$selected = if ($Only -eq 'all') { @($lanes.Keys) } else { @($Only) }
+$selected = if ($Only -eq 'all') { @($lanes.Keys | Where-Object { $_ -ne 'e2e' }) } else { @($Only) }
 
 $total = [Diagnostics.Stopwatch]::StartNew()
 $jobs = foreach ($lane in $selected) {

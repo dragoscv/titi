@@ -1,0 +1,32 @@
+# Git hooks (installed by `pnpm install` via lefthook's postinstall; re-sync: `pnpm exec lefthook install`).
+# pre-commit: seconds, staged files only.  pre-push: the real gates (turbo/cargo/gradle caches keep it warm).
+# Emergency bypass: `$env:LEFTHOOK=0` for one push; CI runs the same gates anyway.
+output: [summary, failure]
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: secrets
+      run: gitleaks git --staged --no-banner --redact --exit-code 1
+    - name: oxlint
+      glob: "*.{ts,tsx,js,mjs}"
+      run: pnpm exec oxlint -c .oxlintrc.json {staged_files}
+    - name: rustfmt
+      glob: "*.rs"
+      run: rustfmt --check --edition 2021 {staged_files}
+    - name: staged-files
+      run: node scripts/check-staged.mjs {staged_files}
+
+commit-msg:
+  jobs:
+    - name: conventional-commit
+      run: node scripts/check-commit-msg.mjs {1}
+
+pre-push:
+  jobs:
+    - name: js-gates
+      run: pwsh -NoProfile -File scripts/gates.ps1 -Only js
+    - name: native-gates
+      run: pwsh -NoProfile -File scripts/gates.ps1 -Only native
+      skip:
+        - run: node scripts/changed-since-upstream.mjs core android apps/desktop/src-tauri

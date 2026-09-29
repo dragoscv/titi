@@ -12,8 +12,8 @@ android {
         applicationId = "ro.titi.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = (System.getenv("TITI_VERSION_CODE")?.toInt() ?: 1)
+        versionName = System.getenv("TITI_VERSION_NAME") ?: "0.1.0"
         // only ABIs we build titi_ffi for; drops JNA's x86/mips/armeabi and ML Kit's x86 blobs
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

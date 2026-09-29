@@ -15,8 +15,8 @@ android {
         minSdk = 30 // Wear OS 3+
         targetSdk = 36
         // Watch builds live in their own versionCode range (Play multi-APK rule).
-        versionCode = 200_000_001
-        versionName = "0.1.0"
+        versionCode = 200_000_000 + (System.getenv("TITI_VERSION_CODE")?.toInt() ?: 1)
+        versionName = System.getenv("TITI_VERSION_NAME") ?: "0.1.0"
         // only ABIs we build titi_ffi for; drops JNA's x86/mips/armeabi and ML Kit's x86 blobs
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }

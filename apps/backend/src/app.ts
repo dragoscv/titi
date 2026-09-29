@@ -10,7 +10,7 @@ export function createApp(cfg: Config, relay: Relay) {
   const injectWebSocket = (server: Parameters<typeof nodeWs.injectWebSocket>[0]) => nodeWs.injectWebSocket(server);
 
   app.get("/health", (c) =>
-    c.json({ ok: true, service: "titi-relay", version: process.env.npm_package_version ?? "dev", ...relay.stats() }),
+    c.json({ ok: true, service: "titi-relay", version: process.env.GIT_SHA ?? process.env.npm_package_version ?? "dev", ...relay.stats() }),
   );
 
   app.get(

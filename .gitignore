@@ -70,3 +70,10 @@ ios/TitiCore/.build/
 ios/TitiCore/Artifacts/
 ios/TitiCore/Sources/TitiCore/Generated/
 
+
+# test output
+coverage/
+lcov.info
+e2e/test-results/
+e2e/playwright-report/
+blob-report/

@@ -1,0 +1,171 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      rust: ${{ steps.f.outputs.rust }}
+      android: ${{ steps.f.outputs.android }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { fetch-depth: 0 }
+      - id: f
+        shell: bash
+        run: |
+          base="${{ github.event.pull_request.base.sha || github.event.before }}"
+          if [ -z "$base" ] || ! git cat-file -e "$base" 2>/dev/null || [ "$base" = "0000000000000000000000000000000000000000" ]; then
+            echo "rust=true" >> "$GITHUB_OUTPUT"; echo "android=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          files=$(git diff --name-only "$base" HEAD)
+          echo "$files" | grep -qE '^(core/|apps/desktop/src-tauri/|proto/|\.github/)' && echo "rust=true" >> "$GITHUB_OUTPUT" || echo "rust=false" >> "$GITHUB_OUTPUT"
+          echo "$files" | grep -qE '^(android/|core/|proto/|\.github/)' && echo "android=true" >> "$GITHUB_OUTPUT" || echo "android=false" >> "$GITHUB_OUTPUT"
+
+  js:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
+      # core-wasm/pkg is committed (prebuilt); skip its Rust build task on Linux runners
+      - run: pnpm turbo run typecheck lint test build --filter='!@titi/core-wasm' --cache-dir=.turbo --output-logs=errors-only
+        env: { TITI_TYPECHECKED: "1" }
+      - run: pnpm --filter @titi/app-ui --filter @titi/backend exec vitest run --coverage
+      - run: pnpm audit --audit-level high
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: web-build
+          path: apps/web/.next
+          include-hidden-files: true
+          retention-days: 1
+
+  e2e:
+    needs: js
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with: { name: web-build, path: apps/web/.next }
+      - run: pnpm --filter @titi/e2e exec playwright install --with-deps chromium
+      - run: pnpm --filter @titi/e2e e2e
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          retention-days: 7
+
+  rust:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # v1
+        with: { toolchain: stable, components: "clippy,rustfmt" }
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with: { workspaces: core }
+      - uses: taiki-e/install-action@4cef1412cce204788f482e778a0b9187f9626a29 # v2.87.21
+        with: { tool: "cargo-nextest,cargo-deny,cargo-llvm-cov" }
+      - run: sudo apt-get install -y --no-install-recommends cmake protobuf-compiler
+      - working-directory: core
+        run: cargo fmt --all --check
+      - working-directory: core
+        run: cargo clippy --workspace --all-targets --features titi-ffi/cli -- -D warnings
+      - working-directory: core
+        run: cargo llvm-cov nextest -p titi-core --features opus,json --lcov --output-path lcov.info --fail-under-lines 70
+      - working-directory: core
+        run: cargo deny check advisories bans licenses sources
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with: { name: rust-coverage, path: core/lcov.info, retention-days: 7 }
+
+  android:
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with: { distribution: temurin, java-version: 22 }
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # v1
+        with: { toolchain: stable, targets: "aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android" }
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with: { workspaces: core }
+      - uses: taiki-e/install-action@4cef1412cce204788f482e778a0b9187f9626a29 # v2.87.21
+        with: { tool: cargo-ndk }
+      - run: |
+          sudo apt-get install -y --no-install-recommends cmake ninja-build protobuf-compiler
+          sdkmanager "ndk;28.2.13676358"
+      - working-directory: android
+        run: >
+          ./gradlew --console=plain
+          :app:compileGmsDebugKotlin :app:compileFossDebugKotlin :app:checkFossNoGms
+          :wear:compileDebugKotlin :tv:compileDebugKotlin
+          :core-ffi:testDebugUnitTest :app:testGmsDebugUnitTest
+          :app:lintGmsDebug :wear:lintDebug :tv:lintDebug
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { fetch-depth: 0 }
+      - name: gitleaks
+        shell: bash
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz | tar xz gitleaks
+          ./gitleaks git --no-banner --redact --exit-code 1 .
+
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, pull-requests: write }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with: { fail-on-severity: high, comment-summary-in-pr: on-failure }
+
+  gate:
+    # single required check for branch protection
+    if: always()
+    needs: [js, e2e, rust, android, secrets]
+    runs-on: ubuntu-latest
+    steps:
+      - shell: bash
+        run: |
+          echo '${{ toJSON(needs) }}' | grep -qE '"result": "(failure|cancelled)"' && { echo "a required job failed"; exit 1; } || echo ok

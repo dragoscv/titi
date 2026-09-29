@@ -1,0 +1,11 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Published protocol test vectors (deterministic, non-secret by design)"
+paths = [
+  '''^testvectors/.*\.json$''',
+  '''^core/titi-core/tests/.*''',
+  '''(^|/)pnpm-lock\.yaml$''',
+  '''(^|/)Cargo\.lock$''',
+]
