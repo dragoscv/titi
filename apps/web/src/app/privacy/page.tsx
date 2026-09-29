@@ -48,7 +48,7 @@ export default function Privacy() {
       </Section>
 
       <Section title="Your rights (GDPR)">
-        <p>Because we hold no personal data on our servers, there is nothing for us to export or erase; all data is on your device and under your control. For any question contact <a className="text-amber" href="mailto:privacy@titi.app">privacy@titi.app</a>.</p>
+        <p>Because we hold no personal data on our servers, there is nothing for us to export or erase; all data is on your device and under your control. For any question contact <a className="text-amber underline underline-offset-2" href="mailto:privacy@titi.dragoscatalin.ro">privacy@titi.dragoscatalin.ro</a>.</p>
       </Section>
 
       <Section title="Changes">
