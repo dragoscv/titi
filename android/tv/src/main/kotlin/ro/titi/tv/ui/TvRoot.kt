@@ -500,7 +500,7 @@ private fun MemberRow(name: String, hue: Int, online: Boolean, modifier: Modifie
 @Composable
 private fun SosOverlay(s: ro.titi.app.core.Alert.Sos, onDismiss: () -> Unit) {
     val req = remember { FocusRequester() }
-    LaunchedEffect(s) { runCatching { req.requestFocus() } }
+    LaunchedEffect(s) { android.util.Log.i("TvRoot", "sos overlay shown from=${s.fromName} group=${s.groupName}"); runCatching { req.requestFocus() } }
     BackHandler { onDismiss() }
     Box(Modifier.fillMaxSize().background(Tv.Emergency.copy(alpha = 0.94f)), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {

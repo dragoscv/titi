@@ -226,7 +226,7 @@ Legend of surfaces: **C** core (Rust) · **B** backend · **A** Android ·
 | TVP-03 | Google TV: Group action → members with online state, invite nearby, leave, delete (two-step confirm) | done | Chromecast: sheet listed members with online/offline, Leave, Delete; confirm view (focus fix: refocus on confirm) screenshot `.copilot-tmp/gtv-d2.png` |
 | TVP-04 | Tizen: rail Create a group, Group sheet (members, invite nearby, leave, delete), Internet relay toggle (WebHost honours it) | done | Odyssey: rail Join/Create/All groups/Settings; Create made "Home"; Group sheet "Members · 3 … Leave group · Delete for everyone"; delete confirm → "Home" removed; relay toggle not device-toggled |
 | TVP-05 | Full-screen SOS on both TVs until acknowledged | done (Tizen) | Odyssey: A51 SOS → alertdialog "SOS · Ana · Sufragerie · 45.04273, 23.27547 · OK"; Google TV: message arrives (`ui Message`) but overlay not seen on screen — open |
-| TVP-06 | 21:9 all-groups wall (Tizen rail "All groups", desktop wide window) | done (code) | `dashboard-layout.test.ts`; rail entry on Odyssey; wall screen not captured (monitor went to standby) |
+| TVP-06 | 21:9 all-groups wall (Tizen rail "All groups", desktop wide window) | done (Tizen) | `dashboard-layout.test.ts`; Odyssey: rail "All groups" → wall with 3 tiles in a row (`.copilot-tmp/tizen-wall3.png`); desktop wide window not screen-checked |
 
 ## 5i. Voice-first chat milestone (ADR-0009)
 
