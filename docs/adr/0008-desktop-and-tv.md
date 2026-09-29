@@ -47,6 +47,34 @@ Measured on the devices (2026-09-28):
 7. **Distribution**: NSIS per-machine installer adds a Private/Domain-only UDP
    firewall rule; Microsoft Store (MSIX via winapp CLI) chosen for signing.
 8. **BLE on Windows**: GATT data profile (no L2CAP) — planned after LAN + relay.
+9. **Installers (2026-09-29)**: NSIS per-machine (`scripts/desktop-bundle.ps1`,
+   hook adds the "Titi LAN" UDP rule, Private/Domain only) is the direct-download
+   channel; MSIX (`scripts/desktop-msix.ps1`, `windows/msix/Package.appxmanifest`
+   with the `firewallRules` desktop extension, `titi:` protocol, startupTask) is the
+   Store channel. Identity `ro.titi.desktop` / `CN=Titi` is a dev placeholder until
+   the Partner Center name is reserved.
+10. **Windows 11 shell** (`src/winshell.rs`): explicit AUMID `ro.titi.desktop`
+   (package AUMID when running inside MSIX); taskbar thumbnail buttons Talk/Mute
+   via `ITaskbarList3` + window subclass; jump list via `ICustomDestinationList`
+   (falls back to Tasks when Windows refuses custom categories because "recent
+   items" is off; WinRT `JumpList` when packaged); actionable toasts (Open / Hold
+   to talk) through `tauri-winrt-notification`; file log in
+   `%LOCALAPPDATA%\Titi\logs\titi.log`.
+11. **Quit is explicit on every platform**: one clean shutdown path per host
+   (desktop `quit()` shared by tray and Settings; Android `RadioLifecycle.quit`
+   stops the foreground service and removes the task; Tizen `tizen.application
+   .exit`). "Run in background" off = no foreground service / tray icon while the
+   UI is closed. Web has no Quit (the tab is the app); the Settings App section
+   renders only when the host provides `quit`.
+12. **Settings reach the engine**: quality and battery saver cap the capture
+   profile (`Config.max_profile`) and relay capability; toggles with no backing
+   feature are removed rather than shown dead.
+13. **Build speed + size budgets**: the Gradle daemon JDK is pinned
+   (`gradle-daemon-jvm.properties`) because a per-shell JDK invalidated the lint
+   cache on every run (warm no-op 71 s → 15 s); Material icons are vendored
+   instead of `material-icons-extended`; per-device ABI filters. `scripts/size-budgets.ps1`
+   is a gate lane (APK/installer ceilings), and `gates.ps1 -BudgetSec` fails a
+   slow run.
 
 ## Consequences
 - The engine gained membership convergence: a node that produces group-AEAD

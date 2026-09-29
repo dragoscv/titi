@@ -1,9 +1,10 @@
 // Evaluate a JS expression in the Tizen app via the forwarded DevTools port.
-// usage: node scripts/tv-eval.mjs "<expr>" [port]
+// usage: node scripts/tv-eval.mjs "<expr>" [port] [url-regex]
 const expr = process.argv[2] ?? "document.title";
 const port = process.argv[3] ?? "9222";
+const match = process.argv[4] ? new RegExp(process.argv[4]) : null;
 const list = await (await fetch(`http://localhost:${port}/json`)).json();
-const page = list.find((p) => p.type === "page") ?? list[0];
+const page = list.find((p) => p.type === "page" && (!match || match.test(p.url))) ?? list[0];
 if (!page) throw new Error("no debuggable page");
 const ws = new WebSocket(page.webSocketDebuggerUrl);
 await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });

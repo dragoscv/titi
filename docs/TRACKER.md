@@ -178,14 +178,14 @@ Legend of surfaces: **C** core (Rust) · **B** backend · **A** Android ·
 
 | ID | Item | Status | Evidence |
 |---|---|---|---|
-| QS-01 | Watch: Quit button (Actions page + Settings) stops the radio service, removes the ongoing activity / watch-face icon, closes the app | todo | |
-| QS-02 | Watch: "Run in background" switch — off = no FGS/icon while Titi is closed | todo | |
-| QS-03 | Phone: Settings → App: Run in background + Quit Titi | todo | |
-| QS-04 | Google TV: Settings sheet (name, background, internet, BLE, quality, sounds, Quit) | todo | |
-| QS-05 | Desktop: Settings → App: start with computer, run in background (close = quit when off), Quit; tray "Quit Titi" uses the same clean path | todo | |
-| QS-06 | Tizen: rail Settings (name, volume, Quit); Back exits through the same shutdown | todo | |
-| QS-07 | Every stored setting is honoured: quality cap + battery saver reach the engine (`Config.max_profile`, `relay_capable`), dead "allow hotspot" toggle removed until A-16 exists | todo | core test `quality_setting_caps_the_capture_profile` |
-| QS-08 | Web: settings audit (no quit: the tab is the app) | todo | |
+| QS-01 | Watch: Quit button (Actions page + Settings) stops the radio service, removes the ongoing activity / watch-face icon, closes the app | done | watch 192.168.100.242: Quit → `dumpsys activity services ro.titi` no RadioService, no ongoing notification, task removed |
+| QS-02 | Watch: "Run in background" switch — off = no FGS/icon while Titi is closed | done | off + Home → FGS gone (RadioLifecycle onStop); on → FGS stays; switch state matches DataStore after the live-collect fix (ece53c9) |
+| QS-03 | Phone: Settings → App: Run in background + Quit Titi | done | A51: Quit → no FGS, task gone; background off + Home → FGS stopped |
+| QS-04 | Google TV: Settings sheet (name, background, internet, BLE, quality, sounds, Quit) | done | Chromecast: all rows rendered, quality cycled and restored to Auto, Quit → FGS stopped |
+| QS-05 | Desktop: Settings → App: start with computer, run in background (close = quit when off), Quit; tray "Quit Titi" uses the same clean path | done | release exe 2026-09-29: Settings → "Quit Titi" (CDP click) → log `titi_desktop_lib] quit`, process gone; tray item calls the same `quit()` |
+| QS-06 | Tizen: rail Settings (name, volume, Quit); Back exits through the same shutdown | done | Odyssey: rail Settings → sheet "Name / Speaker volume / Quit Titi"; Quit → app exited (DevTools target gone) |
+| QS-07 | Every stored setting is honoured: quality cap + battery saver reach the engine (`Config.max_profile`, `relay_capable`), dead "allow hotspot" toggle removed until A-16 exists | done | core test `quality_setting_caps_the_capture_profile`; EngineHost maps quality/batterySaver; hotspot toggle removed |
+| QS-08 | Web: settings audit (no quit: the tab is the app) | done | App section rendered only when `host.quit` exists; web host passes none |
 
 ## 5g. Build speed + size budgets (2026-09-29)
 
