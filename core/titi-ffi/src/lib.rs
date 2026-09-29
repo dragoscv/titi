@@ -792,7 +792,7 @@ impl TitiEngine {
     }
 }
 
-/// Relay rendezvous room hashes for a typed invite code (slots ΓêÆ1, 0, +1).
+/// Relay rendezvous room hashes for a typed invite code (slots −1, 0, +1).
 #[uniffi::export]
 pub fn rendezvous_for_code(code: String, now_ms: u64) -> Vec<Vec<u8>> {
     Engine::rendezvous_for_code(&code, now_ms)

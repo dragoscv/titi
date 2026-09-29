@@ -1,4 +1,4 @@
-//! wasm-bindgen fa├ºade over titi-core for the web PWA. Opus is done by
+//! wasm-bindgen façade over titi-core for the web PWA. Opus is done by
 //! WebCodecs in the browser, so this build disables the `opus` feature: the
 //! engine hands encoded packets out (`playPacket`) and takes encoded packets
 //! in (`on_opus_in`). Actions are returned as one JSON array per call.
@@ -648,7 +648,7 @@ impl WasmEngine {
     }
 }
 
-/// Concatenated 4-byte relay rendezvous hashes for a typed code (slots ΓêÆ1,0,+1).
+/// Concatenated 4-byte relay rendezvous hashes for a typed code (slots −1,0,+1).
 #[wasm_bindgen]
 pub fn rendezvous_for_code(code: &str, now_ms: f64) -> Vec<u8> {
     Engine::rendezvous_for_code(code, now_ms as u64).concat()

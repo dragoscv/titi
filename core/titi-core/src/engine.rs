@@ -1,4 +1,4 @@
-//! Engine fa├ºade: wires identity, links, mesh, groups, floor, audio, store.
+//! Engine façade: wires identity, links, mesh, groups, floor, audio, store.
 //!
 //! Host contract (all platforms):
 //! - call `on_link_up/down`, `on_peer_seen/lost` as transports report
@@ -266,7 +266,7 @@ pub struct Engine {
     pub rng: Rng,
     pub active_group: Option<GroupId>,
     pub ptt_prio: Priority,
-    /// Buffered PCM during arbitration (Γëñ 300 ms).
+    /// Buffered PCM during arbitration (≤ 300 ms).
     ptt_buffer: Vec<i16>,
     ptt_pending: bool,
     #[cfg(feature = "opus")]
@@ -337,7 +337,7 @@ impl Engine {
 
     /// Host-side post-processing of every action batch: a `Send` larger than its
     /// link's MTU is split into hop-local `Fragment` envelopes and queued; `tick`
-    /// releases them at Γëñ 1 per link per tick and Γëñ half the link's estimated
+    /// releases them at ≤ 1 per link per tick and ≤ half the link's estimated
     /// bandwidth, so they never starve voice or trip the relay's rate limit.
     pub fn shape(&mut self, acts: Vec<Action>) -> Vec<Action> {
         let mut out = Vec::with_capacity(acts.len());
@@ -410,7 +410,7 @@ impl Engine {
         acts
     }
 
-    // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ links & peers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ───────────────────────── links & peers ─────────────────────────
 
     pub fn on_link_up(
         &mut self,
@@ -486,7 +486,7 @@ impl Engine {
         acts
     }
 
-    // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ groups ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ───────────────────────── groups ─────────────────────────
 
     pub fn create_group(&mut self, name: &str, now: Ms) -> Result<(GroupId, Vec<Action>)> {
         let id: GroupId = identity::random_bytes();
@@ -559,7 +559,7 @@ impl Engine {
 
     /// Creator only: delete the group for every member (signed `Dissolve`
     /// flood), then forget it here. Members who are offline keep it until they
-    /// next hear from someone who still relays the flood ΓÇö or leave by hand.
+    /// next hear from someone who still relays the flood — or leave by hand.
     pub fn dissolve_group(&mut self, gid: GroupId, now: Ms) -> Result<Vec<Action>> {
         let me = self.node_id();
         let g = self
@@ -688,7 +688,7 @@ impl Engine {
     }
 
     /// Relay rendezvous rooms a *joiner* should sit in while joining by this
-    /// code (slots ΓêÆ1, 0, +1), or empty if the code does not parse.
+    /// code (slots −1, 0, +1), or empty if the code does not parse.
     pub fn rendezvous_for_code(code_text: &str, now: Ms) -> Vec<[u8; 4]> {
         let Ok(code) = Code::parse(code_text) else {
             return vec![];
@@ -749,7 +749,7 @@ impl Engine {
             };
             let slot = time::slot_index(now);
             // We do not know k_invite; the psk is derived from the *code text + slot*
-            // on both sides (host derives code from k_invite for slots ΓêÆ1..+1).
+            // on both sides (host derives code from k_invite for slots −1..+1).
             for d in [0i64, -1, 1] {
                 let s = (slot as i64 + d).max(0) as u64;
                 let psk = psk_from_code(&code, s);
@@ -835,7 +835,7 @@ impl Engine {
             slot_delta: 0,
         };
         let mut acts = vec![];
-        // psk = K_join ΓåÆ XXpsk3 to any reachable member (prefer creator)
+        // psk = K_join → XXpsk3 to any reachable member (prefer creator)
         let mut targets: Vec<NodeId> = vec![creator];
         targets.extend(
             self.neighbours
@@ -903,7 +903,7 @@ impl Engine {
         acts
     }
 
-    // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ PTT / audio ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ───────────────────────── PTT / audio ─────────────────────────
 
     pub fn ptt_down(&mut self, prio: Priority, now: Ms) -> Vec<Action> {
         let Some(gid) = self.active_group else {
@@ -1073,7 +1073,7 @@ impl Engine {
         let nonce = crypto::voice_nonce(&me, g.epoch, seq);
         let aad = [gid.as_slice(), &g.epoch.to_be_bytes()].concat();
         let ct = g.cipher.seal(&nonce, &aad, &plain);
-        // frame: epoch(4) ΓÇû seq32(4) ΓÇû ct
+        // frame: epoch(4) ‖ seq32(4) ‖ ct
         let mut body = Vec::with_capacity(8 + ct.len());
         body.extend_from_slice(&g.epoch.to_be_bytes());
         body.extend_from_slice(&seq.to_be_bytes());
@@ -1227,7 +1227,7 @@ impl Engine {
 
     fn current_profile(&self, gid: &GroupId) -> Profile {
         let auto = self.auto_profile(gid);
-        // Profile orders bestΓåÆworst (Hq < Min): the ceiling is the max of the two
+        // Profile orders best→worst (Hq < Min): the ceiling is the max of the two
         self.cfg.max_profile.map_or(auto, |cap| auto.max(cap))
     }
 
@@ -1257,7 +1257,7 @@ impl Engine {
         worst
     }
 
-    // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ messages ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ───────────────────────── messages ─────────────────────────
 
     pub fn send_text(&mut self, gid: GroupId, text: &str, now: Ms) -> Vec<Action> {
         self.send_message(gid, proto::chat_message::Body::Text(text.to_string()), now)
@@ -1345,7 +1345,7 @@ impl Engine {
         let nonce = crypto::random_nonce();
         let aad = [gid.as_slice(), &g.epoch.to_be_bytes()].concat();
         let ct = g.cipher.seal(&nonce, &aad, &plain);
-        // stored/forwarded envelope payload: gh(4) ΓÇû msg_uuid(16) ΓÇû sender(8) ΓÇû sent(8) ΓÇû exp(8) ΓÇû epoch(4) ΓÇû nonce(24) ΓÇû ct
+        // stored/forwarded envelope payload: gh(4) ‖ msg_uuid(16) ‖ sender(8) ‖ sent(8) ‖ exp(8) ‖ epoch(4) ‖ nonce(24) ‖ ct
         let mut p = Vec::new();
         p.extend_from_slice(&g.hash());
         p.extend_from_slice(&msg_uuid);
@@ -1404,7 +1404,7 @@ impl Engine {
         })
     }
 
-    // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ inbound ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ───────────────────────── inbound ─────────────────────────
 
     pub fn on_frame(&mut self, link: LinkId, token: String, bytes: &[u8], now: Ms) -> Vec<Action> {
         let env = match Envelope::decode(bytes) {
@@ -1423,7 +1423,7 @@ impl Engine {
             self.flood.cancel(&key);
             return vec![];
         }
-        // remember token Γåö node on this link ΓÇö only for frames that came
+        // remember token ↔ node on this link — only for frames that came
         // straight from their origin; a relayed frame's src is not our peer.
         if env.flags & flags::RELAYED == 0 {
             if let Some(l) = self.links.get_mut(&link) {
@@ -1631,7 +1631,7 @@ impl Engine {
     ) -> Vec<Action> {
         let pattern = Pattern::from_u8((env.flags & flags::HS_MASK) >> flags::HS_SHIFT)
             .unwrap_or(Pattern::Xx);
-        // payload: tag(1) ΓÇû sid(1) ΓÇû group_hash(4) ΓÇû [len-delimited JoinRequest if psk] ΓÇû noise msg
+        // payload: tag(1) ‖ sid(1) ‖ group_hash(4) ‖ [len-delimited JoinRequest if psk] ‖ noise msg
         // tag: 0 plain, 1 deep-link psk, 2..4 code psk (slot delta -0/-1/+1). sid: session id echoed in replies.
         if env.payload.len() < 6 {
             return vec![];
@@ -1705,7 +1705,7 @@ impl Engine {
                 hk.expand(b"titi/v1/join-link", &mut k).ok();
                 k
             } else {
-                // tag 2,3,4 ΓåÆ slot delta 0,-1,+1 (joiner's view; symmetric so host uses the same)
+                // tag 2,3,4 → slot delta 0,-1,+1 (joiner's view; symmetric so host uses the same)
                 let d = tag as i64 - 2;
                 let slot = (time::slot_index(now) as i64 + d).max(0) as u64;
                 let code = Code::for_slot(&g.k_invite, slot);
@@ -1786,7 +1786,7 @@ impl Engine {
     ) -> Vec<Action> {
         let mut acts = vec![];
         if let Some(gid) = psk_group {
-            // Responder side of a join: the joiner proved the code ΓåÆ send JoinResponse + add member.
+            // Responder side of a join: the joiner proved the code → send JoinResponse + add member.
             if let Some(g) = self.groups.get_mut(&gid) {
                 let (name, hue) = self.peer_names.get(&node).cloned().unwrap_or_default();
                 let short = u16::from_be_bytes([node[0], node[1]]);
@@ -1919,7 +1919,7 @@ impl Engine {
                 self.on_session_established(link, token, env.src, Some(gid), now)
             }
             Some(ControlKind::JoinResponse) => {
-                // body = JoinResponse ΓÇû k_invite(32) ΓÇû creator(8) ΓÇû full(1)
+                // body = JoinResponse ‖ k_invite(32) ‖ creator(8) ‖ full(1)
                 if body.len() < 41 {
                     return vec![];
                 }
@@ -2012,7 +2012,7 @@ impl Engine {
         }
     }
 
-    /// gh(4) ΓÇû kind(1) ΓÇû epoch(4) ΓÇû nonce(24) ΓÇû ct
+    /// gh(4) ‖ kind(1) ‖ epoch(4) ‖ nonce(24) ‖ ct
     fn handle_group_control_flood(&mut self, link: LinkId, env: &Envelope, now: Ms) -> Vec<Action> {
         const HDR: usize = 4 + 1 + 4 + 24;
         if env.payload.len() < HDR + crypto::TAG_LEN {
@@ -2078,7 +2078,7 @@ impl Engine {
         acts
     }
 
-    /// Group-scoped control carried in flood frames: gh(4) ΓÇû kind(1) ΓÇû protobuf.
+    /// Group-scoped control carried in flood frames: gh(4) ‖ kind(1) ‖ protobuf.
     fn handle_group_control(
         &mut self,
         kind: ControlKind,
@@ -2466,7 +2466,7 @@ impl Engine {
     }
 
     fn handle_message(&mut self, link: LinkId, env: &Envelope, now: Ms) -> Vec<Action> {
-        // gh(4) ΓÇû msg_uuid(16) ΓÇû sender(8) ΓÇû sent(8) ΓÇû exp(8) ΓÇû epoch(4) ΓÇû nonce(24) ΓÇû ct
+        // gh(4) ‖ msg_uuid(16) ‖ sender(8) ‖ sent(8) ‖ exp(8) ‖ epoch(4) ‖ nonce(24) ‖ ct
         const HDR: usize = 4 + 16 + 8 + 8 + 8 + 4 + 24;
         if env.payload.len() < HDR + crypto::TAG_LEN {
             return vec![];
@@ -2675,7 +2675,7 @@ impl Engine {
         acts
     }
 
-    // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ tick ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ───────────────────────── tick ─────────────────────────
 
     pub fn tick(&mut self, now: Ms) -> Vec<Action> {
         let mut acts = vec![];
@@ -2714,7 +2714,7 @@ impl Engine {
             acts.extend(self.fanout_relay(&p, true));
         }
         // routes: handover's SUSPEND timer is fed by `on_route`, which only ran on
-        // hello/announce (15ΓÇô30 s apart) ΓåÆ false "out of range" after 3 s. Re-evaluate
+        // hello/announce (15–30 s apart) → false "out of range" after 3 s. Re-evaluate
         // once a second; it is a Dijkstra over a handful of nodes.
         if now.saturating_sub(self.last_route_eval) >= 1_000 {
             self.last_route_eval = now;
@@ -2881,7 +2881,7 @@ impl Engine {
         }
     }
 
-    // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ helpers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ───────────────────────── helpers ─────────────────────────
 
     fn my_ref(&self) -> proto::NodeRef {
         proto::NodeRef {
@@ -3024,7 +3024,7 @@ impl Engine {
 
     /// Group control as flood: Control frames are per-link encrypted, so for
     /// flooding we use a group-AEAD'd payload inside a Message-like envelope:
-    /// gh(4) ΓÇû kind(1) ΓÇû epoch(4) ΓÇû nonce(24) ΓÇû ct(kind-specific protobuf).
+    /// gh(4) ‖ kind(1) ‖ epoch(4) ‖ nonce(24) ‖ ct(kind-specific protobuf).
     fn flood_control(
         &mut self,
         kind: ControlKind,
@@ -3431,7 +3431,7 @@ impl Engine {
     }
 
     fn persist_groups(&self) -> Action {
-        // compact binary: count ΓÇû per group: id16 ΓÇû ikm32 ΓÇû k_invite32 ΓÇû epoch4 ΓÇû creator8 ΓÇû full1 ΓÇû name_len1 ΓÇû name ΓÇû members_count1 ΓÇû (node8 ΓÇû hue2 ΓÇû name_len1 ΓÇû name)*
+        // compact binary: count ‖ per group: id16 ‖ ikm32 ‖ k_invite32 ‖ epoch4 ‖ creator8 ‖ full1 ‖ name_len1 ‖ name ‖ members_count1 ‖ (node8 ‖ hue2 ‖ name_len1 ‖ name)*
         let mut v = vec![self.groups.len() as u8];
         for g in self.groups.values() {
             v.extend_from_slice(&g.id);
@@ -3537,7 +3537,7 @@ fn bars_for(r: &Route) -> u8 {
 }
 
 /// PSK for code joins: Argon2id-free (fast path) HKDF over code text + slot;
-/// the code entropy is what it is ΓÇö the psk only gates the handshake, the
+/// the code entropy is what it is — the psk only gates the handshake, the
 /// group key comes from the responder afterwards.
 fn psk_from_code(code: &Code, slot: u64) -> [u8; 32] {
     let hk = hkdf::Hkdf::<sha2::Sha256>::new(Some(b"titi/v1/code-psk"), &code.secret_bytes(slot));

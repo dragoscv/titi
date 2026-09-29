@@ -129,7 +129,7 @@ describe("invites and membership", () => {
     applyUi({ type: "inviteOffered", group: G2, name: "Munte", host: BOB, host_name: "Bob", members: 3 }, hooks);
     expect(st().invites).toEqual([{ group: G2, name: "Munte", host: BOB, hostName: "Bob", members: 3 }]);
     expect(hooks.cue).toHaveBeenCalledWith("incoming");
-    expect(hooks.notify).toHaveBeenCalledWith("Bob invites you", "Join ΓÇ£MunteΓÇ¥ ┬╖ 3 members", `invite-${G2}`);
+    expect(hooks.notify).toHaveBeenCalledWith("Bob invites you", "Join “Munte” · 3 members", `invite-${G2}`);
   });
 
   it("inviteOffered works without an optional notify hook", () => {

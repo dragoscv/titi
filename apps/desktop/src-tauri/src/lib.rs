@@ -41,7 +41,7 @@ fn call<T: Send + 'static>(
         .map_err(|_| "engine timeout".to_string())
 }
 
-// ---- sink: engine ΓåÆ UI ------------------------------------------------------
+// ---- sink: engine → UI ------------------------------------------------------
 
 struct TauriSink(AppHandle);
 
@@ -111,14 +111,14 @@ fn show_alert(app: &AppHandle, a: Alert) {
             ..
         } => (
             format!("{host_name} invites you"),
-            format!("Join ΓÇ£{name}ΓÇ¥ ┬╖ {members} members"),
+            format!("Join “{name}” · {members} members"),
         ),
         Alert::Text {
             from_name,
             group_name,
             text,
             ..
-        } => (format!("{from_name} ┬╖ {group_name}"), text.clone()),
+        } => (format!("{from_name} · {group_name}"), text.clone()),
         Alert::Sos {
             from_name,
             note,
@@ -176,7 +176,7 @@ fn show_alert(app: &AppHandle, a: Alert) {
     }
 }
 
-/// Toast button / body ΓåÆ engine + UI. Runs on a WinRT thread.
+/// Toast button / body → engine + UI. Runs on a WinRT thread.
 fn toast_action(app: &AppHandle, arg: &str) {
     log::info!("toast action {arg}");
     let Some(st) = app.try_state::<AppState>() else {
@@ -221,7 +221,7 @@ fn toast_action(app: &AppHandle, arg: &str) {
     }
 }
 
-/// Single source of truth for mute: engine ΓåÆ UI + thumbbar + tray label.
+/// Single source of truth for mute: engine → UI + thumbbar + tray label.
 fn set_muted(app: &AppHandle, muted: bool) {
     log::info!("mute {muted}");
     if let Some(st) = app.try_state::<AppState>() {
@@ -268,9 +268,9 @@ fn handle_args(app: &AppHandle, args: &[String]) {
 fn update_tray(app: &AppHandle, talking: bool, talker: Option<&str>) {
     if let Some(t) = app.tray_by_id("main") {
         let tip = match (talking, talker) {
-            (true, Some(n)) => format!("Titi ΓÇö {n} is talking"),
-            (true, None) => "Titi ΓÇö you are talking".into(),
-            _ => "Titi ΓÇö channel free".into(),
+            (true, Some(n)) => format!("Titi — {n} is talking"),
+            (true, None) => "Titi — you are talking".into(),
+            _ => "Titi — channel free".into(),
         };
         let _ = t.set_tooltip(Some(tip));
     }
@@ -301,7 +301,7 @@ fn show_overlay(app: &AppHandle, on: bool) {
 struct OverlayPref(std::sync::atomic::AtomicBool);
 struct CloseToTray(std::sync::atomic::AtomicBool);
 
-/// The one exit path (tray Quit, Settings ΓåÆ Quit, window close with close-to-tray off):
+/// The one exit path (tray Quit, Settings → Quit, window close with close-to-tray off):
 /// release the floor, stop the engine thread, then exit the process.
 fn quit(app: &AppHandle) {
     log::info!("quit");
@@ -321,7 +321,7 @@ fn titi_quit(app: AppHandle) {
     quit(&app);
 }
 
-// ---- commands: UI ΓåÆ engine --------------------------------------------------
+// ---- commands: UI → engine --------------------------------------------------
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -725,7 +725,7 @@ pub fn run() {
             let tx = started.tx.clone();
             TrayIconBuilder::with_id("main")
                 .icon(app.default_window_icon().cloned().expect("icon"))
-                .tooltip("Titi ΓÇö channel free")
+                .tooltip("Titi — channel free")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(move |app, e| match e.id.as_ref() {

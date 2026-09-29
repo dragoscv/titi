@@ -57,7 +57,7 @@ pub struct Settings {
     pub output_device: String,
     pub lan: bool,
     pub relay: bool,
-    /// Bluetooth LE (GATT central to Android peripherals) ΓÇö works with Wi-Fi off.
+    /// Bluetooth LE (GATT central to Android peripherals) — works with Wi-Fi off.
     pub ble: bool,
 }
 
@@ -607,7 +607,7 @@ fn handle(h: &mut Host, c: Cmd) {
                 TEvent::LinkUp(id) => {
                     let (class, bps, rtt, mtu) = match id {
                         lan::LINK_ID => (LinkClass::Lan, 5_000_000, 8, Some(1200)),
-                        // GATT notifications at 7.5ΓÇô15 ms intervals carry Opus comfortably
+                        // GATT notifications at 7.5–15 ms intervals carry Opus comfortably
                         ble::LINK_ID => (LinkClass::BleGatt, 120_000, 40, Some(ble::MTU)),
                         _ => (LinkClass::Internet, 200_000, 120, None),
                     };
