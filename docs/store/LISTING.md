@@ -2,8 +2,8 @@
 
 Package `ro.titi.app` · Category: Communication · Free · No ads · No IAP
 Privacy policy: https://titi-dragos-projects-aeb8856e.vercel.app/privacy
-Upload key SHA-256: `30:E9:2B:32:BE:AA:11:91:56:B5:85:F5:47:F4:1A:F9:1B:07:0A:CC:84:2D:80:8A:C0:35:67:1B:39:D8:02:4F`  
-Play app-signing SHA-256: `B6:F1:C8:51:9B:0B:0A:CE:55:4B:4E:DB:48:EC:D4:1B:9B:5B:B0:67:96:59:DA:BE:98:A5:78:B3:DE:4B:68:FB`  
+Upload key SHA-256: `30:E9:2B:32:BE:AA:11:91:56:B5:85:F5:47:F4:1A:F9:1B:07:0A:CC:84:2D:80:8A:C0:35:67:1B:39:D8:02:4F`
+Play app-signing SHA-256: `B6:F1:C8:51:9B:0B:0A:CE:55:4B:4E:DB:48:EC:D4:1B:9B:5B:B0:67:96:59:DA:BE:98:A5:78:B3:DE:4B:68:FB`
 Play app id 4975577701631730555 · internal track 4701032077694258196 · opt-in https://play.google.com/apps/internaltest/4701032077694258196
 
 ## Publishing status (2026-09-14)
