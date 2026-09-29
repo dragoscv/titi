@@ -71,7 +71,9 @@ struct State {
 
 fn signal_bytes(k: Kind) -> Vec<u8> {
     let mut out = vec![TAG_SIGNAL];
-    Signal { kind: Some(k) }.encode(&mut out).expect("vec grows");
+    Signal { kind: Some(k) }
+        .encode(&mut out)
+        .expect("vec grows");
     out
 }
 
@@ -83,7 +85,12 @@ fn join_msgs(st: &mut State) -> Vec<Vec<u8>> {
         }
         out.push(signal_bytes(Kind::RoomJoin(RoomJoin {
             group_hash: h.to_vec().into(),
-            node: Some(NodeRef { node_id: st.id.node_id.clone().into(), pubkey: Default::default(), display_name: st.id.name.clone(), avatar_hue: st.id.hue }),
+            node: Some(NodeRef {
+                node_id: st.id.node_id.clone().into(),
+                pubkey: Default::default(),
+                display_name: st.id.name.clone(),
+                avatar_hue: st.id.hue,
+            }),
             resume_token: st.resume.clone().into(),
             rendezvous: *rdv,
         })));
@@ -93,7 +100,14 @@ fn join_msgs(st: &mut State) -> Vec<Vec<u8>> {
 }
 
 async fn run(url: String, id: Identity, ev: EngineTx, mut rx: mpsc::Receiver<RelayCmd>) {
-    let mut st = State { id, rooms: HashMap::new(), joined_rooms: HashSet::new(), resume: Vec::new(), peers: HashSet::new(), joined: false };
+    let mut st = State {
+        id,
+        rooms: HashMap::new(),
+        joined_rooms: HashSet::new(),
+        resume: Vec::new(),
+        peers: HashSet::new(),
+        joined: false,
+    };
     let mut attempt: u32 = 0;
     loop {
         // drain commands that arrived while disconnected (keep rooms/identity, drop voice)
@@ -104,11 +118,17 @@ async fn run(url: String, id: Identity, ev: EngineTx, mut rx: mpsc::Receiver<Rel
                 RelayCmd::Send(_) => {}
             }
         }
-        let conn = tokio::time::timeout(Duration::from_secs(10), tokio_tungstenite::connect_async(url.as_str())).await;
+        let conn = tokio::time::timeout(
+            Duration::from_secs(10),
+            tokio_tungstenite::connect_async(url.as_str()),
+        )
+        .await;
         let ws = match conn {
             Ok(Ok((ws, _))) => ws,
             other => {
-                if let Ok(Err(e)) = other { log::info!("relay connect: {e}"); }
+                if let Ok(Err(e)) = other {
+                    log::info!("relay connect: {e}");
+                }
                 attempt += 1;
                 let backoff = (500u64 << attempt.min(6)).min(30_000);
                 // stay responsive to room/identity updates while waiting

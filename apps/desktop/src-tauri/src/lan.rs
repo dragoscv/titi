@@ -50,7 +50,9 @@ fn local_ipv4s() -> Vec<Ipv4Addr> {
         .unwrap_or_default()
         .into_iter()
         .filter_map(|i| match i.ip() {
-            IpAddr::V4(a) if !a.is_loopback() && !a.is_link_local() && !a.is_unspecified() => Some(a),
+            IpAddr::V4(a) if !a.is_loopback() && !a.is_link_local() && !a.is_unspecified() => {
+                Some(a)
+            }
             _ => None,
         })
         .collect();
@@ -83,7 +85,11 @@ async fn run(ev: EngineTx, mut out: mpsc::Receiver<(Option<String>, Vec<u8>)>) {
         let mut joined: HashSet<Ipv4Addr> = HashSet::new();
         let mut ifaces = local_ipv4s();
         rejoin(&sock, &ifaces, &mut joined);
-        log::info!("lan bound :{PORT} on {} interface(s): {:?}", joined.len(), joined);
+        log::info!(
+            "lan bound :{PORT} on {} interface(s): {:?}",
+            joined.len(),
+            joined
+        );
         let mut up = !joined.is_empty();
         if up {
             let _ = ev.send(Cmd::T(TEvent::LinkUp(LINK_ID)));

@@ -78,7 +78,9 @@ impl Code {
                 .ok_or(Error::InviteCode)?;
             words[i] = idx as u16;
         }
-        let check: u8 = tokens[WORDS_PER_CODE].parse().map_err(|_| Error::InviteCode)?;
+        let check: u8 = tokens[WORDS_PER_CODE]
+            .parse()
+            .map_err(|_| Error::InviteCode)?;
         if check > 99 {
             return Err(Error::InviteCode);
         }
@@ -162,7 +164,13 @@ impl DeepLink {
         expires_ms: u64,
     ) -> Self {
         let sig = identity.sign(&Self::signed_bytes(&group_uuid, &k_join, expires_ms));
-        DeepLink { group_uuid, k_join, expires_ms, creator_pub: identity.ed25519_public(), signature: sig }
+        DeepLink {
+            group_uuid,
+            k_join,
+            expires_ms,
+            creator_pub: identity.ed25519_public(),
+            signature: sig,
+        }
     }
 
     fn signed_bytes(uuid: &[u8; 16], key: &[u8; 32], exp: u64) -> Vec<u8> {
@@ -238,7 +246,11 @@ const B64: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012
 pub fn b64url(data: &[u8]) -> String {
     let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
     for chunk in data.chunks(3) {
-        let b = [chunk[0], *chunk.get(1).unwrap_or(&0), *chunk.get(2).unwrap_or(&0)];
+        let b = [
+            chunk[0],
+            *chunk.get(1).unwrap_or(&0),
+            *chunk.get(2).unwrap_or(&0),
+        ];
         let n = (b[0] as u32) << 16 | (b[1] as u32) << 8 | b[2] as u32;
         out.push(B64[(n >> 18) as usize & 63] as char);
         out.push(B64[(n >> 12) as usize & 63] as char);

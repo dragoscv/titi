@@ -59,7 +59,12 @@ impl Identity {
         let x_static = x25519_dalek::StaticSecret::from(x25519_secret);
         let x25519_public = x25519_dalek::PublicKey::from(&x_static).to_bytes();
         let node_id = node_id_from_pubkey(signing.verifying_key().as_bytes());
-        Identity { signing, x25519_secret, x25519_public, node_id }
+        Identity {
+            signing,
+            x25519_secret,
+            x25519_public,
+            node_id,
+        }
     }
 
     pub fn seed(&self) -> [u8; 32] {
@@ -86,7 +91,8 @@ impl Identity {
 pub fn verify(pubkey: &[u8; 32], msg: &[u8], sig: &[u8]) -> Result<()> {
     let vk = VerifyingKey::from_bytes(pubkey).map_err(|_| Error::Crypto("bad ed25519 pubkey"))?;
     let sig = Signature::from_slice(sig).map_err(|_| Error::Crypto("bad signature length"))?;
-    vk.verify(msg, &sig).map_err(|_| Error::Crypto("signature verify failed"))
+    vk.verify(msg, &sig)
+        .map_err(|_| Error::Crypto("signature verify failed"))
 }
 
 /// Derive X25519 public key from an Ed25519 public key (for IK handshakes

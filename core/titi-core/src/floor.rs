@@ -42,18 +42,41 @@ pub struct Claim {
 impl Claim {
     /// True if `self` beats `other` in arbitration.
     pub fn beats(&self, other: &Claim) -> bool {
-        (self.prio, std::cmp::Reverse(self.ts), std::cmp::Reverse(self.node))
-            > (other.prio, std::cmp::Reverse(other.ts), std::cmp::Reverse(other.node))
+        (
+            self.prio,
+            std::cmp::Reverse(self.ts),
+            std::cmp::Reverse(self.node),
+        ) > (
+            other.prio,
+            std::cmp::Reverse(other.ts),
+            std::cmp::Reverse(other.node),
+        )
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum State {
     Idle,
-    Pending { claim: Claim, deadline: Ms },
-    HasFloor { since: Ms, last_taken_sent: Ms, warned: bool, prio: Priority },
-    Taken { holder: Claim, last_heard: Ms, talker_short: u16 },
-    Queued { claim: Claim, holder: Claim, last_heard: Ms },
+    Pending {
+        claim: Claim,
+        deadline: Ms,
+    },
+    HasFloor {
+        since: Ms,
+        last_taken_sent: Ms,
+        warned: bool,
+        prio: Priority,
+    },
+    Taken {
+        holder: Claim,
+        last_heard: Ms,
+        talker_short: u16,
+    },
+    Queued {
+        claim: Claim,
+        holder: Claim,
+        last_heard: Ms,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -69,7 +92,11 @@ pub enum FloorEvent {
     /// Lost arbitration / floor busy: play busy tone, drop buffer.
     Denied { holder: NodeId },
     /// Someone else has the floor (UI: who is talking).
-    TakenBy { holder: NodeId, prio: Priority, talker_short: u16 },
+    TakenBy {
+        holder: NodeId,
+        prio: Priority,
+        talker_short: u16,
+    },
     /// Floor became free.
     Idle,
     /// Our floor was pre-empted by higher priority.
@@ -93,7 +120,14 @@ pub struct Floor {
 
 impl Floor {
     pub fn new(me: NodeId, my_short: u16) -> Self {
-        Floor { me, my_short, state: State::Idle, t_arb_ms: 150, queue_enabled: true, idle_repeats_left: 0 }
+        Floor {
+            me,
+            my_short,
+            state: State::Idle,
+            t_arb_ms: 150,
+            queue_enabled: true,
+            idle_repeats_left: 0,
+        }
     }
 
     /// Adapt T_arb from measured max hop RTT.
@@ -114,24 +148,44 @@ impl Floor {
     }
 
     pub fn ptt_down(&mut self, prio: Priority, now: Ms) -> Vec<FloorEvent> {
-        let claim = Claim { node: self.me, prio, ts: now };
+        let claim = Claim {
+            node: self.me,
+            prio,
+            ts: now,
+        };
         match &self.state {
             State::Idle => {
-                self.state = State::Pending { claim, deadline: now + self.t_arb_ms };
+                self.state = State::Pending {
+                    claim,
+                    deadline: now + self.t_arb_ms,
+                };
                 vec![FloorEvent::SendRequest(claim)]
             }
             State::Taken { holder, .. } => {
                 if claim.prio > holder.prio {
                     // pre-empt
-                    self.state = State::Pending { claim, deadline: now + self.t_arb_ms };
+                    self.state = State::Pending {
+                        claim,
+                        deadline: now + self.t_arb_ms,
+                    };
                     vec![FloorEvent::SendRequest(claim)]
                 } else if self.queue_enabled {
                     let h = *holder;
-                    let lh = if let State::Taken { last_heard, .. } = &self.state { *last_heard } else { now };
-                    self.state = State::Queued { claim, holder: h, last_heard: lh };
+                    let lh = if let State::Taken { last_heard, .. } = &self.state {
+                        *last_heard
+                    } else {
+                        now
+                    };
+                    self.state = State::Queued {
+                        claim,
+                        holder: h,
+                        last_heard: lh,
+                    };
                     vec![FloorEvent::Denied { holder: h.node }]
                 } else {
-                    vec![FloorEvent::Denied { holder: holder.node }]
+                    vec![FloorEvent::Denied {
+                        holder: holder.node,
+                    }]
                 }
             }
             _ => vec![],
@@ -186,10 +240,20 @@ impl Floor {
         match &self.state {
             State::Pending { claim, .. } => {
                 if holder.beats(claim) || holder.prio >= claim.prio {
-                    self.state = State::Taken { holder, last_heard: now, talker_short };
+                    self.state = State::Taken {
+                        holder,
+                        last_heard: now,
+                        talker_short,
+                    };
                     vec![
-                        FloorEvent::Denied { holder: holder.node },
-                        FloorEvent::TakenBy { holder: holder.node, prio: holder.prio, talker_short },
+                        FloorEvent::Denied {
+                            holder: holder.node,
+                        },
+                        FloorEvent::TakenBy {
+                            holder: holder.node,
+                            prio: holder.prio,
+                            talker_short,
+                        },
                     ]
                 } else {
                     vec![]
@@ -197,27 +261,51 @@ impl Floor {
             }
             State::HasFloor { prio, .. } => {
                 if holder.prio > *prio {
-                    self.state = State::Taken { holder, last_heard: now, talker_short };
+                    self.state = State::Taken {
+                        holder,
+                        last_heard: now,
+                        talker_short,
+                    };
                     vec![
                         FloorEvent::Revoked { by: holder.node },
-                        FloorEvent::TakenBy { holder: holder.node, prio: holder.prio, talker_short },
+                        FloorEvent::TakenBy {
+                            holder: holder.node,
+                            prio: holder.prio,
+                            talker_short,
+                        },
                     ]
                 } else {
                     vec![FloorEvent::SendTaken]
                 }
             }
             State::Taken { holder: h, .. } if h.node == holder.node => {
-                self.state = State::Taken { holder, last_heard: now, talker_short };
+                self.state = State::Taken {
+                    holder,
+                    last_heard: now,
+                    talker_short,
+                };
                 vec![]
             }
             State::Queued { claim, .. } => {
                 let c = *claim;
-                self.state = State::Queued { claim: c, holder, last_heard: now };
+                self.state = State::Queued {
+                    claim: c,
+                    holder,
+                    last_heard: now,
+                };
                 vec![]
             }
             _ => {
-                self.state = State::Taken { holder, last_heard: now, talker_short };
-                vec![FloorEvent::TakenBy { holder: holder.node, prio: holder.prio, talker_short }]
+                self.state = State::Taken {
+                    holder,
+                    last_heard: now,
+                    talker_short,
+                };
+                vec![FloorEvent::TakenBy {
+                    holder: holder.node,
+                    prio: holder.prio,
+                    talker_short,
+                }]
             }
         }
     }
@@ -227,13 +315,29 @@ impl Floor {
         match &self.state {
             State::Taken { holder, .. } if holder.node == talker => {
                 let h = *holder;
-                self.state = State::Taken { holder: h, last_heard: now, talker_short };
+                self.state = State::Taken {
+                    holder: h,
+                    last_heard: now,
+                    talker_short,
+                };
                 vec![]
             }
             State::Idle => {
-                let holder = Claim { node: talker, prio: Priority::Normal, ts: now };
-                self.state = State::Taken { holder, last_heard: now, talker_short };
-                vec![FloorEvent::TakenBy { holder: talker, prio: Priority::Normal, talker_short }]
+                let holder = Claim {
+                    node: talker,
+                    prio: Priority::Normal,
+                    ts: now,
+                };
+                self.state = State::Taken {
+                    holder,
+                    last_heard: now,
+                    talker_short,
+                };
+                vec![FloorEvent::TakenBy {
+                    holder: talker,
+                    prio: Priority::Normal,
+                    talker_short,
+                }]
             }
             _ => vec![],
         }
@@ -258,12 +362,28 @@ impl Floor {
         let mut ev = vec![];
         match &mut self.state {
             State::Pending { deadline, .. } if now >= *deadline => {
-                let prio = if let State::Pending { claim, .. } = &self.state { claim.prio } else { Priority::Normal };
-                self.state = State::HasFloor { since: now, last_taken_sent: now, warned: false, prio };
-                ev.push(FloorEvent::Granted { talker_short: self.my_short });
+                let prio = if let State::Pending { claim, .. } = &self.state {
+                    claim.prio
+                } else {
+                    Priority::Normal
+                };
+                self.state = State::HasFloor {
+                    since: now,
+                    last_taken_sent: now,
+                    warned: false,
+                    prio,
+                };
+                ev.push(FloorEvent::Granted {
+                    talker_short: self.my_short,
+                });
                 ev.push(FloorEvent::SendTaken);
             }
-            State::HasFloor { since, last_taken_sent, warned, .. } => {
+            State::HasFloor {
+                since,
+                last_taken_sent,
+                warned,
+                ..
+            } => {
                 if now.saturating_sub(*since) >= T_MAX_TALK_MS {
                     self.state = State::Idle;
                     self.idle_repeats_left = IDLE_REPEATS - 1;
@@ -281,11 +401,15 @@ impl Floor {
                     }
                 }
             }
-            State::Taken { last_heard, .. } if now.saturating_sub(*last_heard) > T_TAKEN_EXPIRY_MS => {
+            State::Taken { last_heard, .. }
+                if now.saturating_sub(*last_heard) > T_TAKEN_EXPIRY_MS =>
+            {
                 self.state = State::Idle;
                 ev.push(FloorEvent::Idle);
             }
-            State::Queued { last_heard, .. } if now.saturating_sub(*last_heard) > T_TAKEN_EXPIRY_MS => {
+            State::Queued { last_heard, .. }
+                if now.saturating_sub(*last_heard) > T_TAKEN_EXPIRY_MS =>
+            {
                 self.state = State::Idle;
                 ev.push(FloorEvent::Idle);
                 ev.push(FloorEvent::QueueReady);
@@ -326,8 +450,14 @@ mod tests {
     fn collision_lower_tuple_wins() {
         let mut a = Floor::new(id(1), 1);
         let mut b = Floor::new(id(2), 2);
-        let ca = match a.ptt_down(Priority::Normal, 1000)[0] { FloorEvent::SendRequest(c) => c, _ => panic!() };
-        let cb = match b.ptt_down(Priority::Normal, 1005)[0] { FloorEvent::SendRequest(c) => c, _ => panic!() };
+        let ca = match a.ptt_down(Priority::Normal, 1000)[0] {
+            FloorEvent::SendRequest(c) => c,
+            _ => panic!(),
+        };
+        let cb = match b.ptt_down(Priority::Normal, 1005)[0] {
+            FloorEvent::SendRequest(c) => c,
+            _ => panic!(),
+        };
         assert!(a.on_request(cb, 1010).is_empty()); // a is earlier, keeps pending
         let ev = b.on_request(ca, 1010);
         assert_eq!(ev, vec![FloorEvent::Denied { holder: id(1) }]);
@@ -340,7 +470,15 @@ mod tests {
         a.ptt_down(Priority::Normal, 0);
         a.tick(1000);
         assert!(a.is_talking());
-        let ev = a.on_taken(Claim { node: id(9), prio: Priority::Emergency, ts: 1500 }, 99, 1500);
+        let ev = a.on_taken(
+            Claim {
+                node: id(9),
+                prio: Priority::Emergency,
+                ts: 1500,
+            },
+            99,
+            1500,
+        );
         assert!(matches!(ev[0], FloorEvent::Revoked { .. }));
         assert_eq!(a.holder(), Some(id(9)));
     }

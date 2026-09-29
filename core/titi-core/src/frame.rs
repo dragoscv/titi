@@ -91,7 +91,11 @@ pub struct Envelope<'a> {
 
 impl<'a> Envelope<'a> {
     pub fn header_len(&self) -> usize {
-        if self.dst.is_some() { ENVELOPE_UNICAST } else { ENVELOPE_MIN }
+        if self.dst.is_some() {
+            ENVELOPE_UNICAST
+        } else {
+            ENVELOPE_MIN
+        }
     }
 
     pub fn hops(&self) -> u8 {
@@ -119,7 +123,10 @@ impl<'a> Envelope<'a> {
 
     pub fn decode(buf: &'a [u8]) -> Result<Self> {
         if buf.len() < ENVELOPE_MIN {
-            return Err(Error::Truncated { need: ENVELOPE_MIN, got: buf.len() });
+            return Err(Error::Truncated {
+                need: ENVELOPE_MIN,
+                got: buf.len(),
+            });
         }
         if buf[0] != PROTOCOL_VERSION {
             return Err(Error::Version(buf[0]));
@@ -133,7 +140,10 @@ impl<'a> Envelope<'a> {
         src.copy_from_slice(&buf[8..16]);
         let (dst, off) = if fl & flags::UNICAST != 0 {
             if buf.len() < ENVELOPE_UNICAST {
-                return Err(Error::Truncated { need: ENVELOPE_UNICAST, got: buf.len() });
+                return Err(Error::Truncated {
+                    need: ENVELOPE_UNICAST,
+                    got: buf.len(),
+                });
             }
             let mut d = [0u8; 8];
             d.copy_from_slice(&buf[16..24]);
@@ -141,7 +151,16 @@ impl<'a> Envelope<'a> {
         } else {
             (None, ENVELOPE_MIN)
         };
-        Ok(Envelope { ftype, ttl, hop_start, flags: fl, msg_id, src, dst, payload: &buf[off..] })
+        Ok(Envelope {
+            ftype,
+            ttl,
+            hop_start,
+            flags: fl,
+            msg_id,
+            src,
+            dst,
+            payload: &buf[off..],
+        })
     }
 
     /// Returns a copy with TTL decremented, or None if it must not be relayed.
@@ -272,7 +291,10 @@ impl VoiceHeader {
 
     pub fn decode(buf: &[u8]) -> Result<(Self, &[u8])> {
         if buf.len() < VOICE_HEADER {
-            return Err(Error::Truncated { need: VOICE_HEADER, got: buf.len() });
+            return Err(Error::Truncated {
+                need: VOICE_HEADER,
+                got: buf.len(),
+            });
         }
         if buf[0] != VOICE_TYPE {
             return Err(Error::FrameType(buf[0]));
@@ -317,7 +339,10 @@ pub fn decode_route(buf: &[u8]) -> Result<(Vec<NodeId>, &[u8])> {
     }
     let need = 1 + n * 8;
     if buf.len() < need {
-        return Err(Error::Truncated { need, got: buf.len() });
+        return Err(Error::Truncated {
+            need,
+            got: buf.len(),
+        });
     }
     let mut r = Vec::with_capacity(n);
     for i in 0..n {
@@ -390,14 +415,20 @@ pub mod fragment {
 
     impl<K> Default for Reassembler<K> {
         fn default() -> Self {
-            Reassembler { sets: HashMap::new(), pending: 0 }
+            Reassembler {
+                sets: HashMap::new(),
+                pending: 0,
+            }
         }
     }
 
     impl<K: Eq + Hash + Clone> Reassembler<K> {
         pub fn push(&mut self, key: K, frag: &[u8], now_ms: u64) -> Result<Option<Vec<u8>>> {
             if frag.len() < HEADER {
-                return Err(Error::Truncated { need: HEADER, got: frag.len() });
+                return Err(Error::Truncated {
+                    need: HEADER,
+                    got: frag.len(),
+                });
             }
             let mut set = [0u8; 12];
             set.copy_from_slice(&frag[..12]);
@@ -418,7 +449,12 @@ pub mod fragment {
                 return Err(Error::Invalid("fragment buffer full"));
             }
             let k = (key, set);
-            let entry = self.sets.entry(k.clone()).or_insert_with(|| Partial { total: total as u8, parts: vec![None; total], first_ms: now_ms, bytes: 0 });
+            let entry = self.sets.entry(k.clone()).or_insert_with(|| Partial {
+                total: total as u8,
+                parts: vec![None; total],
+                first_ms: now_ms,
+                bytes: 0,
+            });
             if entry.total as usize != total {
                 let p = self.sets.remove(&k).unwrap();
                 self.pending -= p.bytes;
@@ -466,7 +502,10 @@ mod tests {
         assert_eq!(b.len(), ENVELOPE_MIN + 2);
         assert_eq!(Envelope::decode(&b).unwrap(), e);
 
-        let u = Envelope { dst: Some([2; 8]), ..e.clone() };
+        let u = Envelope {
+            dst: Some([2; 8]),
+            ..e.clone()
+        };
         let b = u.encode();
         assert_eq!(b.len(), ENVELOPE_UNICAST + 2);
         let d = Envelope::decode(&b).unwrap();
@@ -546,7 +585,10 @@ mod tests {
 
     #[test]
     fn fragmentation_limits_and_expiry() {
-        assert!(fragment::split([0; 12], &vec![0u8; 256], 1).is_none(), "more than 255 parts refused");
+        assert!(
+            fragment::split([0; 12], &vec![0u8; 256], 1).is_none(),
+            "more than 255 parts refused"
+        );
         let set = fragment::set_id(&[1; 8], 1);
         let frags = fragment::split(set, &[7u8; 300], 100).unwrap();
         let mut r = fragment::Reassembler::<u8>::default();
@@ -555,7 +597,10 @@ mod tests {
         assert!(r.push(2, &frags[1], 0).unwrap().is_none());
         assert_eq!(r.pending_bytes(), 200);
         // stale sets are dropped
-        assert!(r.push(3, &frags[2], fragment::EXPIRE_MS + 1).unwrap().is_none());
+        assert!(r
+            .push(3, &frags[2], fragment::EXPIRE_MS + 1)
+            .unwrap()
+            .is_none());
         assert_eq!(r.pending_bytes(), 100);
         assert!(r.push(1, &frags[0][..5], 0).is_err(), "truncated header");
     }

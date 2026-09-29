@@ -27,8 +27,9 @@ pub mod codec {
 
     impl Encoder {
         pub fn new(profile: Profile) -> Result<Self> {
-            let inner = opus::Encoder::new(SAMPLE_RATE, opus::Channels::Mono, opus::Application::Voip)
-                .map_err(|e| Error::Codec(e.to_string()))?;
+            let inner =
+                opus::Encoder::new(SAMPLE_RATE, opus::Channels::Mono, opus::Application::Voip)
+                    .map_err(|e| Error::Codec(e.to_string()))?;
             let mut enc = Encoder { inner, profile };
             enc.apply(profile)?;
             Ok(enc)
@@ -37,16 +38,21 @@ pub mod codec {
         pub fn apply(&mut self, profile: Profile) -> Result<()> {
             self.profile = profile;
             let e = &mut self.inner;
-            e.set_bitrate(opus::Bitrate::Bits(profile.bitrate() as i32)).map_err(cerr)?;
+            e.set_bitrate(opus::Bitrate::Bits(profile.bitrate() as i32))
+                .map_err(cerr)?;
             e.set_inband_fec(profile.fec()).map_err(cerr)?;
-            e.set_packet_loss_perc(if profile.fec() { 15 } else { 5 }).map_err(cerr)?;
+            e.set_packet_loss_perc(if profile.fec() { 15 } else { 5 })
+                .map_err(cerr)?;
             e.set_vbr(true).map_err(cerr)?;
             if profile == Profile::Min {
-                e.set_max_bandwidth(opus::Bandwidth::Narrowband).map_err(cerr)?;
+                e.set_max_bandwidth(opus::Bandwidth::Narrowband)
+                    .map_err(cerr)?;
             } else if profile == Profile::Low {
-                e.set_max_bandwidth(opus::Bandwidth::Wideband).map_err(cerr)?;
+                e.set_max_bandwidth(opus::Bandwidth::Wideband)
+                    .map_err(cerr)?;
             } else {
-                e.set_max_bandwidth(opus::Bandwidth::Fullband).map_err(cerr)?;
+                e.set_max_bandwidth(opus::Bandwidth::Fullband)
+                    .map_err(cerr)?;
             }
             Ok(())
         }
@@ -76,11 +82,18 @@ pub mod codec {
 
     impl Decoder {
         pub fn new() -> Result<Self> {
-            Ok(Decoder { inner: opus::Decoder::new(SAMPLE_RATE, opus::Channels::Mono).map_err(cerr)? })
+            Ok(Decoder {
+                inner: opus::Decoder::new(SAMPLE_RATE, opus::Channels::Mono).map_err(cerr)?,
+            })
         }
 
         /// Decode a packet; `frame_samples` = expected samples (960/1920/2880).
-        pub fn decode(&mut self, packet: &[u8], frame_samples: usize, fec: bool) -> Result<Vec<i16>> {
+        pub fn decode(
+            &mut self,
+            packet: &[u8],
+            frame_samples: usize,
+            fec: bool,
+        ) -> Result<Vec<i16>> {
             let mut out = vec![0i16; frame_samples];
             let n = self.inner.decode(packet, &mut out, fec).map_err(cerr)?;
             out.truncate(n);
@@ -204,7 +217,9 @@ impl JitterBuffer {
             self.started = true;
             self.next_seq = self.queue.keys().next().copied();
         }
-        let Some(next) = self.next_seq else { return Pop::Wait };
+        let Some(next) = self.next_seq else {
+            return Pop::Wait;
+        };
         if let Some(p) = self.queue.remove(&next) {
             self.next_seq = Some(next + p.frames as u64);
             self.consecutive_loss = 0;
@@ -216,21 +231,30 @@ impl JitterBuffer {
             self.next_seq = Some(next + 1);
             self.consecutive_loss = self.consecutive_loss.saturating_add(1);
             let fec_next = self.queue.get(&(next + 1)).cloned();
-            return Pop::Lost { fade: self.consecutive_loss > PLC_FADE_AFTER, fec_from_next: fec_next };
+            return Pop::Lost {
+                fade: self.consecutive_loss > PLC_FADE_AFTER,
+                fec_from_next: fec_next,
+            };
         }
         // Underrun: nothing at all yet
         self.consecutive_loss = self.consecutive_loss.saturating_add(1);
         if self.consecutive_loss > 10 {
             self.started = false; // rebuffer
         }
-        Pop::Lost { fade: self.consecutive_loss > PLC_FADE_AFTER, fec_from_next: None }
+        Pop::Lost {
+            fade: self.consecutive_loss > PLC_FADE_AFTER,
+            fec_from_next: None,
+        }
     }
 }
 
 pub enum Pop {
     Wait,
     Packet(Packet),
-    Lost { fade: bool, fec_from_next: Option<Packet> },
+    Lost {
+        fade: bool,
+        fec_from_next: Option<Packet>,
+    },
 }
 
 /// Mix up to MAX_TALKERS i16 streams with soft clipping.
@@ -242,7 +266,11 @@ pub fn mix(streams: &[&[i16]], out: &mut [i16]) {
         }
         // soft clip
         let f = acc as f32 / 32768.0;
-        let c = if f.abs() <= 0.8 { f } else { f.signum() * (0.8 + (f.abs() - 0.8) / (1.0 + (f.abs() - 0.8) * 4.0)) };
+        let c = if f.abs() <= 0.8 {
+            f
+        } else {
+            f.signum() * (0.8 + (f.abs() - 0.8) / (1.0 + (f.abs() - 0.8) * 4.0))
+        };
         *o = (c.clamp(-1.0, 1.0) * 32767.0) as i16;
     }
 }
@@ -263,7 +291,11 @@ pub fn energy_dbfs(pcm: &[i16]) -> f32 {
     }
     let sum: f64 = pcm.iter().map(|s| (*s as f64) * (*s as f64)).sum();
     let rms = (sum / pcm.len() as f64).sqrt();
-    if rms < 1.0 { -120.0 } else { 20.0 * (rms / 32768.0).log10() as f32 }
+    if rms < 1.0 {
+        -120.0
+    } else {
+        20.0 * (rms / 32768.0).log10() as f32
+    }
 }
 
 pub const VAD_THRESHOLD_DBFS: f32 = -50.0;
@@ -284,7 +316,14 @@ mod tests {
     use super::*;
 
     fn pkt(seq: u64, ts: u64, arrived: Ms) -> Packet {
-        Packet { seq, ts_abs: ts, arrived, payload: vec![seq as u8], frames: 1, profile: Profile::Hq }
+        Packet {
+            seq,
+            ts_abs: ts,
+            arrived,
+            payload: vec![seq as u8],
+            frames: 1,
+            profile: Profile::Hq,
+        }
     }
 
     #[test]
@@ -345,9 +384,15 @@ mod tests {
             let mut enc = codec::Encoder::new(p).unwrap();
             let mut dec = codec::Decoder::new().unwrap();
             let n = enc.frame_samples();
-            let pcm: Vec<i16> = (0..n).map(|i| ((i as f32 * 0.05).sin() * 10000.0) as i16).collect();
+            let pcm: Vec<i16> = (0..n)
+                .map(|i| ((i as f32 * 0.05).sin() * 10000.0) as i16)
+                .collect();
             let pkt = enc.encode(&pcm).unwrap();
-            assert!(!pkt.is_empty() && pkt.len() < 400, "{p:?} pkt {}", pkt.len());
+            assert!(
+                !pkt.is_empty() && pkt.len() < 400,
+                "{p:?} pkt {}",
+                pkt.len()
+            );
             let out = dec.decode(&pkt, n, false).unwrap();
             assert_eq!(out.len(), n);
             let plc = dec.conceal(n).unwrap();

@@ -56,7 +56,8 @@ impl Session {
         remote_x25519_public: Option<&[u8; 32]>,
         psk: Option<&[u8; 32]>,
     ) -> Result<Self> {
-        let mut b = snow::Builder::new(pattern.name().parse()?).local_private_key(local_x25519_secret)?;
+        let mut b =
+            snow::Builder::new(pattern.name().parse()?).local_private_key(local_x25519_secret)?;
         if let Some(r) = remote_x25519_public {
             b = b.remote_public_key(r)?;
         }
@@ -71,7 +72,8 @@ impl Session {
         local_x25519_secret: &[u8; 32],
         psk: Option<&[u8; 32]>,
     ) -> Result<Self> {
-        let mut b = snow::Builder::new(pattern.name().parse()?).local_private_key(local_x25519_secret)?;
+        let mut b =
+            snow::Builder::new(pattern.name().parse()?).local_private_key(local_x25519_secret)?;
         if let Some(p) = psk {
             b = b.psk(3, p)?;
         }
@@ -174,8 +176,16 @@ pub struct KdfParams {
 }
 
 impl KdfParams {
-    pub const SPEC: KdfParams = KdfParams { m_kib: 64 * 1024, t: 3, p: 1 };
-    pub const LIGHT: KdfParams = KdfParams { m_kib: 8 * 1024, t: 1, p: 1 };
+    pub const SPEC: KdfParams = KdfParams {
+        m_kib: 64 * 1024,
+        t: 3,
+        p: 1,
+    };
+    pub const LIGHT: KdfParams = KdfParams {
+        m_kib: 8 * 1024,
+        t: 1,
+        p: 1,
+    };
 }
 
 /// `ikm = Argon2id(secret, salt=group_uuid)`.
@@ -184,7 +194,8 @@ pub fn group_ikm(secret: &[u8], group_uuid: &[u8; 16], params: KdfParams) -> Res
         .map_err(|_| Error::Crypto("argon2 params"))?;
     let a = argon2::Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, p);
     let mut out = [0u8; 32];
-    a.hash_password_into(secret, group_uuid, &mut out).map_err(|_| Error::Crypto("argon2"))?;
+    a.hash_password_into(secret, group_uuid, &mut out)
+        .map_err(|_| Error::Crypto("argon2"))?;
     Ok(out)
 }
 
@@ -231,18 +242,33 @@ pub struct GroupCipher {
 
 impl GroupCipher {
     pub fn new(k_epoch: &[u8; 32], epoch: u32) -> Self {
-        GroupCipher { aead: XChaCha20Poly1305::new(k_epoch.into()), epoch }
+        GroupCipher {
+            aead: XChaCha20Poly1305::new(k_epoch.into()),
+            epoch,
+        }
     }
 
     pub fn seal(&self, nonce: &[u8; 24], aad: &[u8], plaintext: &[u8]) -> Vec<u8> {
         self.aead
-            .encrypt(&XNonce::from(*nonce), Payload { msg: plaintext, aad })
+            .encrypt(
+                &XNonce::from(*nonce),
+                Payload {
+                    msg: plaintext,
+                    aad,
+                },
+            )
             .expect("xchacha seal")
     }
 
     pub fn open(&self, nonce: &[u8; 24], aad: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>> {
         self.aead
-            .decrypt(&XNonce::from(*nonce), Payload { msg: ciphertext, aad })
+            .decrypt(
+                &XNonce::from(*nonce),
+                Payload {
+                    msg: ciphertext,
+                    aad,
+                },
+            )
             .map_err(|_| Error::Crypto("group aead open"))
     }
 }
@@ -295,8 +321,13 @@ mod tests {
     fn handshake(pattern: Pattern, psk: Option<[u8; 32]>) -> (Session, Session) {
         let a = Identity::from_seed(&[1; 32]);
         let b = Identity::from_seed(&[2; 32]);
-        let remote = if pattern == Pattern::Ik { Some(b.x25519_public()) } else { None };
-        let mut i = Session::initiator(pattern, a.x25519_secret(), remote.as_ref(), psk.as_ref()).unwrap();
+        let remote = if pattern == Pattern::Ik {
+            Some(b.x25519_public())
+        } else {
+            None
+        };
+        let mut i =
+            Session::initiator(pattern, a.x25519_secret(), remote.as_ref(), psk.as_ref()).unwrap();
         let mut r = Session::responder(pattern, b.x25519_secret(), psk.as_ref()).unwrap();
         let mut turn_i = true;
         for _ in 0..4 {
@@ -320,7 +351,11 @@ mod tests {
 
     #[test]
     fn noise_xx_ik_psk_roundtrip() {
-        for (p, psk) in [(Pattern::Xx, None), (Pattern::Ik, None), (Pattern::XxPsk3, Some([9; 32]))] {
+        for (p, psk) in [
+            (Pattern::Xx, None),
+            (Pattern::Ik, None),
+            (Pattern::XxPsk3, Some([9; 32])),
+        ] {
             let (mut i, mut r) = handshake(p, psk);
             let c = i.encrypt(b"voice").unwrap();
             assert_eq!(r.decrypt(&c).unwrap(), b"voice");
@@ -333,7 +368,8 @@ mod tests {
     fn psk_mismatch_fails() {
         let a = Identity::from_seed(&[1; 32]);
         let b = Identity::from_seed(&[2; 32]);
-        let mut i = Session::initiator(Pattern::XxPsk3, a.x25519_secret(), None, Some(&[1; 32])).unwrap();
+        let mut i =
+            Session::initiator(Pattern::XxPsk3, a.x25519_secret(), None, Some(&[1; 32])).unwrap();
         let mut r = Session::responder(Pattern::XxPsk3, b.x25519_secret(), Some(&[2; 32])).unwrap();
         let m1 = i.write_handshake(b"").unwrap().unwrap();
         r.read_handshake(&m1).unwrap();

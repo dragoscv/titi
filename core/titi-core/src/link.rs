@@ -98,7 +98,11 @@ impl Link {
             id,
             class,
             mtu: mtu.unwrap_or(class.default_mtu()),
-            stats: LinkStats { est_bps: class.default_bps(), rtt_ms: 30, loss_pct: 0 },
+            stats: LinkStats {
+                est_bps: class.default_bps(),
+                rtt_ms: 30,
+                loss_pct: 0,
+            },
             peers: Default::default(),
             up: true,
         }

@@ -32,12 +32,27 @@ impl Net {
         let engines = (0..n)
             .map(|i| {
                 let id = Identity::from_seed(&[(i + 1) as u8; 32]);
-                let cfg = Config { display_name: names[i].into(), avatar_hue: 40, kdf: titi_core::crypto::KdfParams::LIGHT, relay_capable: true, max_profile: None };
+                let cfg = Config {
+                    display_name: names[i].into(),
+                    avatar_hue: 40,
+                    kdf: titi_core::crypto::KdfParams::LIGHT,
+                    relay_capable: true,
+                    max_profile: None,
+                };
                 Engine::new(id, cfg, 1000 + i as u64)
             })
             .collect();
-        let adj = (0..n).map(|i| (0..n).filter(|j| *j != i).collect()).collect();
-        Net { engines, queue: VecDeque::new(), ui: vec![vec![]; n], plays: vec![0; n], adj, max_frame: 0 }
+        let adj = (0..n)
+            .map(|i| (0..n).filter(|j| *j != i).collect())
+            .collect();
+        Net {
+            engines,
+            queue: VecDeque::new(),
+            ui: vec![vec![]; n],
+            plays: vec![0; n],
+            adj,
+            max_frame: 0,
+        }
     }
 
     fn apply(&mut self, from: usize, acts: Vec<Action>) {
@@ -48,7 +63,13 @@ impl Net {
                     self.max_frame = self.max_frame.max(bytes.len());
                     let targets: Vec<usize> = match &peer {
                         Some(t) => {
-                            let idx: usize = t.trim_start_matches("peer").split('#').next().unwrap().parse().unwrap();
+                            let idx: usize = t
+                                .trim_start_matches("peer")
+                                .split('#')
+                                .next()
+                                .unwrap()
+                                .parse()
+                                .unwrap();
                             vec![idx]
                         }
                         None => self.adj[from].clone(),
@@ -130,7 +151,9 @@ impl Net {
 }
 
 fn pcm_tone(n: usize, f: f32) -> Vec<i16> {
-    (0..n).map(|i| ((i as f32 * f).sin() * 8000.0) as i16).collect()
+    (0..n)
+        .map(|i| ((i as f32 * f).sin() * 8000.0) as i16)
+        .collect()
 }
 
 /// Invites every other node into a fresh group hosted by node 0 (direct neighbours only).
@@ -164,16 +187,29 @@ fn voice_note_larger_than_mtu_is_fragmented_and_delivered() {
     let gid = group_of_all(&mut net, now);
     // ~10 s of 16 kbps opus ≈ 20 KB: 17+ fragments at LAN MTU 1200
     let note = voice_note_bytes(20_000);
-    let acts = net.engines[1].send_voice_note(gid, titi_core::frame::Profile::Std, 10_000, note.clone(), now);
+    let acts = net.engines[1].send_voice_note(
+        gid,
+        titi_core::frame::Profile::Std,
+        10_000,
+        note.clone(),
+        now,
+    );
     net.apply(1, acts);
     // fragments are paced: one per link per tick
     net.run(now, now + 2_000, 20);
-    assert!(net.max_frame <= 1200, "a frame exceeded the MTU: {}", net.max_frame);
+    assert!(
+        net.max_frame <= 1200,
+        "a frame exceeded the MTU: {}",
+        net.max_frame
+    );
     assert!(
         net.has_ui(0, |e| matches!(e, UiEvent::Message { body: titi_core::engine::MessageBody::VoiceNote { opus_packets, duration_ms: 10_000, .. }, .. } if *opus_packets == note)),
         "Ana got the voice note intact"
     );
-    assert!(net.has_ui(1, |e| matches!(e, UiEvent::MessageAcked { .. })), "sender got the ACK");
+    assert!(
+        net.has_ui(1, |e| matches!(e, UiEvent::MessageAcked { .. })),
+        "sender got the ACK"
+    );
 }
 
 #[test]
@@ -187,7 +223,13 @@ fn voice_note_is_relayed_in_fragments_over_a_middle_node() {
     let gid = group_of_all(&mut net, now); // all three still adjacent while inviting
     net.adj = vec![vec![1], vec![0, 2], vec![1]];
     let note = voice_note_bytes(6_000);
-    let acts = net.engines[0].send_voice_note(gid, titi_core::frame::Profile::Std, 3_000, note.clone(), now);
+    let acts = net.engines[0].send_voice_note(
+        gid,
+        titi_core::frame::Profile::Std,
+        3_000,
+        note.clone(),
+        now,
+    );
     net.apply(0, acts);
     net.run(now, now + 3_000, 20);
     assert!(net.max_frame <= 1200, "max frame {}", net.max_frame);
@@ -206,10 +248,28 @@ fn discovery_invite_ptt_voice_text() {
     now += 520;
 
     // both discovered each other and have Noise transport sessions
-    assert!(net.has_ui(0, |e| matches!(e, UiEvent::PeerDiscovered { name, .. } if name == "Bogdan")));
-    assert!(net.has_ui(1, |e| matches!(e, UiEvent::PeerDiscovered { name, .. } if name == "Ana")));
-    assert!(net.engines[0].sessions.values().any(|s| s.session.is_transport()), "A has transport session");
-    assert!(net.engines[1].sessions.values().any(|s| s.session.is_transport()), "B has transport session");
+    assert!(net.has_ui(
+        0,
+        |e| matches!(e, UiEvent::PeerDiscovered { name, .. } if name == "Bogdan")
+    ));
+    assert!(net.has_ui(
+        1,
+        |e| matches!(e, UiEvent::PeerDiscovered { name, .. } if name == "Ana")
+    ));
+    assert!(
+        net.engines[0]
+            .sessions
+            .values()
+            .any(|s| s.session.is_transport()),
+        "A has transport session"
+    );
+    assert!(
+        net.engines[1]
+            .sessions
+            .values()
+            .any(|s| s.session.is_transport()),
+        "B has transport session"
+    );
 
     // Ana creates a group and invites Bogdan by tap
     let (gid, acts) = net.engines[0].create_group("Munte", now).unwrap();
@@ -218,16 +278,33 @@ fn discovery_invite_ptt_voice_text() {
     let acts = net.engines[0].invite_peer(gid, b_id, now);
     net.apply(0, acts);
     net.pump(now);
-    assert!(net.has_ui(1, |e| matches!(e, UiEvent::InviteOffered { name, .. } if name == "Munte")), "B saw invite: {:?}", net.ui[1]);
+    assert!(
+        net.has_ui(
+            1,
+            |e| matches!(e, UiEvent::InviteOffered { name, .. } if name == "Munte")
+        ),
+        "B saw invite: {:?}",
+        net.ui[1]
+    );
     let a_id = net.engines[0].node_id();
     let acts = net.engines[1].accept_invite(gid, a_id, now);
     net.apply(1, acts);
     net.pump(now);
-    assert!(net.has_ui(1, |e| matches!(e, UiEvent::Joined { name, .. } if name == "Munte")), "B joined: {:?}", net.ui[1]);
+    assert!(
+        net.has_ui(
+            1,
+            |e| matches!(e, UiEvent::Joined { name, .. } if name == "Munte")
+        ),
+        "B joined: {:?}",
+        net.ui[1]
+    );
     assert!(net.has_ui(0, |e| matches!(e, UiEvent::MemberJoined { .. })));
     assert_eq!(net.engines[1].groups[&gid].members.len(), 2);
     assert_eq!(net.engines[0].groups[&gid].members.len(), 2);
-    assert_eq!(net.engines[0].groups[&gid].ikm, net.engines[1].groups[&gid].ikm, "same group key");
+    assert_eq!(
+        net.engines[0].groups[&gid].ikm, net.engines[1].groups[&gid].ikm,
+        "same group key"
+    );
 
     // let routes compute
     net.run(now, now + 100, 20);
@@ -247,8 +324,19 @@ fn discovery_invite_ptt_voice_text() {
     // arbitration window elapses → granted
     now += 300;
     net.tick_all(now);
-    assert!(net.has_ui(0, |e| matches!(e, UiEvent::FloorGranted)), "granted: {:?}", net.ui[0]);
-    assert!(net.has_ui(1, |e| matches!(e, UiEvent::FloorTaken { name, .. } if name == "Ana")), "B sees Ana talking: {:?}", net.ui[1]);
+    assert!(
+        net.has_ui(0, |e| matches!(e, UiEvent::FloorGranted)),
+        "granted: {:?}",
+        net.ui[0]
+    );
+    assert!(
+        net.has_ui(
+            1,
+            |e| matches!(e, UiEvent::FloorTaken { name, .. } if name == "Ana")
+        ),
+        "B sees Ana talking: {:?}",
+        net.ui[1]
+    );
 
     // stream 1 s of voice
     for _ in 0..50 {
@@ -263,7 +351,11 @@ fn discovery_invite_ptt_voice_text() {
     // B tries to talk while A holds → denied
     let acts = net.engines[1].ptt_down(Priority::Normal, now);
     net.apply(1, acts);
-    assert!(net.has_ui(1, |e| matches!(e, UiEvent::FloorDenied { .. })), "B denied: {:?}", &net.ui[1][net.ui[1].len().saturating_sub(5)..]);
+    assert!(
+        net.has_ui(1, |e| matches!(e, UiEvent::FloorDenied { .. })),
+        "B denied: {:?}",
+        &net.ui[1][net.ui[1].len().saturating_sub(5)..]
+    );
     let acts = net.engines[1].ptt_up(now);
     net.apply(1, acts);
 
@@ -272,14 +364,20 @@ fn discovery_invite_ptt_voice_text() {
     net.apply(0, acts);
     net.pump(now);
     assert!(net.has_ui(0, |e| matches!(e, UiEvent::FloorIdle { .. })));
-    assert!(net.engines[1].groups[&gid].floor.holder().is_none(), "B sees floor free");
+    assert!(
+        net.engines[1].groups[&gid].floor.holder().is_none(),
+        "B sees floor free"
+    );
 
     // text message + ack
     let acts = net.engines[1].send_text(gid, "Salut!", now);
     net.apply(1, acts);
     net.pump(now);
     assert!(net.has_ui(0, |e| matches!(e, UiEvent::Message { body: titi_core::engine::MessageBody::Text(t), .. } if t == "Salut!")), "A got text: {:?}", net.ui[0]);
-    assert!(net.has_ui(1, |e| matches!(e, UiEvent::MessageAcked { .. })), "B got ack");
+    assert!(
+        net.has_ui(1, |e| matches!(e, UiEvent::MessageAcked { .. })),
+        "B got ack"
+    );
 
     // full-duplex toggle propagates
     let acts = net.engines[0].set_full_duplex(gid, true, now);
@@ -306,7 +404,14 @@ fn join_by_rotating_code() {
     assert!(!acts.is_empty(), "guest found a candidate group");
     net.apply(1, acts);
     net.pump(now);
-    assert!(net.has_ui(1, |e| matches!(e, UiEvent::Joined { name, .. } if name == "Cabana")), "guest joined: {:?}", net.ui[1]);
+    assert!(
+        net.has_ui(
+            1,
+            |e| matches!(e, UiEvent::Joined { name, .. } if name == "Cabana")
+        ),
+        "guest joined: {:?}",
+        net.ui[1]
+    );
     assert_eq!(net.engines[0].groups[&gid].members.len(), 2);
 
     // wrong code fails
@@ -332,7 +437,11 @@ fn join_by_deep_link() {
     let acts = net.engines[1].join_by_link(&url, now);
     net.apply(1, acts);
     net.pump(now);
-    assert!(net.has_ui(1, |e| matches!(e, UiEvent::Joined { .. })), "{:?}", net.ui[1]);
+    assert!(
+        net.has_ui(1, |e| matches!(e, UiEvent::Joined { .. })),
+        "{:?}",
+        net.ui[1]
+    );
 }
 
 #[test]
@@ -362,15 +471,30 @@ fn three_nodes_relay_voice_over_middle() {
     let acts = net.engines[2].accept_invite(gid, b, now);
     net.apply(2, acts);
     net.pump(now);
-    assert_eq!(net.engines[2].groups[&gid].members.len(), 3, "C sees 3 members");
+    assert_eq!(
+        net.engines[2].groups[&gid].members.len(),
+        3,
+        "C sees 3 members"
+    );
     // A must learn about C via MemberJoin flood relayed through B
-    assert_eq!(net.engines[0].groups[&gid].members.len(), 3, "A sees 3 members: {:?}", net.ui[0]);
+    assert_eq!(
+        net.engines[0].groups[&gid].members.len(),
+        3,
+        "A sees 3 members: {:?}",
+        net.ui[0]
+    );
 
     // announces so A learns topology (A-B, B-C) → route A→C via B
     net.run(now, now + 65_000, 500);
     now += 65_500;
-    let route = net.engines[0].topology.route(&a, &net.engines[0].neighbours, &c, 3);
-    assert!(route.is_some(), "A has a route to C: topo={:?}", net.engines[0].topology.adj.keys().collect::<Vec<_>>());
+    let route = net.engines[0]
+        .topology
+        .route(&a, &net.engines[0].neighbours, &c, 3);
+    assert!(
+        route.is_some(),
+        "A has a route to C: topo={:?}",
+        net.engines[0].topology.adj.keys().collect::<Vec<_>>()
+    );
     assert_eq!(route.unwrap().path, vec![b, c]);
 
     // A talks; C must hear
@@ -386,9 +510,20 @@ fn three_nodes_relay_voice_over_middle() {
         net.apply(0, acts);
         net.tick_all(now);
     }
-    assert!(net.plays[2] > 30, "C heard A through B ({} frames)", net.plays[2]);
-    assert!(net.plays[1] > 30, "B heard A directly ({} frames)", net.plays[1]);
-    assert!(net.has_ui(2, |e| matches!(e, UiEvent::FloorTaken { name, .. } if name == "A")));
+    assert!(
+        net.plays[2] > 30,
+        "C heard A through B ({} frames)",
+        net.plays[2]
+    );
+    assert!(
+        net.plays[1] > 30,
+        "B heard A directly ({} frames)",
+        net.plays[1]
+    );
+    assert!(net.has_ui(
+        2,
+        |e| matches!(e, UiEvent::FloorTaken { name, .. } if name == "A")
+    ));
 }
 
 #[test]
@@ -420,7 +555,10 @@ fn member_that_missed_memberjoin_is_learned_from_voice() {
     let acts = net.engines[1].accept_invite(gid, a, now);
     net.apply(1, acts);
     net.pump(now);
-    assert!(!net.engines[2].groups[&gid].members.contains_key(&b), "precondition: C missed B");
+    assert!(
+        !net.engines[2].groups[&gid].members.contains_key(&b),
+        "precondition: C missed B"
+    );
     // C is back in range of B only; B talks
     net.adj = vec![vec![1], vec![0, 2], vec![1]];
     net.run(now, now + 5_000, 100);
@@ -436,12 +574,25 @@ fn member_that_missed_memberjoin_is_learned_from_voice() {
         net.apply(1, acts);
         net.tick_all(now);
     }
-    assert!(net.engines[2].groups[&gid].members.contains_key(&b), "C learned B from its voice: {:?}", net.ui[2]);
-    assert!(net.has_ui(2, |e| matches!(e, UiEvent::MemberJoined { node, .. } if *node == b)));
+    assert!(
+        net.engines[2].groups[&gid].members.contains_key(&b),
+        "C learned B from its voice: {:?}",
+        net.ui[2]
+    );
+    assert!(net.has_ui(
+        2,
+        |e| matches!(e, UiEvent::MemberJoined { node, .. } if *node == b)
+    ));
 }
 
 fn capture_profile(acts: &[Action]) -> Option<titi_core::frame::Profile> {
-    acts.iter().find_map(|a| match a { Action::Capture { active: true, profile } => Some(*profile), _ => None })
+    acts.iter().find_map(|a| match a {
+        Action::Capture {
+            active: true,
+            profile,
+        } => Some(*profile),
+        _ => None,
+    })
 }
 
 #[test]
@@ -453,14 +604,27 @@ fn quality_setting_caps_the_capture_profile() {
     net.run(now, now + 500, 20);
     now += 520;
     let _gid = group_of_all(&mut net, now);
-    let auto = capture_profile(&net.engines[0].ptt_down(Priority::Normal, now)).expect("capture on");
+    let auto =
+        capture_profile(&net.engines[0].ptt_down(Priority::Normal, now)).expect("capture on");
     let _ = net.engines[0].ptt_up(now + 100);
-    assert!(auto <= Profile::Std, "automatic profile on LAN is Std or better, got {auto:?}");
+    assert!(
+        auto <= Profile::Std,
+        "automatic profile on LAN is Std or better, got {auto:?}"
+    );
     net.engines[0].cfg.max_profile = Some(Profile::Low);
-    let capped = capture_profile(&net.engines[0].ptt_down(Priority::Normal, now + 2_000)).expect("capture on");
-    assert_eq!(capped, Profile::Low, "user cap Low wins over a better automatic profile");
+    let capped = capture_profile(&net.engines[0].ptt_down(Priority::Normal, now + 2_000))
+        .expect("capture on");
+    assert_eq!(
+        capped,
+        Profile::Low,
+        "user cap Low wins over a better automatic profile"
+    );
     let _ = net.engines[0].ptt_up(now + 2_100);
     net.engines[0].cfg.max_profile = Some(Profile::Hq);
-    let loose = capture_profile(&net.engines[0].ptt_down(Priority::Normal, now + 4_000)).expect("capture on");
-    assert_eq!(loose, auto, "a cap above the automatic profile changes nothing");
+    let loose = capture_profile(&net.engines[0].ptt_down(Priority::Normal, now + 4_000))
+        .expect("capture on");
+    assert_eq!(
+        loose, auto,
+        "a cap above the automatic profile changes nothing"
+    );
 }

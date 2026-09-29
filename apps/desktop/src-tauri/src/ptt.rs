@@ -99,7 +99,10 @@ fn press(code: u32, down: bool) -> bool {
         return true;
     }
     if let Some(tx) = TX.get() {
-        let _ = tx.lock().unwrap().send(if down { Cmd::PttDown(0) } else { Cmd::PttUp });
+        let _ = tx
+            .lock()
+            .unwrap()
+            .send(if down { Cmd::PttDown(0) } else { Cmd::PttUp });
     }
     if let Some(f) = ON_CHANGE.get() {
         f(down);
@@ -119,7 +122,9 @@ mod win {
     use windows::Win32::Foundation::{LPARAM, LRESULT, WPARAM};
     use windows::Win32::System::LibraryLoader::GetModuleHandleW;
     use windows::Win32::UI::WindowsAndMessaging::{
-        CallNextHookEx, GetMessageW, SetWindowsHookExW, KBDLLHOOKSTRUCT, MSG, MSLLHOOKSTRUCT, WH_KEYBOARD_LL, WH_MOUSE_LL, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP, WM_XBUTTONDOWN, WM_XBUTTONUP,
+        CallNextHookEx, GetMessageW, SetWindowsHookExW, KBDLLHOOKSTRUCT, MSG, MSLLHOOKSTRUCT,
+        WH_KEYBOARD_LL, WH_MOUSE_LL, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP,
+        WM_XBUTTONDOWN, WM_XBUTTONUP,
     };
 
     unsafe extern "system" fn kb(code: i32, w: WPARAM, l: LPARAM) -> LRESULT {
@@ -174,7 +179,17 @@ mod tests {
 
     #[test]
     fn parse_name_roundtrip() {
-        for n in ["F13", "F24", "F1", "CapsLock", "ScrollLock", "Mouse4", "Mouse5", "RCtrl", "VK:200"] {
+        for n in [
+            "F13",
+            "F24",
+            "F1",
+            "CapsLock",
+            "ScrollLock",
+            "Mouse4",
+            "Mouse5",
+            "RCtrl",
+            "VK:200",
+        ] {
             assert_eq!(name(parse(n)), n, "{n}");
         }
         assert_eq!(parse(""), 0);

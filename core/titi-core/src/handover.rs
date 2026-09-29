@@ -14,21 +14,42 @@ pub const COST_JUMP_FACTOR: u32 = 2;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HoState {
-    Stable { route: Route },
-    Degraded { old: Option<Route>, alt: Route, since: Ms },
-    Switching { route: Route, confirmed: u8 },
-    Suspended { since: Ms },
+    Stable {
+        route: Route,
+    },
+    Degraded {
+        old: Option<Route>,
+        alt: Route,
+        since: Ms,
+    },
+    Switching {
+        route: Route,
+        confirmed: u8,
+    },
+    Suspended {
+        since: Ms,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HoEvent {
     /// Send on both routes.
-    Bicast { old: Option<Route>, alt: Route },
+    Bicast {
+        old: Option<Route>,
+        alt: Route,
+    },
     /// Only new route; renegotiated profile.
-    Switched { route: Route, profile: Profile },
-    Stable { route: Route },
+    Switched {
+        route: Route,
+        profile: Profile,
+    },
+    Stable {
+        route: Route,
+    },
     Suspended,
-    Resumed { route: Route },
+    Resumed {
+        route: Route,
+    },
 }
 
 pub struct Handover {
@@ -39,7 +60,11 @@ pub struct Handover {
 
 impl Handover {
     pub fn new(now: Ms) -> Self {
-        Handover { state: HoState::Suspended { since: now }, profile: Profile::Std, last_route_seen: now }
+        Handover {
+            state: HoState::Suspended { since: now },
+            profile: Profile::Std,
+            last_route_seen: now,
+        }
     }
 
     pub fn current_route(&self) -> Option<&Route> {
@@ -61,8 +86,14 @@ impl Handover {
             (HoState::Suspended { .. }, Some(r)) => {
                 self.profile = Profile::for_bandwidth(r.min_bps);
                 ev.push(HoEvent::Resumed { route: r.clone() });
-                ev.push(HoEvent::Switched { route: r.clone(), profile: self.profile });
-                self.state = HoState::Switching { route: r, confirmed: 0 };
+                ev.push(HoEvent::Switched {
+                    route: r.clone(),
+                    profile: self.profile,
+                });
+                self.state = HoState::Switching {
+                    route: r,
+                    confirmed: 0,
+                };
                 self.last_route_seen = now;
             }
             (HoState::Suspended { .. }, None) => {}
@@ -73,34 +104,59 @@ impl Handover {
                 } else if let HoState::Stable { route } = &self.state {
                     // lost route: degrade with no alternative yet
                     let r = route.clone();
-                    self.state = HoState::Degraded { old: Some(r.clone()), alt: r, since: now };
+                    self.state = HoState::Degraded {
+                        old: Some(r.clone()),
+                        alt: r,
+                        since: now,
+                    };
                 }
             }
             (HoState::Stable { route }, Some(r)) => {
                 self.last_route_seen = now;
                 let changed = r.path != route.path;
-                let jump = r.cost >= route.cost.saturating_mul(COST_JUMP_FACTOR) || route.cost >= r.cost.saturating_mul(COST_JUMP_FACTOR);
+                let jump = r.cost >= route.cost.saturating_mul(COST_JUMP_FACTOR)
+                    || route.cost >= r.cost.saturating_mul(COST_JUMP_FACTOR);
                 if changed || jump {
                     let old = route.clone();
-                    ev.push(HoEvent::Bicast { old: Some(old.clone()), alt: r.clone() });
-                    self.state = HoState::Degraded { old: Some(old), alt: r, since: now };
+                    ev.push(HoEvent::Bicast {
+                        old: Some(old.clone()),
+                        alt: r.clone(),
+                    });
+                    self.state = HoState::Degraded {
+                        old: Some(old),
+                        alt: r,
+                        since: now,
+                    };
                 }
             }
             (HoState::Degraded { old, since, .. }, Some(r)) => {
                 self.last_route_seen = now;
                 if now - *since >= BICAST_MAX_MS {
                     self.profile = Profile::for_bandwidth(r.min_bps);
-                    ev.push(HoEvent::Switched { route: r.clone(), profile: self.profile });
-                    self.state = HoState::Switching { route: r, confirmed: 0 };
+                    ev.push(HoEvent::Switched {
+                        route: r.clone(),
+                        profile: self.profile,
+                    });
+                    self.state = HoState::Switching {
+                        route: r,
+                        confirmed: 0,
+                    };
                 } else {
                     let o = old.clone();
-                    self.state = HoState::Degraded { old: o, alt: r, since: *since };
+                    self.state = HoState::Degraded {
+                        old: o,
+                        alt: r,
+                        since: *since,
+                    };
                 }
             }
             (HoState::Switching { route, confirmed }, Some(r)) => {
                 self.last_route_seen = now;
                 if r.path != route.path {
-                    self.state = HoState::Switching { route: r, confirmed: 0 };
+                    self.state = HoState::Switching {
+                        route: r,
+                        confirmed: 0,
+                    };
                 } else {
                     // A route that keeps being re-computed identically is as good a
                     // confirmation as an ACK for a member who never transmits.
@@ -109,7 +165,10 @@ impl Handover {
                         ev.push(HoEvent::Stable { route: r.clone() });
                         self.state = HoState::Stable { route: r };
                     } else {
-                        self.state = HoState::Switching { route: r, confirmed: c };
+                        self.state = HoState::Switching {
+                            route: r,
+                            confirmed: c,
+                        };
                     }
                 }
             }
@@ -124,16 +183,29 @@ impl Handover {
         match &self.state {
             HoState::Degraded { alt, .. } => {
                 self.profile = Profile::for_bandwidth(alt.min_bps);
-                ev.push(HoEvent::Switched { route: alt.clone(), profile: self.profile });
-                self.state = HoState::Switching { route: alt.clone(), confirmed: 1 };
+                ev.push(HoEvent::Switched {
+                    route: alt.clone(),
+                    profile: self.profile,
+                });
+                self.state = HoState::Switching {
+                    route: alt.clone(),
+                    confirmed: 1,
+                };
             }
             HoState::Switching { route, confirmed } => {
                 let c = confirmed + 1;
                 if c >= SWITCH_CONFIRM_FRAMES {
-                    ev.push(HoEvent::Stable { route: route.clone() });
-                    self.state = HoState::Stable { route: route.clone() };
+                    ev.push(HoEvent::Stable {
+                        route: route.clone(),
+                    });
+                    self.state = HoState::Stable {
+                        route: route.clone(),
+                    };
                 } else {
-                    self.state = HoState::Switching { route: route.clone(), confirmed: c };
+                    self.state = HoState::Switching {
+                        route: route.clone(),
+                        confirmed: c,
+                    };
                 }
             }
             _ => {}
@@ -147,8 +219,14 @@ impl Handover {
             HoState::Degraded { alt, since, .. } if now - *since >= BICAST_MAX_MS => {
                 self.profile = Profile::for_bandwidth(alt.min_bps);
                 let r = alt.clone();
-                self.state = HoState::Switching { route: r.clone(), confirmed: 0 };
-                vec![HoEvent::Switched { route: r, profile: self.profile }]
+                self.state = HoState::Switching {
+                    route: r.clone(),
+                    confirmed: 0,
+                };
+                vec![HoEvent::Switched {
+                    route: r,
+                    profile: self.profile,
+                }]
             }
             HoState::Stable { .. } | HoState::Switching { .. } | HoState::Degraded { .. }
                 if now.saturating_sub(self.last_route_seen) >= SUSPEND_AFTER_MS =>
@@ -166,7 +244,12 @@ mod tests {
     use super::*;
 
     fn route(n: u8, cost: u32, bps: u32) -> Route {
-        Route { path: vec![[n; 8]], cost, latency_ms: 10, min_bps: bps }
+        Route {
+            path: vec![[n; 8]],
+            cost,
+            latency_ms: 10,
+            min_bps: bps,
+        }
     }
 
     #[test]

@@ -53,7 +53,9 @@ pub struct Dedup {
 
 impl Default for Dedup {
     fn default() -> Self {
-        Dedup { cache: LruCache::new(std::num::NonZeroUsize::new(DEDUP_CAPACITY).unwrap()) }
+        Dedup {
+            cache: LruCache::new(std::num::NonZeroUsize::new(DEDUP_CAPACITY).unwrap()),
+        }
     }
 }
 
@@ -155,7 +157,8 @@ impl NeighbourTable {
     pub fn expire(&mut self, now: Ms) -> Vec<NodeId> {
         let mut gone = vec![];
         for n in self.map.values_mut() {
-            n.links.retain(|_, l| now.saturating_sub(l.last_seen) < NEIGHBOUR_EXPIRY_MS);
+            n.links
+                .retain(|_, l| now.saturating_sub(l.last_seen) < NEIGHBOUR_EXPIRY_MS);
             if n.links.is_empty() {
                 gone.push(n.node);
             }
@@ -184,7 +187,11 @@ impl NeighbourTable {
     }
 
     pub fn ttl(&self) -> u8 {
-        if self.total_links() >= DENSE_LINK_THRESHOLD { DENSE_TTL } else { DEFAULT_TTL }
+        if self.total_links() >= DENSE_LINK_THRESHOLD {
+            DENSE_TTL
+        } else {
+            DEFAULT_TTL
+        }
     }
 }
 
@@ -200,7 +207,10 @@ pub type Neighbours = HashMap<NodeId, (LinkClass, u32)>;
 
 impl Topology {
     pub fn update(&mut self, node: NodeId, neighbours: &[(NodeId, LinkClass, u32)], now: Ms) {
-        let entry = self.adj.entry(node).or_insert_with(|| (now, HashMap::new()));
+        let entry = self
+            .adj
+            .entry(node)
+            .or_insert_with(|| (now, HashMap::new()));
         entry.0 = now;
         entry.1.clear();
         for (n, c, cost) in neighbours {
@@ -209,7 +219,8 @@ impl Topology {
     }
 
     pub fn expire(&mut self, now: Ms) {
-        self.adj.retain(|_, (t, _)| now.saturating_sub(*t) < TOPOLOGY_EXPIRY_MS);
+        self.adj
+            .retain(|_, (t, _)| now.saturating_sub(*t) < TOPOLOGY_EXPIRY_MS);
     }
 
     /// Dijkstra on summed cost. Bidirectional confirmation: an edge counts
@@ -223,7 +234,12 @@ impl Topology {
         max_relays: usize,
     ) -> Option<Route> {
         if let Some((_, l)) = local.best_link(to) {
-            return Some(Route { path: vec![*to], cost: l.cost, latency_ms: l.latency_ms, min_bps: l.bps });
+            return Some(Route {
+                path: vec![*to],
+                cost: l.cost,
+                latency_ms: l.latency_ms,
+                min_bps: l.bps,
+            });
         }
         #[derive(PartialEq, Eq)]
         struct St(u32, NodeId, Vec<NodeId>, u32, u32); // cost, node, path, latency, min_bps
@@ -246,7 +262,12 @@ impl Topology {
         }
         while let Some(St(cost, node, path, lat, minbps)) = heap.pop() {
             if &node == to {
-                return Some(Route { path, cost, latency_ms: lat, min_bps: minbps });
+                return Some(Route {
+                    path,
+                    cost,
+                    latency_ms: lat,
+                    min_bps: minbps,
+                });
             }
             if best.get(&node).is_some_and(|c| *c <= cost) {
                 continue;
@@ -255,7 +276,9 @@ impl Topology {
             if path.len() > max_relays {
                 continue;
             }
-            let Some((_, edges)) = self.adj.get(&node) else { continue };
+            let Some((_, edges)) = self.adj.get(&node) else {
+                continue;
+            };
             for (next, (class, ecost)) in edges {
                 if next == self_id || path.contains(next) {
                     continue;
@@ -336,9 +359,28 @@ pub struct FloodScheduler {
 
 impl FloodScheduler {
     #[allow(clippy::too_many_arguments)]
-    pub fn schedule(&mut self, key: [u8; 12], bytes: Vec<u8>, from_link: LinkId, from_peer: Option<String>, now: Ms, rng: &mut Rng, urgent: bool) {
-        let jitter = if urgent { 0 } else { rng.range(FLOOD_JITTER_MIN_MS, FLOOD_JITTER_MAX_MS) };
-        self.pending.push(PendingRelay { key, fire_at: now + jitter, bytes, exclude_link: from_link, exclude_peer: from_peer });
+    pub fn schedule(
+        &mut self,
+        key: [u8; 12],
+        bytes: Vec<u8>,
+        from_link: LinkId,
+        from_peer: Option<String>,
+        now: Ms,
+        rng: &mut Rng,
+        urgent: bool,
+    ) {
+        let jitter = if urgent {
+            0
+        } else {
+            rng.range(FLOOD_JITTER_MIN_MS, FLOOD_JITTER_MAX_MS)
+        };
+        self.pending.push(PendingRelay {
+            key,
+            fire_at: now + jitter,
+            bytes,
+            exclude_link: from_link,
+            exclude_peer: from_peer,
+        });
     }
 
     /// Cancel a pending relay because we heard the same frame again.
@@ -361,7 +403,11 @@ impl FloodScheduler {
 
 /// Fanout for broadcast relays: log2(degree), min 1; announces use full fanout.
 pub fn broadcast_fanout(degree: usize) -> usize {
-    if degree <= 2 { degree.max(1) } else { (usize::BITS - degree.leading_zeros()) as usize }
+    if degree <= 2 {
+        degree.max(1)
+    } else {
+        (usize::BITS - degree.leading_zeros()) as usize
+    }
 }
 
 #[cfg(test)]
@@ -399,7 +445,11 @@ mod tests {
         local.observe(id(2), &lan, 0);
         let mut topo = Topology::default();
         // 2 says it sees 1 and 3; 3 says it sees 2
-        topo.update(id(2), &[(id(1), LinkClass::Lan, 1), (id(3), LinkClass::BleL2cap, 5)], 0);
+        topo.update(
+            id(2),
+            &[(id(1), LinkClass::Lan, 1), (id(3), LinkClass::BleL2cap, 5)],
+            0,
+        );
         topo.update(id(3), &[(id(2), LinkClass::BleL2cap, 5)], 0);
         let r = topo.route(&me, &local, &id(2), MAX_RELAYS).unwrap();
         assert_eq!(r.path, vec![id(2)]);
@@ -407,10 +457,17 @@ mod tests {
         assert_eq!(r.path, vec![id(2), id(3)]);
         assert_eq!(r.min_bps, LinkClass::BleL2cap.default_bps());
         // unconfirmed edge (4 only claimed by 3) is not used
-        topo.update(id(3), &[(id(2), LinkClass::BleL2cap, 5), (id(4), LinkClass::Lan, 1)], 0);
+        topo.update(
+            id(3),
+            &[(id(2), LinkClass::BleL2cap, 5), (id(4), LinkClass::Lan, 1)],
+            0,
+        );
         assert!(topo.route(&me, &local, &id(4), MAX_RELAYS).is_none());
         topo.update(id(4), &[(id(3), LinkClass::Lan, 1)], 0);
-        assert_eq!(topo.route(&me, &local, &id(4), MAX_RELAYS).unwrap().path, vec![id(2), id(3), id(4)]);
+        assert_eq!(
+            topo.route(&me, &local, &id(4), MAX_RELAYS).unwrap().path,
+            vec![id(2), id(3), id(4)]
+        );
     }
 
     #[test]

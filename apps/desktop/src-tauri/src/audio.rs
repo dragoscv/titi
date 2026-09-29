@@ -30,28 +30,50 @@ pub struct Device {
 
 pub fn list_devices() -> (Vec<Device>, Vec<Device>) {
     let host = cpal::default_host();
-    let din = host.default_input_device().and_then(|d| d.description().ok().map(|x| x.name().to_string()));
-    let dout = host.default_output_device().and_then(|d| d.description().ok().map(|x| x.name().to_string()));
+    let din = host
+        .default_input_device()
+        .and_then(|d| d.description().ok().map(|x| x.name().to_string()));
+    let dout = host
+        .default_output_device()
+        .and_then(|d| d.description().ok().map(|x| x.name().to_string()));
     let map = |it: Option<Vec<cpal::Device>>, def: &Option<String>| -> Vec<Device> {
         it.map(|ds| {
-            ds.into_iter().filter_map(|d| d.description().ok().map(|x| x.name().to_string()))
-                .map(|n| Device { is_default: def.as_deref() == Some(n.as_str()), id: n.clone(), name: n })
+            ds.into_iter()
+                .filter_map(|d| d.description().ok().map(|x| x.name().to_string()))
+                .map(|n| Device {
+                    is_default: def.as_deref() == Some(n.as_str()),
+                    id: n.clone(),
+                    name: n,
+                })
                 .collect()
         })
         .unwrap_or_default()
     };
-    (map(host.input_devices().ok().map(|d| d.collect()), &din), map(host.output_devices().ok().map(|d| d.collect()), &dout))
+    (
+        map(host.input_devices().ok().map(|d| d.collect()), &din),
+        map(host.output_devices().ok().map(|d| d.collect()), &dout),
+    )
 }
 
 fn find(input: bool, name: &str) -> Option<cpal::Device> {
     let host = cpal::default_host();
     if !name.is_empty() {
-        let it = if input { host.input_devices().ok() } else { host.output_devices().ok() };
-        if let Some(d) = it.and_then(|mut ds| ds.find(|d| d.description().ok().is_some_and(|x| x.name() == name))) {
+        let it = if input {
+            host.input_devices().ok()
+        } else {
+            host.output_devices().ok()
+        };
+        if let Some(d) = it
+            .and_then(|mut ds| ds.find(|d| d.description().ok().is_some_and(|x| x.name() == name)))
+        {
             return Some(d);
         }
     }
-    if input { host.default_input_device() } else { host.default_output_device() }
+    if input {
+        host.default_input_device()
+    } else {
+        host.default_output_device()
+    }
 }
 
 /// Linear resampler + downmixer from `src_rate`/`ch` to 48 kHz mono.
@@ -63,7 +85,11 @@ struct Resampler {
 
 impl Resampler {
     fn new(src_rate: u32) -> Self {
-        Resampler { step: src_rate as f64 / RATE as f64, pos: 0.0, last: 0.0 }
+        Resampler {
+            step: src_rate as f64 / RATE as f64,
+            pos: 0.0,
+            last: 0.0,
+        }
     }
     /// `mono` = device-rate mono samples; pushes 48 kHz output into `out`.
     fn push(&mut self, mono: &[f32], out: &mut Vec<f32>) {
@@ -93,7 +119,11 @@ pub struct Capture {
 }
 
 /// Starts capture on `device` ("" = default). Frames go to the engine as `Cmd::Audio`.
-pub fn start_capture(device: &str, ev: EngineTx, level: Arc<AtomicU32>) -> anyhow_lite::Result<Capture> {
+pub fn start_capture(
+    device: &str,
+    ev: EngineTx,
+    level: Arc<AtomicU32>,
+) -> anyhow_lite::Result<Capture> {
     let dev = find(true, device).ok_or("no input device")?;
     let sup = dev.default_input_config().map_err(|e| e.to_string())?;
     let fmt = sup.sample_format();
@@ -101,7 +131,10 @@ pub fn start_capture(device: &str, ev: EngineTx, level: Arc<AtomicU32>) -> anyho
     let ch = cfg.channels as usize;
     let muted = Arc::new(AtomicBool::new(false));
     let m2 = muted.clone();
-    let state = Mutex::new((Resampler::new(cfg.sample_rate), Vec::<f32>::with_capacity(FRAME * 4)));
+    let state = Mutex::new((
+        Resampler::new(cfg.sample_rate),
+        Vec::<f32>::with_capacity(FRAME * 4),
+    ));
     let err = |e| log::warn!("capture stream: {e}");
 
     let on_data = move |mono: &mut Vec<f32>| {
@@ -114,7 +147,13 @@ pub fn start_capture(device: &str, ev: EngineTx, level: Arc<AtomicU32>) -> anyho
             let pcm: Vec<i16> = if m2.load(Ordering::Relaxed) {
                 vec![0; FRAME]
             } else {
-                frame.iter().map(|s| { sum += s * s; (s.clamp(-1.0, 1.0) * 32767.0) as i16 }).collect()
+                frame
+                    .iter()
+                    .map(|s| {
+                        sum += s * s;
+                        (s.clamp(-1.0, 1.0) * 32767.0) as i16
+                    })
+                    .collect()
             };
             let db = 20.0 * ((sum / FRAME as f32).sqrt() + 1e-9).log10();
             level.store(db.to_bits(), Ordering::Relaxed);
@@ -125,19 +164,37 @@ pub fn start_capture(device: &str, ev: EngineTx, level: Arc<AtomicU32>) -> anyho
     let stream = match fmt {
         SampleFormat::F32 => dev.build_input_stream(
             cfg,
-            move |d: &[f32], _| { let mut m: Vec<f32> = d.chunks(ch).map(|c| c.iter().sum::<f32>() / ch as f32).collect(); on_data(&mut m) },
+            move |d: &[f32], _| {
+                let mut m: Vec<f32> = d
+                    .chunks(ch)
+                    .map(|c| c.iter().sum::<f32>() / ch as f32)
+                    .collect();
+                on_data(&mut m)
+            },
             err,
             None,
         ),
         SampleFormat::I16 => dev.build_input_stream(
             cfg,
-            move |d: &[i16], _| { let mut m: Vec<f32> = d.chunks(ch).map(|c| c.iter().map(|&s| s as f32 / 32768.0).sum::<f32>() / ch as f32).collect(); on_data(&mut m) },
+            move |d: &[i16], _| {
+                let mut m: Vec<f32> = d
+                    .chunks(ch)
+                    .map(|c| c.iter().map(|&s| s as f32 / 32768.0).sum::<f32>() / ch as f32)
+                    .collect();
+                on_data(&mut m)
+            },
             err,
             None,
         ),
         SampleFormat::I32 => dev.build_input_stream(
             cfg,
-            move |d: &[i32], _| { let mut m: Vec<f32> = d.chunks(ch).map(|c| c.iter().map(|&s| s as f32 / 2147483648.0).sum::<f32>() / ch as f32).collect(); on_data(&mut m) },
+            move |d: &[i32], _| {
+                let mut m: Vec<f32> = d
+                    .chunks(ch)
+                    .map(|c| c.iter().map(|&s| s as f32 / 2147483648.0).sum::<f32>() / ch as f32)
+                    .collect();
+                on_data(&mut m)
+            },
             err,
             None,
         ),
@@ -145,8 +202,16 @@ pub fn start_capture(device: &str, ev: EngineTx, level: Arc<AtomicU32>) -> anyho
     }
     .map_err(|e| e.to_string())?;
     stream.play().map_err(|e| e.to_string())?;
-    log::info!("capture on {:?} @ {} Hz x{}", dev.description().ok().map(|d| d.name().to_string()), cfg.sample_rate, ch);
-    Ok(Capture { _stream: stream, muted })
+    log::info!(
+        "capture on {:?} @ {} Hz x{}",
+        dev.description().ok().map(|d| d.name().to_string()),
+        cfg.sample_rate,
+        ch
+    );
+    Ok(Capture {
+        _stream: stream,
+        muted,
+    })
 }
 
 /// Shared playback queue (48 kHz mono f32).
@@ -172,7 +237,11 @@ impl PlayQueue {
             for i in 0..n {
                 let t = i as f32 / RATE as f32;
                 let env = (i as f32 / (n as f32 * 0.1)).min(1.0) * (1.0 - i as f32 / n as f32);
-                let s = if hz > 0.0 { (t * hz * std::f32::consts::TAU).sin() * gain * env } else { 0.0 };
+                let s = if hz > 0.0 {
+                    (t * hz * std::f32::consts::TAU).sin() * gain * env
+                } else {
+                    0.0
+                };
                 out.push((s * 32767.0) as i16);
             }
         }
@@ -205,14 +274,49 @@ pub fn start_playback(device: &str, q: PlayQueue) -> anyhow_lite::Result<Playbac
     };
     let err = |e| log::warn!("playback stream: {e}");
     let stream = match fmt {
-        SampleFormat::F32 => dev.build_output_stream(cfg, move |d: &mut [f32], _| { for f in d.chunks_mut(ch) { let s = next_sample(); f.fill(s); } }, err, None),
-        SampleFormat::I16 => dev.build_output_stream(cfg, move |d: &mut [i16], _| { for f in d.chunks_mut(ch) { let s = (next_sample() * 32767.0) as i16; f.fill(s); } }, err, None),
-        SampleFormat::I32 => dev.build_output_stream(cfg, move |d: &mut [i32], _| { for f in d.chunks_mut(ch) { let s = (next_sample() as f64 * 2147483647.0) as i32; f.fill(s); } }, err, None),
+        SampleFormat::F32 => dev.build_output_stream(
+            cfg,
+            move |d: &mut [f32], _| {
+                for f in d.chunks_mut(ch) {
+                    let s = next_sample();
+                    f.fill(s);
+                }
+            },
+            err,
+            None,
+        ),
+        SampleFormat::I16 => dev.build_output_stream(
+            cfg,
+            move |d: &mut [i16], _| {
+                for f in d.chunks_mut(ch) {
+                    let s = (next_sample() * 32767.0) as i16;
+                    f.fill(s);
+                }
+            },
+            err,
+            None,
+        ),
+        SampleFormat::I32 => dev.build_output_stream(
+            cfg,
+            move |d: &mut [i32], _| {
+                for f in d.chunks_mut(ch) {
+                    let s = (next_sample() as f64 * 2147483647.0) as i32;
+                    f.fill(s);
+                }
+            },
+            err,
+            None,
+        ),
         other => return Err(format!("unsupported output format {other:?}").into()),
     }
     .map_err(|e| e.to_string())?;
     stream.play().map_err(|e| e.to_string())?;
-    log::info!("playback on {:?} @ {} Hz x{}", dev.description().ok().map(|d| d.name().to_string()), cfg.sample_rate, ch);
+    log::info!(
+        "playback on {:?} @ {} Hz x{}",
+        dev.description().ok().map(|d| d.name().to_string()),
+        cfg.sample_rate,
+        ch
+    );
     Ok(Playback { _stream: stream })
 }
 

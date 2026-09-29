@@ -52,7 +52,12 @@ impl Store {
     }
 
     pub fn expire(&mut self, now: Ms) -> Vec<[u8; 16]> {
-        let gone: Vec<[u8; 16]> = self.items.values().filter(|s| now >= s.expires_ms).map(|s| s.msg_uuid).collect();
+        let gone: Vec<[u8; 16]> = self
+            .items
+            .values()
+            .filter(|s| now >= s.expires_ms)
+            .map(|s| s.msg_uuid)
+            .collect();
         for g in &gone {
             if let Some(s) = self.items.remove(g) {
                 self.bytes -= s.ciphertext.len();
@@ -63,7 +68,14 @@ impl Store {
 
     fn evict_if_needed(&mut self) {
         while self.bytes > MAX_STORE_BYTES {
-            let Some(oldest) = self.items.values().min_by_key(|s| s.sent_ms).map(|s| s.msg_uuid) else { break };
+            let Some(oldest) = self
+                .items
+                .values()
+                .min_by_key(|s| s.sent_ms)
+                .map(|s| s.msg_uuid)
+            else {
+                break;
+            };
             if let Some(s) = self.items.remove(&oldest) {
                 self.bytes -= s.ciphertext.len();
             }
@@ -72,7 +84,11 @@ impl Store {
 
     /// Message ids for a group (inventory payload).
     pub fn inventory(&self, group_uuid: &[u8; 16]) -> Vec<[u8; 16]> {
-        self.items.values().filter(|s| &s.group_uuid == group_uuid).map(|s| s.msg_uuid).collect()
+        self.items
+            .values()
+            .filter(|s| &s.group_uuid == group_uuid)
+            .map(|s| s.msg_uuid)
+            .collect()
     }
 
     /// Given a peer's inventory, which of ours they lack.
@@ -86,7 +102,10 @@ impl Store {
 
     /// Should we send an inventory to this neighbour now?
     pub fn inventory_due(&mut self, peer: NodeId, now: Ms) -> bool {
-        let due = self.last_inventory.get(&peer).is_none_or(|t| now.saturating_sub(*t) >= INVENTORY_INTERVAL_MS);
+        let due = self
+            .last_inventory
+            .get(&peer)
+            .is_none_or(|t| now.saturating_sub(*t) >= INVENTORY_INTERVAL_MS);
         if due {
             self.last_inventory.insert(peer, now);
         }

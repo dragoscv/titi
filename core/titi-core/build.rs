@@ -3,8 +3,7 @@ use std::{env, fs, path::PathBuf};
 fn main() {
     // 1. Protobuf → Rust (prost). Falls back to a vendored copy if protoc is
     //    absent so `cargo test` works on a fresh Windows machine.
-    let proto_root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
-        .join("../../proto");
+    let proto_root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("../../proto");
     let files = [
         "titi/v1/common.proto",
         "titi/v1/mesh.proto",
@@ -35,7 +34,11 @@ fn main() {
         .lines()
         .filter_map(|l| l.split_whitespace().nth(1))
         .collect();
-    assert_eq!(words.len(), 1296, "EFF short wordlist must have 1296 entries");
+    assert_eq!(
+        words.len(),
+        1296,
+        "EFF short wordlist must have 1296 entries"
+    );
     let mut src = String::from("pub static WORDS: [&str; 1296] = [\n");
     for w in &words {
         src.push_str(&format!("    \"{w}\",\n"));

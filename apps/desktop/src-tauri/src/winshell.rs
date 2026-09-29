@@ -7,19 +7,28 @@ use std::sync::{Mutex, OnceLock};
 
 use tauri::AppHandle;
 use windows::core::{w, Interface, HSTRING, PWSTR};
-use windows::Win32::Foundation::{ERROR_INSUFFICIENT_BUFFER, ERROR_SUCCESS, HWND, LPARAM, LRESULT, WPARAM};
+use windows::Win32::Foundation::{
+    ERROR_INSUFFICIENT_BUFFER, ERROR_SUCCESS, HWND, LPARAM, LRESULT, WPARAM,
+};
 use windows::Win32::Storage::EnhancedStorage::PKEY_Title;
 use windows::Win32::Storage::Packaging::Appx::GetCurrentApplicationUserModelId;
 use windows::Win32::System::Com::StructuredStorage::PROPVARIANT;
-use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED, COINIT_MULTITHREADED};
+use windows::Win32::System::Com::{
+    CoCreateInstance, CoInitializeEx, CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED,
+    COINIT_MULTITHREADED,
+};
 use windows::Win32::System::Variant::VT_LPWSTR;
 use windows::Win32::UI::Shell::Common::{IObjectArray, IObjectCollection};
 use windows::Win32::UI::Shell::PropertiesSystem::IPropertyStore;
 use windows::Win32::UI::Shell::{
-    DefSubclassProc, DestinationList, EnumerableObjectCollection, ICustomDestinationList, IShellLinkW, ITaskbarList3, SHStrDupW, SetCurrentProcessExplicitAppUserModelID, SetWindowSubclass, ShellLink,
-    TaskbarList, THBF_ENABLED, THBN_CLICKED, THB_FLAGS, THB_ICON, THB_TOOLTIP, THUMBBUTTON,
+    DefSubclassProc, DestinationList, EnumerableObjectCollection, ICustomDestinationList,
+    IShellLinkW, ITaskbarList3, SHStrDupW, SetCurrentProcessExplicitAppUserModelID,
+    SetWindowSubclass, ShellLink, TaskbarList, THBF_ENABLED, THBN_CLICKED, THB_FLAGS, THB_ICON,
+    THB_TOOLTIP, THUMBBUTTON,
 };
-use windows::Win32::UI::WindowsAndMessaging::{CreateIconFromResourceEx, RegisterWindowMessageW, HICON, LR_DEFAULTCOLOR, WM_COMMAND};
+use windows::Win32::UI::WindowsAndMessaging::{
+    CreateIconFromResourceEx, RegisterWindowMessageW, HICON, LR_DEFAULTCOLOR, WM_COMMAND,
+};
 
 /// Same id the NSIS installer stamps on the Start-menu shortcut (bundle identifier).
 pub const AUMID: &str = "ro.titi.desktop";
@@ -32,15 +41,25 @@ pub fn packaged_aumid() -> Option<String> {
             return None;
         }
         let mut buf = vec![0u16; len as usize];
-        if GetCurrentApplicationUserModelId(&mut len, Some(PWSTR(buf.as_mut_ptr()))) != ERROR_SUCCESS {
+        if GetCurrentApplicationUserModelId(&mut len, Some(PWSTR(buf.as_mut_ptr())))
+            != ERROR_SUCCESS
+        {
             return None;
         }
-        Some(String::from_utf16_lossy(&buf[..len.saturating_sub(1) as usize]))
+        Some(String::from_utf16_lossy(
+            &buf[..len.saturating_sub(1) as usize],
+        ))
     }
 }
 
 fn is_dev_build() -> bool {
-    std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.ends_with("target\\debug") || d.ends_with("target\\release"))).unwrap_or(true)
+    std::env::current_exe()
+        .ok()
+        .and_then(|p| {
+            p.parent()
+                .map(|d| d.ends_with("target\\debug") || d.ends_with("target\\release"))
+        })
+        .unwrap_or(true)
 }
 
 /// Unpackaged: group taskbar button, jump list and toasts under one id. Call before any window exists.
@@ -54,7 +73,13 @@ pub fn set_process_aumid() {
 
 fn toast_app_id() -> String {
     // dev builds have no Start-menu shortcut carrying the AUMID → toasts would be dropped
-    packaged_aumid().unwrap_or_else(|| if is_dev_build() { tauri_winrt_notification::Toast::POWERSHELL_APP_ID.to_string() } else { AUMID.to_string() })
+    packaged_aumid().unwrap_or_else(|| {
+        if is_dev_build() {
+            tauri_winrt_notification::Toast::POWERSHELL_APP_ID.to_string()
+        } else {
+            AUMID.to_string()
+        }
+    })
 }
 
 // ---- thumbnail toolbar -------------------------------------------------------
@@ -77,11 +102,18 @@ static MUTED: AtomicBool = AtomicBool::new(false);
 static ADDED: AtomicBool = AtomicBool::new(false);
 
 fn icon(png: &[u8]) -> isize {
-    unsafe { CreateIconFromResourceEx(png, true, 0x0003_0000, 32, 32, LR_DEFAULTCOLOR).map(|h| h.0 as isize).unwrap_or(0) }
+    unsafe {
+        CreateIconFromResourceEx(png, true, 0x0003_0000, 32, 32, LR_DEFAULTCOLOR)
+            .map(|h| h.0 as isize)
+            .unwrap_or(0)
+    }
 }
 
 fn tip(dst: &mut [u16; 260], s: &str) {
-    for (d, c) in dst.iter_mut().zip(s.encode_utf16().chain(std::iter::once(0))) {
+    for (d, c) in dst
+        .iter_mut()
+        .zip(s.encode_utf16().chain(std::iter::once(0)))
+    {
         *d = c;
     }
 }
@@ -97,10 +129,20 @@ fn buttons() -> [THUMBBUTTON; 2] {
     }
     b[0].iId = ID_TALK;
     b[0].hIcon = HICON(ic[if talking { 1 } else { 0 }] as *mut _);
-    tip(&mut b[0].szTip, if talking { "Stop talking" } else { "Talk" });
+    tip(
+        &mut b[0].szTip,
+        if talking { "Stop talking" } else { "Talk" },
+    );
     b[1].iId = ID_MUTE;
     b[1].hIcon = HICON(ic[if muted { 3 } else { 2 }] as *mut _);
-    tip(&mut b[1].szTip, if muted { "Unmute microphone" } else { "Mute microphone" });
+    tip(
+        &mut b[1].szTip,
+        if muted {
+            "Unmute microphone"
+        } else {
+            "Mute microphone"
+        },
+    );
     b
 }
 
@@ -123,7 +165,10 @@ fn apply_buttons(add: bool) {
     unsafe {
         if add || !ADDED.load(Ordering::Relaxed) {
             match t.ThumbBarAddButtons(hwnd, &b) {
-                Ok(()) => { ADDED.store(true, Ordering::Relaxed); log::info!("thumbbar: buttons added") }
+                Ok(()) => {
+                    ADDED.store(true, Ordering::Relaxed);
+                    log::info!("thumbbar: buttons added")
+                }
                 Err(e) => log::debug!("thumbbar add: {e}"), // no taskbar button yet (window hidden)
             }
         } else if let Err(e) = t.ThumbBarUpdateButtons(hwnd, &b) {
@@ -132,7 +177,14 @@ fn apply_buttons(add: bool) {
     }
 }
 
-unsafe extern "system" fn subclass(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM, _id: usize, _data: usize) -> LRESULT {
+unsafe extern "system" fn subclass(
+    hwnd: HWND,
+    msg: u32,
+    w: WPARAM,
+    l: LPARAM,
+    _id: usize,
+    _data: usize,
+) -> LRESULT {
     if Some(&msg) == TASKBAR_CREATED.get() {
         ADDED.store(false, Ordering::Relaxed); // new taskbar button (first show, Explorer restart)
         apply_buttons(true);
@@ -172,8 +224,12 @@ pub fn install_thumbbar(hwnd: isize, on_click: impl Fn(ThumbAction) + Send + Syn
 /// Reflect engine state in the toolbar (any thread).
 pub fn set_state(app: &AppHandle, talking: Option<bool>, muted: Option<bool>) {
     let mut changed = false;
-    if let Some(t) = talking { changed |= TALKING.swap(t, Ordering::Relaxed) != t }
-    if let Some(m) = muted { changed |= MUTED.swap(m, Ordering::Relaxed) != m }
+    if let Some(t) = talking {
+        changed |= TALKING.swap(t, Ordering::Relaxed) != t
+    }
+    if let Some(m) = muted {
+        changed |= MUTED.swap(m, Ordering::Relaxed) != m
+    }
     if changed {
         let _ = app.run_on_main_thread(|| apply_buttons(false));
     }
@@ -199,8 +255,19 @@ pub fn set_jump_list(groups: Vec<(String, String)>) {
     std::thread::spawn(move || unsafe {
         // shell link / destination-list objects are apartment-threaded; WinRT JumpList is agile
         let packaged = packaged_aumid().is_some();
-        let _ = CoInitializeEx(None, if packaged { COINIT_MULTITHREADED } else { COINIT_APARTMENTTHREADED });
-        let r = if packaged { jump_list_winrt(&groups) } else { jump_list_win32(&groups) };
+        let _ = CoInitializeEx(
+            None,
+            if packaged {
+                COINIT_MULTITHREADED
+            } else {
+                COINIT_APARTMENTTHREADED
+            },
+        );
+        let r = if packaged {
+            jump_list_winrt(&groups)
+        } else {
+            jump_list_win32(&groups)
+        };
         match r {
             Ok(()) => log::info!("jump list: {} group(s)", groups.len()),
             Err(e) => log::warn!("jump list: {e}"),
@@ -208,9 +275,21 @@ pub fn set_jump_list(groups: Vec<(String, String)>) {
     });
 }
 
-const TASKS: [(&str, &str, &str); 2] = [("--toggle-mute", "Mute / unmute microphone", "Toggle the microphone"), ("--join", "Join a group…", "Join with a code or link")];
+const TASKS: [(&str, &str, &str); 2] = [
+    (
+        "--toggle-mute",
+        "Mute / unmute microphone",
+        "Toggle the microphone",
+    ),
+    ("--join", "Join a group…", "Join with a code or link"),
+];
 
-unsafe fn shell_link(exe: &std::path::Path, args: &str, title: &str, desc: &str) -> windows::core::Result<IShellLinkW> {
+unsafe fn shell_link(
+    exe: &std::path::Path,
+    args: &str,
+    title: &str,
+    desc: &str,
+) -> windows::core::Result<IShellLinkW> {
     let l: IShellLinkW = CoCreateInstance(&ShellLink, None, CLSCTX_INPROC_SERVER)?;
     l.SetPath(&HSTRING::from(exe.as_os_str()))?;
     l.SetArguments(&HSTRING::from(args))?;
@@ -234,15 +313,25 @@ fn step(what: &str, e: windows::core::Error) -> windows::core::Error {
 }
 
 unsafe fn jump_list_win32(groups: &[(String, String)]) -> windows::core::Result<()> {
-    let exe = std::env::current_exe().map_err(|e| windows::core::Error::new(windows::core::HRESULT(0x8007_0002u32 as i32), e.to_string()))?;
-    let dl: ICustomDestinationList = CoCreateInstance(&DestinationList, None, CLSCTX_INPROC_SERVER)?;
-    dl.SetAppID(&HSTRING::from(AUMID)).map_err(|e| step("SetAppID", e))?;
+    let exe = std::env::current_exe().map_err(|e| {
+        windows::core::Error::new(windows::core::HRESULT(0x8007_0002u32 as i32), e.to_string())
+    })?;
+    let dl: ICustomDestinationList =
+        CoCreateInstance(&DestinationList, None, CLSCTX_INPROC_SERVER)?;
+    dl.SetAppID(&HSTRING::from(AUMID))
+        .map_err(|e| step("SetAppID", e))?;
     let mut slots = 0u32;
     let _removed: IObjectArray = dl.BeginList(&mut slots).map_err(|e| step("BeginList", e))?;
-    let tasks: IObjectCollection = CoCreateInstance(&EnumerableObjectCollection, None, CLSCTX_INPROC_SERVER)?;
+    let tasks: IObjectCollection =
+        CoCreateInstance(&EnumerableObjectCollection, None, CLSCTX_INPROC_SERVER)?;
     if !groups.is_empty() {
-        let coll: IObjectCollection = CoCreateInstance(&EnumerableObjectCollection, None, CLSCTX_INPROC_SERVER)?;
-        let links = groups.iter().take(slots.max(4) as usize).map(|(id, name)| shell_link(&exe, &format!("--group={id}"), name, "Open this group")).collect::<windows::core::Result<Vec<_>>>()?;
+        let coll: IObjectCollection =
+            CoCreateInstance(&EnumerableObjectCollection, None, CLSCTX_INPROC_SERVER)?;
+        let links = groups
+            .iter()
+            .take(slots.max(4) as usize)
+            .map(|(id, name)| shell_link(&exe, &format!("--group={id}"), name, "Open this group"))
+            .collect::<windows::core::Result<Vec<_>>>()?;
         for l in &links {
             coll.AddObject(l)?;
         }
@@ -258,7 +347,8 @@ unsafe fn jump_list_win32(groups: &[(String, String)]) -> windows::core::Result<
     for (a, t, d) in TASKS {
         tasks.AddObject(&shell_link(&exe, a, t, d)?)?;
     }
-    dl.AddUserTasks(&tasks.cast::<IObjectArray>()?).map_err(|e| step("AddUserTasks", e))?;
+    dl.AddUserTasks(&tasks.cast::<IObjectArray>()?)
+        .map_err(|e| step("AddUserTasks", e))?;
     dl.CommitList().map_err(|e| step("CommitList", e))
 }
 
@@ -269,7 +359,10 @@ fn jump_list_winrt(groups: &[(String, String)]) -> windows::core::Result<()> {
     let items = jl.Items()?;
     items.Clear()?;
     for (id, name) in groups {
-        let it = JumpListItem::CreateWithArguments(&HSTRING::from(format!("--group={id}")), &HSTRING::from(name.as_str()))?;
+        let it = JumpListItem::CreateWithArguments(
+            &HSTRING::from(format!("--group={id}")),
+            &HSTRING::from(name.as_str()),
+        )?;
         it.SetGroupName(&HSTRING::from("Groups"))?;
         it.SetDescription(&HSTRING::from("Open this group"))?;
         items.Append(&it)?;
@@ -297,7 +390,10 @@ pub struct ToastSpec {
 pub fn toast(spec: ToastSpec, on_action: impl Fn(String) + Send + Sync + 'static) {
     use tauri_winrt_notification::{Duration, Toast};
     let default = spec.default_action.clone();
-    let mut t = Toast::new(&toast_app_id()).title(&spec.title).text1(&spec.body).duration(Duration::Short);
+    let mut t = Toast::new(&toast_app_id())
+        .title(&spec.title)
+        .text1(&spec.body)
+        .duration(Duration::Short);
     for (label, arg) in &spec.buttons {
         t = t.add_button(label, arg);
     }
