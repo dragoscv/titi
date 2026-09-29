@@ -88,7 +88,8 @@ fun TitiApp(engine: EngineHost, prefs: Prefs, settings: Settings) {
                             OnboardingScreen(prefs, engine) { backStack.clear(); backStack.add(Home) }
                         }
                         is Home -> NavEntry(key) {
-                            HomeScreen(engine, state, settings,
+                            val live by prefs.settings.collectAsState(initial = settings)
+                            HomeScreen(engine, state, live,
                                 onOpenGroup = { engine.setActiveGroup(it); backStack.add(Group(it)) },
                                 onJoin = { backStack.add(Join) },
                                 onSettings = { backStack.add(SettingsRoute) })
@@ -100,7 +101,10 @@ fun TitiApp(engine: EngineHost, prefs: Prefs, settings: Settings) {
                         is Join -> NavEntry(key) { JoinScreen(engine, state, onBack = { backStack.removeLastOrNull() }) }
                         is SettingsRoute -> NavEntry(key) {
                             val act = androidx.activity.compose.LocalActivity.current
-                            SettingsScreen(prefs, engine, settings, onBack = { backStack.removeLastOrNull() }, onQuit = {
+                            // collect here: NavEntry content is cached per key, so the outer `settings`
+                            // value it captured goes stale (switch showed ON while DataStore held OFF)
+                            val live by prefs.settings.collectAsState(initial = settings)
+                            SettingsScreen(prefs, engine, live, onBack = { backStack.removeLastOrNull() }, onQuit = {
                                 act?.let { a -> ro.titi.app.util.RadioLifecycle.quit(a) { ro.titi.app.service.RadioService.stop(a) } }
                             })
                         }

@@ -168,7 +168,12 @@ class MainActivity : ComponentActivity() {
             }
             composable("join") { JoinScreen(app.engine) { nav.popBackStack() } }
             composable("record") { RecordScreen(app.engine, state) { nav.popBackStack() } }
-            composable("settings") { SettingsScreen(app.prefs, settings, onQuit = ::quit) }
+            // collect inside the destination: the nav graph is remembered, so a value captured from
+            // the outer scope goes stale (the switch showed ON while DataStore held false)
+            composable("settings") {
+                val live by app.prefs.settings.collectAsState(initial = settings)
+                SettingsScreen(app.prefs, live, onQuit = ::quit)
+            }
         }
 
         SuccessConfirmationDialog(
