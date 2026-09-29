@@ -87,6 +87,8 @@ test("push-to-talk: host holds the floor, guest sees who is talking", async ({ u
   await guest.page.getByRole("button", { name: "Join", exact: true }).click();
   await expect(guest.page.getByText("2 members")).toBeVisible({ timeout: 20_000 });
   await host.page.keyboard.press("Escape");
+  // raw mouse input skips actionability checks: the sheet's exit animation leaves its backdrop on top
+  await expect(host.page.getByRole("dialog")).toBeHidden();
 
   const talk = host.page.getByRole("button", { name: /Talk button/ });
   const box = (await talk.boundingBox())!;

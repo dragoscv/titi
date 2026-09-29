@@ -10,6 +10,7 @@ import type { Capabilities, TitiHost } from "../platform";
 type Wasm = typeof import("@titi/core-wasm");
 
 const hexToBytes = (h: string) => Uint8Array.from(h.match(/.{2}/g) ?? [], (b) => parseInt(b, 16));
+const b64urlToBytes = (s: string) => { try { return Uint8Array.from(atob(s.replaceAll("-", "+").replaceAll("_", "/").padEnd(Math.ceil(s.length / 4) * 4, "=")), (c) => c.charCodeAt(0)); } catch { return new Uint8Array(); } };
 const bytesToHex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
 const now = () => Date.now();
 
@@ -26,6 +27,7 @@ export class WebHost implements TitiHost {
   private tick: number | null = null;
   private started = false;
   private pendingCode: { code: string; until: number } | null = null;
+  private pendingLinkRoom: { hash: Uint8Array; until: number } | null = null;
   readonly dbg = { rx: 0, tx: 0, play: 0, ui: [] as string[] };
   private hooks = {
     cue: (k: CueKind) => this.playout.cue(k),
@@ -147,7 +149,24 @@ export class WebHost implements TitiHost {
       this.apply(this.eng.join_by_code(code, now()));
     }, 3000);
   }
-  joinByLink(url: string) { this.apply(this.eng.join_by_link(url, now())); }
+  joinByLink(url: string) {
+    // titi://j/<uuid b64url>/<key>/<exp>/<pub>/<sig>: sit in that group's relay room until a member answers
+    const uuid = b64urlToBytes(url.replace(/^titi:\/\/j\//, "").split("/")[0] ?? "");
+    const before = new Set(useStore.getState().groups.map((g) => g.id));
+    if (uuid.length === 16) { this.pendingLinkRoom = { hash: this.wasm.group_hash(uuid), until: now() + 120_000 }; this.syncRoom(); }
+    this.apply(this.eng.join_by_link(url, now()));
+    if (!this.pendingLinkRoom) return;
+    const retry = window.setInterval(() => {
+      const done = useStore.getState().groups.some((g) => !before.has(g.id));
+      if (!this.pendingLinkRoom || done || now() > this.pendingLinkRoom.until) {
+        clearInterval(retry);
+        this.pendingLinkRoom = null;
+        this.syncRoom();
+        return;
+      }
+      this.apply(this.eng.join_by_link(url, now()));
+    }, 3000);
+  }
   sendText(g: string, text: string) { this.guard(() => this.apply(this.eng.send_text(hexToBytes(g), text, now()))); }
   sendSos(g: string, cancelled: boolean) {
     const fire = (lat: number, lon: number) => this.guard(() => this.apply(this.eng.send_sos(hexToBytes(g), lat, lon, "", cancelled, now())));
@@ -191,6 +210,7 @@ export class WebHost implements TitiHost {
       for (const h of chunk4(this.eng.rendezvous_for_group(gid, now()))) rooms.push({ hash: h, rendezvous: true });
     }
     if (this.pendingCode) for (const h of chunk4(this.wasm.rendezvous_for_code(this.pendingCode.code, now()))) rooms.push({ hash: h, rendezvous: true });
+    if (this.pendingLinkRoom) rooms.push({ hash: this.pendingLinkRoom.hash, rendezvous: true });
     this.relay.setRooms(rooms);
   }
 
