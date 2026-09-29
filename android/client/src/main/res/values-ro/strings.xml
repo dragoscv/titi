@@ -3,6 +3,9 @@
     <string name="group_talk_warning">Mai ai 10 secunde</string>
     <string name="group_talk_timeout">Timp de vorbire depășit</string>
     <string name="joined">Ai intrat în %1$s</string>
+    <string name="group_dissolve">Șterge pentru toți</string>
+    <string name="group_dissolve_confirm">Ștergi %1$s pentru toți? Fiecare membru pierde grupul și mesajele.</string>
+    <string name="group_dissolved">„%1$s” a fost șters de creator</string>
     <string name="join_failed_generic">Nu am putut intra — verifică codul și încearcă din nou</string>
     <string name="error_mic">Microfonul nu e disponibil — poate îl folosește altă aplicație</string>
     <string name="error_generic">Ceva n‑a mers</string>

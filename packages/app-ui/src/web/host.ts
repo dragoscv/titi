@@ -89,7 +89,7 @@ export class WebHost implements TitiHost {
     if (this.started) return;
     this.started = true;
     await this.playout.ensure();
-    this.relay.start();
+    if (useStore.getState().settings.relay) this.relay.start();
     let n = 0;
     this.tick = window.setInterval(() => {
       this.apply(this.eng.tick(now()));
@@ -114,11 +114,15 @@ export class WebHost implements TitiHost {
   }
 
   saveSettings(p: Partial<Settings>) {
-    const s = { ...useStore.getState().settings, ...p };
+    const old = useStore.getState().settings;
+    const s = { ...old, ...p };
     localStorage.setItem(LS.settings, JSON.stringify(s));
     useStore.getState().set({ settings: s });
     this.eng.set_display_name(s.name, s.hue);
     this.playout.volume = s.volume;
+    if (this.started && old.relay !== s.relay) {
+      if (s.relay) { this.relay.start(); this.syncRoom(); } else this.relay.stop();
+    }
   }
 
   // ---- intents -----------------------------------------------------------
@@ -127,6 +131,7 @@ export class WebHost implements TitiHost {
   setMuted(m: boolean) { this.capture.muted = m; useStore.getState().set({ muted: m }); }
   createGroup(name: string) { this.guard(() => this.apply(this.eng.create_group(name, now()))); this.refreshGroups(); this.syncRoom(); }
   leaveGroup(id: string) { this.guard(() => this.apply(this.eng.leave_group(hexToBytes(id), now()))); this.refreshGroups(); this.syncRoom(); }
+  dissolveGroup(id: string) { this.guard(() => this.apply(this.eng.dissolve_group(hexToBytes(id), now()))); this.refreshGroups(); this.syncRoom(); }
   setActiveGroup(id: string) { try { this.eng.set_active_group(hexToBytes(id)); } catch { /* unknown */ } this.refreshGroups(); this.syncRoom(); useStore.getState().updateGroup(id, (g) => ({ ...g, unread: 0 })); }
   setFullDuplex(id: string, on: boolean) { this.guard(() => this.apply(this.eng.set_full_duplex(hexToBytes(id), on, now()))); this.refreshGroups(); }
   invitePeer(g: string, node: string) { this.guard(() => this.apply(this.eng.invite_peer(hexToBytes(g), hexToBytes(node), now()))); }

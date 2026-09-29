@@ -223,6 +223,8 @@ class EngineHost(private val ctx: Context, private val prefs: Prefs) : Transport
 
     fun createGroup(name: String) = post { runCatching { apply(engine.createGroup(name, now())) }.onFailure { err(it) }; refreshGroups(); syncRelayRoom() }
     fun leaveGroup(id: String) = post { runCatching { apply(engine.leaveGroup(id.hexToBytes(), now())) }.onFailure { err(it) }; refreshGroups(); syncRelayRoom() }
+    /** Creator only: deletes the group for every member. */
+    fun dissolveGroup(id: String) = post { runCatching { apply(engine.dissolveGroup(id.hexToBytes(), now())) }.onFailure { err(it) }; refreshGroups(); syncRelayRoom() }
     fun setActiveGroup(id: String) = post { runCatching { engine.setActiveGroup(id.hexToBytes()) }; refreshGroups(); syncRelayRoom(); _state.update { s -> s.copy(groups = s.groups.map { g -> if (g.id == id) g.copy(unread = 0) else g }) } }
     fun setFullDuplex(id: String, on: Boolean) = post { runCatching { apply(engine.setFullDuplex(id.hexToBytes(), on, now())) }.onFailure { err(it) }; refreshGroups() }
     fun invitePeer(group: String, node: String) = post { runCatching { apply(engine.invitePeer(group.hexToBytes(), node.hexToBytes(), now())) }.onFailure { err(it) } }
@@ -338,6 +340,7 @@ class EngineHost(private val ctx: Context, private val prefs: Prefs) : Transport
             is FfiUiEvent.JoinFailed -> { Log.w(TAG, "join failed: ${e.reason}"); toast(Toast.Text(R.string.join_failed_generic)) }
             is FfiUiEvent.MemberJoined -> { names[e.node.toHex()] = e.name; refreshGroups() }
             is FfiUiEvent.MemberLeft -> refreshGroups()
+            is FfiUiEvent.GroupDissolved -> { refreshGroups(); syncRelayRoom(); toast(Toast.Text(R.string.group_dissolved, e.name)) }
             is FfiUiEvent.Message -> {
                 val gid = e.group.toHex(); val from = e.from.toHex()
                 val msg = ChatMessage(e.msgUuid.toHex(), gid, from, names[from] ?: from.take(6), e.sentMs.toLong(), e.body, mine = from == nodeIdHex)

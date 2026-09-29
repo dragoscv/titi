@@ -14,6 +14,7 @@ object Tv {
     val Muted = Color(0xFF9AA3B2)
     val Amber = Color(0xFFFFB020)
     val Teal = Color(0xFF2DD4BF)
+    val Emergency = Color(0xFFE5484D)
 }
 
 fun hueColor(hue: Int): Color = Color.hsl(hue.coerceIn(0, 359).toFloat(), 0.72f, 0.62f)

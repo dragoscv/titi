@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { host } from "./platform";
 import { useStore } from "./store";
+import { Dashboard } from "./Dashboard";
 import { Home } from "./screens/Home";
 import { Group } from "./screens/Group";
 import { Join } from "./screens/Join";
@@ -12,6 +13,10 @@ import { Avatar } from "./Avatar";
 
 export type Route = { name: "home" } | { name: "group"; id: string } | { name: "join" } | { name: "settings" };
 
+const onResize = (cb: () => void) => { window.addEventListener("resize", cb); return () => window.removeEventListener("resize", cb); };
+/** Ultrawide / maximised desktop window: room for the all-groups wall beside the app column. */
+const isWide = () => window.innerWidth >= 1600 && window.innerWidth / Math.max(1, window.innerHeight) >= 1.9;
+
 export function Shell({ joinLink }: { joinLink?: string }) {
   const ready = useStore((s) => s.ready);
   const settings = useStore((s) => s.settings);
@@ -20,6 +25,7 @@ export function Shell({ joinLink }: { joinLink?: string }) {
   const activeGroup = useStore((s) => s.activeGroup);
   const pendingLink = useStore((s) => s.pendingLink);
   const [route, setRoute] = useState<Route>({ name: "home" });
+  const wide = useSyncExternalStore(onResize, isWide, () => false) && host.caps.globalPtt;
   // OS shell asked for a screen (jump list entry, toast button): react to the store, not in render
   useEffect(() => {
     const take = (s: ReturnType<typeof useStore.getState>) => {
@@ -61,7 +67,8 @@ export function Shell({ joinLink }: { joinLink?: string }) {
   if (!settings.onboarded) return <Onboarding onDone={() => setRoute({ name: "home" })} />;
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
+    <div className={wide ? "flex h-dvh w-full gap-6 p-6" : "contents"}>
+    <div className={wide ? "flex w-[440px] shrink-0 flex-col overflow-y-auto" : "mx-auto flex min-h-dvh w-full max-w-md flex-col"}>
       {unsupported && (
         <div className="m-3 rounded-2xl bg-danger/15 p-3 text-sm text-danger">This browser lacks WebCodecs Opus. Use Chrome, Edge or Safari 17+ for voice.</div>
       )}
@@ -97,6 +104,13 @@ export function Shell({ joinLink }: { joinLink?: string }) {
           </motion.output>
         )}
       </AnimatePresence>
+    </div>
+    {wide && (
+      <section className="flex min-w-0 flex-1 flex-col" aria-label="All groups">
+        <h2 className="mb-4 text-2xl font-bold">All groups</h2>
+        <Dashboard onPick={(g) => { host.setActiveGroup(g.id); setRoute({ name: "group", id: g.id }); }} />
+      </section>
+    )}
     </div>
   );
 }

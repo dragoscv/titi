@@ -34,6 +34,8 @@ export interface TitiHost {
   setMuted(m: boolean): void;
   createGroup(name: string): void;
   leaveGroup(id: string): void;
+  /** Creator only: delete the group for every member. */
+  dissolveGroup(id: string): void;
   setActiveGroup(id: string): void;
   setFullDuplex(id: string, on: boolean): void;
   invitePeer(group: string, node: string): void;

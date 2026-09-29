@@ -93,6 +93,7 @@ fun GroupScreen(engine: EngineHost, state: RadioState, id: String, onBack: () ->
     var showInvite by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var confirmLeave by remember { mutableStateOf(false) }
+    var confirmDissolve by remember { mutableStateOf(false) }
     var confirmSos by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
 
@@ -116,6 +117,7 @@ fun GroupScreen(engine: EngineHost, state: RadioState, id: String, onBack: () ->
                 DropdownMenu(showMenu, { showMenu = false }) {
                     DropdownMenuItem({ Text(stringResource(R.string.group_share_location)) }, { showMenu = false; shareLocation(ctx, engine, g.id) })
                     DropdownMenuItem({ Text(stringResource(R.string.group_leave), color = MaterialTheme.colorScheme.error) }, { showMenu = false; confirmLeave = true })
+                    if (g.isCreator) DropdownMenuItem({ Text(stringResource(ro.titi.client.R.string.group_dissolve), color = MaterialTheme.colorScheme.error) }, { showMenu = false; confirmDissolve = true })
                 }
             }
         }
@@ -187,6 +189,13 @@ fun GroupScreen(engine: EngineHost, state: RadioState, id: String, onBack: () ->
 
     if (showInvite) InviteSheet(engine, state, g.id, g.name) { showInvite = false }
 
+    if (confirmDissolve) AlertDialog(
+        onDismissRequest = { confirmDissolve = false },
+        title = { Text(stringResource(ro.titi.client.R.string.group_dissolve)) },
+        text = { Text(stringResource(ro.titi.client.R.string.group_dissolve_confirm, g.name)) },
+        confirmButton = { TextButton({ confirmDissolve = false; engine.dissolveGroup(g.id); onBack() }) { Text(stringResource(ro.titi.client.R.string.group_dissolve), color = MaterialTheme.colorScheme.error) } },
+        dismissButton = { TextButton({ confirmDissolve = false }) { Text(stringResource(R.string.cancel)) } },
+    )
     if (confirmLeave) AlertDialog(
         onDismissRequest = { confirmLeave = false },
         title = { Text(stringResource(R.string.group_leave)) },
@@ -245,7 +254,7 @@ private fun InviteSheet(engine: EngineHost, state: RadioState, gid: String, gnam
                 Spacer(Modifier.height(8.dp))
                 Image(rememberQr(link), null, Modifier.size(200.dp).clip(RoundedCornerShape(16.dp)).background(Color.White).padding(8.dp))
                 Spacer(Modifier.height(16.dp))
-                OutlinedButton({ ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, link.replace("titi://j/", "https://titi.app/j/")), null)) }, shape = RoundedCornerShape(14.dp)) {
+                OutlinedButton({ ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, ro.titi.app.util.InviteLinks.toWebLink(link)), null)) }, shape = RoundedCornerShape(14.dp)) {
                     Icon(Icons.Rounded.Share, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.invite_share_link))
                 }
                 watch?.let { w ->

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { applyUi, nameOf, setGroups, type ReducerHooks } from "../src/reducer";
 import { defaultSettings, useStore } from "../src/store";
 import type { GroupJson, MsgBody } from "../src/types";
@@ -18,7 +18,7 @@ const group = (id: string, active: boolean): GroupJson => ({
   members: [{ node: ME, name: "Me", hue: 10 }, { node: BOB, name: "Bob", hue: 200 }],
 });
 
-type Hooks = { cue: ReturnType<typeof vi.fn<ReducerHooks["cue"]>>; refreshGroups: ReturnType<typeof vi.fn<() => void>>; syncRooms: ReturnType<typeof vi.fn<() => void>>; notify: ReturnType<typeof vi.fn<(title: string, body: string, tag: string) => void>> };
+type Hooks = { cue: Mock<ReducerHooks["cue"]>; refreshGroups: Mock<() => void>; syncRooms: Mock<() => void>; notify: Mock<(title: string, body: string, tag: string) => void> };
 let hooks: Hooks;
 const st = () => useStore.getState();
 const g1 = () => st().groups.find((g) => g.id === G)!;
@@ -129,7 +129,7 @@ describe("invites and membership", () => {
     applyUi({ type: "inviteOffered", group: G2, name: "Munte", host: BOB, host_name: "Bob", members: 3 }, hooks);
     expect(st().invites).toEqual([{ group: G2, name: "Munte", host: BOB, hostName: "Bob", members: 3 }]);
     expect(hooks.cue).toHaveBeenCalledWith("incoming");
-    expect(hooks.notify).toHaveBeenCalledWith("Bob invites you", "Join “Munte” · 3 members", `invite-${G2}`);
+    expect(hooks.notify).toHaveBeenCalledWith("Bob invites you", "Join ΓÇ£MunteΓÇ¥ ┬╖ 3 members", `invite-${G2}`);
   });
 
   it("inviteOffered works without an optional notify hook", () => {

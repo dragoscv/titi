@@ -76,12 +76,19 @@ export function applyUi(e: UiEvent, h: ReducerHooks) {
     case "joinFailed": st.set({ toast: `Could not join: ${e.reason}` }); break;
     case "memberJoined": names.set(e.node, e.name); h.refreshGroups(); break;
     case "memberLeft": h.refreshGroups(); break;
+    case "groupDissolved": st.set({ toast: `“${e.name}” was deleted by its creator` }); h.refreshGroups(); h.syncRooms(); break;
     case "message": {
       const m: Msg = { id: e.msg_uuid, group: e.group, from: e.from, fromName: nameOf(e.from), sentMs: e.sent_ms, body: e.body, mine: e.from === me, acked: false };
       st.set((s) => ({ messages: [...s.messages.filter((x) => x.id !== m.id), m].slice(-500) }));
       if (!m.mine && st.activeGroup !== e.group) st.updateGroup(e.group, (g) => ({ ...g, unread: g.unread + 1 }));
       if (!m.mine) {
-        if (e.body.kind === "sos") { h.cue("sos"); h.notify?.(e.body.cancelled ? `${m.fromName} is safe` : `SOS from ${m.fromName}`, e.body.note || "Emergency", `sos-${e.group}`); }
+        if (e.body.kind === "sos") {
+          const b = e.body;
+          const groupName = st.groups.find((g) => g.id === e.group)?.name ?? "";
+          st.set((s) => ({ sos: b.cancelled ? (s.sos?.group === e.group ? null : s.sos) : { group: e.group, groupName, fromName: m.fromName, latE7: b.lat_e7, lonE7: b.lon_e7, note: b.note } }));
+          h.cue("sos");
+          h.notify?.(b.cancelled ? `${m.fromName} is safe` : `SOS from ${m.fromName}`, b.note || "Emergency", `sos-${e.group}`);
+        }
         else if (e.body.kind === "text") h.notify?.(m.fromName, e.body.text, `msg-${e.group}`);
       }
       break;

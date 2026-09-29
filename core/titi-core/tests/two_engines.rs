@@ -19,7 +19,7 @@ struct Net {
     plays: Vec<usize>,
     /// adjacency: who can hear whom on LAN
     adj: Vec<Vec<usize>>,
-    /// largest frame put on the wire (must stay ≤ link MTU)
+    /// largest frame put on the wire (must stay Γëñ link MTU)
     max_frame: usize,
 }
 
@@ -89,7 +89,7 @@ impl Net {
 
     fn pump(&mut self, now: u64) {
         let mut guard = 0;
-        // deliver, then tick a few times so jittered flood relays (≤220 ms) fire
+        // deliver, then tick a few times so jittered flood relays (Γëñ220 ms) fire
         for step in 0..4u64 {
             while let Some((to, link, from_tok, bytes)) = self.queue.pop_front() {
                 let acts = self.engines[to].on_frame(link, from_tok, &bytes, now + step * 80);
@@ -185,7 +185,7 @@ fn voice_note_larger_than_mtu_is_fragmented_and_delivered() {
     net.run(now, now + 500, 20);
     now += 520;
     let gid = group_of_all(&mut net, now);
-    // ~10 s of 16 kbps opus ≈ 20 KB: 17+ fragments at LAN MTU 1200
+    // ~10 s of 16 kbps opus Γëê 20 KB: 17+ fragments at LAN MTU 1200
     let note = voice_note_bytes(20_000);
     let acts = net.engines[1].send_voice_note(
         gid,
@@ -214,7 +214,7 @@ fn voice_note_larger_than_mtu_is_fragmented_and_delivered() {
 
 #[test]
 fn voice_note_is_relayed_in_fragments_over_a_middle_node() {
-    // A — B — C: the relayed Message is re-fragmented hop by hop
+    // A ΓÇö B ΓÇö C: the relayed Message is re-fragmented hop by hop
     let mut net = Net::new(3, &["A", "B", "C"]);
     let mut now = 1_789_404_000_000u64;
     net.bring_up(now);
@@ -321,7 +321,7 @@ fn discovery_invite_ptt_voice_text() {
         net.apply(0, acts);
         net.tick_all(now);
     }
-    // arbitration window elapses → granted
+    // arbitration window elapses ΓåÆ granted
     now += 300;
     net.tick_all(now);
     assert!(
@@ -348,7 +348,7 @@ fn discovery_invite_ptt_voice_text() {
     assert!(net.plays[1] > 30, "B played {} frames", net.plays[1]);
     assert_eq!(net.plays[0], 0, "A does not hear itself");
 
-    // B tries to talk while A holds → denied
+    // B tries to talk while A holds ΓåÆ denied
     let acts = net.engines[1].ptt_down(Priority::Normal, now);
     net.apply(1, acts);
     assert!(
@@ -359,7 +359,7 @@ fn discovery_invite_ptt_voice_text() {
     let acts = net.engines[1].ptt_up(now);
     net.apply(1, acts);
 
-    // A releases → B (which is idle after its own ptt_up) times out A's floor
+    // A releases ΓåÆ B (which is idle after its own ptt_up) times out A's floor
     let acts = net.engines[0].ptt_up(now);
     net.apply(0, acts);
     net.pump(now);
@@ -395,7 +395,7 @@ fn join_by_rotating_code() {
     now += 420;
     let (gid, acts) = net.engines[0].create_group("Cabana", now).unwrap();
     net.apply(0, acts);
-    // host's HELLO must now advertise the group hash → send hellos
+    // host's HELLO must now advertise the group hash ΓåÆ send hellos
     net.run(now, now + 5000, 100);
     now += 5100;
     let (code, secs) = net.engines[0].current_code(&gid, now).unwrap();
@@ -446,7 +446,7 @@ fn join_by_deep_link() {
 
 #[test]
 fn three_nodes_relay_voice_over_middle() {
-    // A — B — C  (A and C cannot hear each other)
+    // A ΓÇö B ΓÇö C  (A and C cannot hear each other)
     let mut net = Net::new(3, &["A", "B", "C"]);
     net.adj = vec![vec![1], vec![0, 2], vec![1]];
     let mut now = 1_789_402_000_000u64;
@@ -484,7 +484,7 @@ fn three_nodes_relay_voice_over_middle() {
         net.ui[0]
     );
 
-    // announces so A learns topology (A-B, B-C) → route A→C via B
+    // announces so A learns topology (A-B, B-C) ΓåÆ route AΓåÆC via B
     net.run(now, now + 65_000, 500);
     now += 65_500;
     let route = net.engines[0]
@@ -627,4 +627,51 @@ fn quality_setting_caps_the_capture_profile() {
         loose, auto,
         "a cap above the automatic profile changes nothing"
     );
+}
+
+#[test]
+fn creator_dissolves_group_for_every_member() {
+    let mut net = Net::new(3, &["A", "B", "C"]);
+    let mut now = 1_789_404_000_000u64;
+    net.bring_up(now);
+    net.run(now, now + 600, 20);
+    now += 620;
+    let gid = group_of_all(&mut net, now);
+    assert!(net.engines[1].groups.contains_key(&gid) && net.engines[2].groups.contains_key(&gid));
+    now += 500;
+    let acts = net.engines[0]
+        .dissolve_group(gid, now)
+        .expect("creator may dissolve");
+    net.apply(0, acts);
+    net.pump(now);
+    for i in 0..3 {
+        assert!(
+            !net.engines[i].groups.contains_key(&gid),
+            "node {i} still has the group"
+        );
+    }
+    for i in 1..3 {
+        assert!(
+            net.has_ui(
+                i,
+                |e| matches!(e, UiEvent::GroupDissolved { group, .. } if *group == gid)
+            ),
+            "node {i} was not told"
+        );
+    }
+}
+
+#[test]
+fn only_the_creator_can_dissolve() {
+    let mut net = Net::new(2, &["A", "B"]);
+    let mut now = 1_789_404_000_000u64;
+    net.bring_up(now);
+    net.run(now, now + 600, 20);
+    now += 620;
+    let gid = group_of_all(&mut net, now);
+    assert!(
+        net.engines[1].dissolve_group(gid, now + 100).is_err(),
+        "member refused locally"
+    );
+    assert!(net.engines[0].groups.contains_key(&gid) && net.engines[1].groups.contains_key(&gid));
 }

@@ -1,4 +1,4 @@
-//! wasm-bindgen façade over titi-core for the web PWA. Opus is done by
+//! wasm-bindgen fa├ºade over titi-core for the web PWA. Opus is done by
 //! WebCodecs in the browser, so this build disables the `opus` feature: the
 //! engine hands encoded packets out (`playPacket`) and takes encoded packets
 //! in (`on_opus_in`). Actions are returned as one JSON array per call.
@@ -184,6 +184,10 @@ enum JsUi {
         group: String,
         node: String,
     },
+    GroupDissolved {
+        group: String,
+        name: String,
+    },
     Message {
         group: String,
         from: String,
@@ -294,6 +298,10 @@ impl From<UiEvent> for JsUi {
             UiEvent::MemberLeft { group, node } => J::MemberLeft {
                 group: hex(&group),
                 node: hex(&node),
+            },
+            UiEvent::GroupDissolved { group, name } => J::GroupDissolved {
+                group: hex(&group),
+                name,
             },
             UiEvent::Message {
                 group,
@@ -505,6 +513,13 @@ impl WasmEngine {
     pub fn leave_group(&mut self, group: &[u8], now_ms: f64) -> Result<String, JsValue> {
         self.try_sh(|e| Ok(e.leave_group(gid(group)?, now_ms as u64)))
     }
+    /// Creator only: delete the group for every member.
+    pub fn dissolve_group(&mut self, group: &[u8], now_ms: f64) -> Result<String, JsValue> {
+        self.try_sh(|e| {
+            e.dissolve_group(gid(group)?, now_ms as u64)
+                .map_err(|e| JsValue::from_str(&e.to_string()))
+        })
+    }
     pub fn set_active_group(&mut self, group: &[u8]) -> Result<(), JsValue> {
         self.inner.set_active_group(gid(group)?);
         Ok(())
@@ -633,7 +648,7 @@ impl WasmEngine {
     }
 }
 
-/// Concatenated 4-byte relay rendezvous hashes for a typed code (slots −1,0,+1).
+/// Concatenated 4-byte relay rendezvous hashes for a typed code (slots ΓêÆ1,0,+1).
 #[wasm_bindgen]
 pub fn rendezvous_for_code(code: &str, now_ms: f64) -> Vec<u8> {
     Engine::rendezvous_for_code(code, now_ms as u64).concat()

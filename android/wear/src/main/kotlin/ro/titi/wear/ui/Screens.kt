@@ -269,6 +269,7 @@ fun ActionsScreen(engine: EngineHost, state: RadioState, prefs: Prefs, settings:
     val spec = rememberTransformationSpec()
     var confirmSos by remember { mutableStateOf(false) }
     var confirmLeave by remember { mutableStateOf(false) }
+    var confirmDissolve by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
     ScreenScaffold(scrollState = list) { pad ->
         TransformingLazyColumn(state = list, contentPadding = pad) {
@@ -316,6 +317,15 @@ fun ActionsScreen(engine: EngineHost, state: RadioState, prefs: Prefs, settings:
                         label = { Text(stringResource(R.string.leave)) },
                     )
                 }
+                if (g.isCreator) item {
+                    FilledTonalButton(
+                        onClick = { confirmDissolve = true },
+                        modifier = Modifier.fillMaxWidth().transformedHeight(this, spec).minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding),
+                        transformation = SurfaceTransformation(spec),
+                        icon = { Icon(Icons.Rounded.Logout, null, tint = Titi.Emergency) },
+                        label = { Text(stringResource(ro.titi.client.R.string.group_dissolve)) },
+                    )
+                }
             }
             item {
                 FilledTonalButton(
@@ -350,6 +360,13 @@ fun ActionsScreen(engine: EngineHost, state: RadioState, prefs: Prefs, settings:
             title = { Text(stringResource(R.string.leave_confirm, g.name)) },
             confirmButton = { AlertDialogDefaults.ConfirmButton(onClick = { confirmLeave = false; engine.leaveGroup(g.id) }) },
             dismissButton = { AlertDialogDefaults.DismissButton(onClick = { confirmLeave = false }) },
+        )
+        AlertDialog(
+            visible = confirmDissolve,
+            onDismissRequest = { confirmDissolve = false },
+            title = { Text(stringResource(ro.titi.client.R.string.group_dissolve_confirm, g.name)) },
+            confirmButton = { AlertDialogDefaults.ConfirmButton(onClick = { confirmDissolve = false; engine.dissolveGroup(g.id) }) },
+            dismissButton = { AlertDialogDefaults.DismissButton(onClick = { confirmDissolve = false }) },
         )
     }
 }

@@ -222,6 +222,10 @@ pub enum FfiUiEvent {
         group: Vec<u8>,
         node: Vec<u8>,
     },
+    GroupDissolved {
+        group: Vec<u8>,
+        name: String,
+    },
     Message {
         group: Vec<u8>,
         from: Vec<u8>,
@@ -336,6 +340,10 @@ impl From<UiEvent> for FfiUiEvent {
             UiEvent::MemberLeft { group, node } => F::MemberLeft {
                 group: group.to_vec(),
                 node: node.to_vec(),
+            },
+            UiEvent::GroupDissolved { group, name } => F::GroupDissolved {
+                group: group.to_vec(),
+                name,
             },
             UiEvent::Message {
                 group,
@@ -611,6 +619,10 @@ impl TitiEngine {
     pub fn leave_group(&self, group: Vec<u8>, now_ms: u64) -> Result<Vec<FfiAction>, TitiError> {
         self.try_sh(|e| Ok(e.leave_group(to16(&group)?, now_ms)))
     }
+    /// Creator only: delete the group for every member.
+    pub fn dissolve_group(&self, group: Vec<u8>, now_ms: u64) -> Result<Vec<FfiAction>, TitiError> {
+        self.try_sh(|e| Ok(e.dissolve_group(to16(&group)?, now_ms)?))
+    }
     pub fn set_active_group(&self, group: Vec<u8>) -> Result<(), TitiError> {
         self.inner.lock().unwrap().set_active_group(to16(&group)?);
         Ok(())
@@ -780,7 +792,7 @@ impl TitiEngine {
     }
 }
 
-/// Relay rendezvous room hashes for a typed invite code (slots −1, 0, +1).
+/// Relay rendezvous room hashes for a typed invite code (slots ΓêÆ1, 0, +1).
 #[uniffi::export]
 pub fn rendezvous_for_code(code: String, now_ms: u64) -> Vec<Vec<u8>> {
     Engine::rendezvous_for_code(&code, now_ms)

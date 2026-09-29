@@ -10,6 +10,7 @@ struct GroupView: View {
     @State private var showInvite = false
     @State private var showChat = false
     @State private var confirmLeave = false
+    @State private var confirmDissolve = false
     @State private var confirmSos = false
 
     private var g: GroupState? { host.groups.first { $0.id == id } }
@@ -54,6 +55,9 @@ struct GroupView: View {
             .confirmationDialog("Leave \(g.name)?", isPresented: $confirmLeave, titleVisibility: .visible) {
                 Button("Leave group", role: .destructive) { host.leaveGroup(g.id); withAnimation(.titi) { model.route = .home } }
             }
+            .confirmationDialog("Delete \(g.name) for everyone? Every member loses the group.", isPresented: $confirmDissolve, titleVisibility: .visible) {
+                Button("Delete for everyone", role: .destructive) { host.dissolveGroup(g.id); withAnimation(.titi) { model.route = .home } }
+            }
             .confirmationDialog("Send an SOS to everyone in \(g.name) with your location?", isPresented: $confirmSos, titleVisibility: .visible) {
                 Button("SOS", role: .destructive) { Location.current { lat, lon in host.sendSos(g.id, lat: lat, lon: lon) } }
             }
@@ -78,7 +82,10 @@ struct GroupView: View {
             Button { showChat = true } label: { Image(systemName: "bubble.left").padding(12) }
                 .overlay(alignment: .topTrailing) { if g.unread > 0 { Text("\(g.unread)").font(.caption2.bold()).padding(4).background(Palette.amber, in: Circle()).foregroundStyle(Palette.graphite) } }
             Button { showInvite = true } label: { Image(systemName: "person.badge.plus").padding(12) }
-            Menu { Button("Leave group", role: .destructive) { confirmLeave = true } } label: { Image(systemName: "ellipsis").padding(12) }
+            Menu {
+                Button("Leave group", role: .destructive) { confirmLeave = true }
+                if g.isCreator { Button("Delete for everyone", role: .destructive) { confirmDissolve = true } }
+            } label: { Image(systemName: "ellipsis").padding(12) }
         }.font(.title3).foregroundStyle(Palette.muted).padding(.horizontal, 8).padding(.top, 4)
     }
 
@@ -112,10 +119,10 @@ struct InviteSheet: View {
             Text(code?.0.replacingOccurrences(of: "-", with: " ") ?? "…").font(.system(size: 28, weight: .medium, design: .monospaced)).foregroundStyle(Palette.amber)
                 .onTapGesture { if let c = code { UIPasteboard.general.string = c.0 } }
             Text("Changes in \((code?.1 ?? 0) / 60):\(String(format: "%02d", (code?.1 ?? 0) % 60))").font(.caption.monospaced()).foregroundStyle(Palette.muted)
-            if let link, let img = qr(link.replacingOccurrences(of: "titi://j/", with: "https://titi.app/j/")) {
+            if let link, let img = qr(link.replacingOccurrences(of: "titi://j/", with: "https://titi.dragoscatalin.ro/j/")) {
                 Text("Or scan").font(.subheadline).foregroundStyle(Palette.muted).padding(.top, 12)
                 Image(uiImage: img).interpolation(.none).resizable().frame(width: 200, height: 200).padding(8).background(.white, in: RoundedRectangle(cornerRadius: 16))
-                ShareLink(item: URL(string: link.replacingOccurrences(of: "titi://j/", with: "https://titi.app/j/"))!) { Label("Share link", systemImage: "square.and.arrow.up") }.padding(.top, 12)
+                ShareLink(item: URL(string: link.replacingOccurrences(of: "titi://j/", with: "https://titi.dragoscatalin.ro/j/"))!) { Label("Share link", systemImage: "square.and.arrow.up") }.padding(.top, 12)
             }
             Spacer()
         }

@@ -156,6 +156,38 @@ export class WasmEngine {
         }
     }
     /**
+     * Creator only: delete the group for every member.
+     * @param {Uint8Array} group
+     * @param {number} now_ms
+     * @returns {string}
+     */
+    dissolve_group(group, now_ms) {
+        let deferred3_0;
+        let deferred3_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passArray8ToWasm0(group, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.wasmengine_dissolve_group(retptr, this.__wbg_ptr, ptr0, len0, now_ms);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            var r3 = getDataViewMemory0().getInt32(retptr + 4 * 3, true);
+            var ptr2 = r0;
+            var len2 = r1;
+            if (r3) {
+                ptr2 = 0; len2 = 0;
+                throw takeObject(r2);
+            }
+            deferred3_0 = ptr2;
+            deferred3_1 = len2;
+            return getStringFromWasm0(ptr2, len2);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export3(deferred3_0, deferred3_1, 1);
+        }
+    }
+    /**
      * @returns {string}
      */
     groups_json() {
@@ -841,7 +873,7 @@ export function rendezvous_for_code(code, now_ms) {
         wasm.__wbindgen_add_to_stack_pointer(16);
     }
 }
-export function __wbg___wbindgen_throw_5d9e815e6fdf150f(arg0, arg1) {
+export function __wbg___wbindgen_throw_41e9ee4f547fc59a(arg0, arg1) {
     throw new Error(getStringFromWasm0(arg0, arg1));
 }
 export function __wbg_getRandomValues_436a51d0629d84e1() { return handleError(function (arg0, arg1) {

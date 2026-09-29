@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattServer
 import android.bluetooth.BluetoothGattServerCallback
 import android.bluetooth.BluetoothGattService
@@ -52,6 +53,12 @@ import java.util.concurrent.ConcurrentHashMap
  * the remote NODE id (from the advert / a hello over the socket), never by
  * MAC: Android rotates the resolvable private address every few minutes, so a
  * MAC-keyed table would see the same phone as a new peer each rotation.
+ *
+ * GATT data channel (DK-09): Windows has no L2CAP CoC API, so a desktop
+ * connects as a GATT central and uses [CH_RX] (write, central → us) and
+ * [CH_TX] (notify, us → central). Both carry the socket's stream framing —
+ * u16 BE length + frame — split into ATT-sized chunks; the central's first
+ * frame is its 8-byte node id. Such peers join this same link.
  */
 @SuppressLint("MissingPermission")
 class BleTransport(
@@ -71,11 +78,20 @@ class BleTransport(
     private var gattServer: BluetoothGattServer? = null
     private var psm: Int = 0
     private val peers = ConcurrentHashMap<String, Peer>() // token (node hex) → peer
+    private val gattPeers = ConcurrentHashMap<String, GattPeer>() // central MAC → peer
+    private val gattRx = ConcurrentHashMap<String, java.io.ByteArrayOutputStream>() // central MAC → partial stream
+    private val gattMtu = ConcurrentHashMap<String, Int>() // central MAC → ATT MTU
     private val seen = ConcurrentHashMap<String, Long>() // node hex → last advert
     private val connecting = ConcurrentHashMap.newKeySet<String>() // node hex
     private var up = false
 
-    private inner class Peer(val token: String, val sock: BluetoothSocket) {
+    private interface Peer {
+        val token: String
+        fun enqueue(b: ByteArray)
+        fun close()
+    }
+
+    private inner class L2capPeer(override val token: String, val sock: BluetoothSocket) : Peer {
         val out = DataOutputStream(sock.outputStream.buffered(4096))
         val inp = DataInputStream(sock.inputStream.buffered(4096))
         /** One writer per peer: preserves frame order; a slow link drops stale frames. */
@@ -83,11 +99,34 @@ class BleTransport(
         private val writer = scope.launch {
             try { for (b in q) write(b) } catch (_: IOException) { close() }
         }
-        fun enqueue(b: ByteArray) { q.trySend(b) }
+        override fun enqueue(b: ByteArray) { q.trySend(b) }
         @Synchronized fun write(b: ByteArray) {
             out.writeShort(b.size); out.write(b); out.flush()
         }
-        fun close() { q.close(); writer.cancel(); runCatching { sock.close() } }
+        override fun close() { q.close(); writer.cancel(); runCatching { sock.close() } }
+    }
+
+    /** A GATT central (Windows desktop); frames leave as TX notifications, one in flight at a time. */
+    private inner class GattPeer(override val token: String, val dev: BluetoothDevice) : Peer {
+        private val q = kotlinx.coroutines.channels.Channel<ByteArray>(32, kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST)
+        val sent = kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED)
+        private val writer = scope.launch {
+            for (b in q) {
+                val framed = ByteArray(2 + b.size)
+                framed[0] = (b.size shr 8).toByte(); framed[1] = b.size.toByte()
+                b.copyInto(framed, 2)
+                var off = 0
+                var busy = 0
+                while (off < framed.size && busy < 50) {
+                    val n = minOf((gattMtu[dev.address] ?: 23) - 3, framed.size - off)
+                    if (!notify(dev, framed.copyOfRange(off, off + n))) { busy++; delay(4); continue }
+                    kotlinx.coroutines.withTimeoutOrNull(1_000) { sent.receive() } ?: break
+                    off += n
+                }
+            }
+        }
+        override fun enqueue(b: ByteArray) { q.trySend(b) }
+        override fun close() { q.close(); writer.cancel() }
     }
 
     fun hasPermissions(): Boolean {
@@ -126,11 +165,12 @@ class BleTransport(
         runCatching { server?.close() }
         peers.values.forEach { it.close() }
         peers.clear()
+        gattPeers.clear()
         if (up) { up = false; events?.linkDown(this) }
         scope.cancel()
     }
 
-    // ---- GATT: expose PSM + node id ---------------------------------------
+    // ---- GATT: expose PSM + node id, data channel for centrals -------------
 
     private fun startGattServer() {
         val gs = bt?.openGattServer(ctx, object : BluetoothGattServerCallback() {
@@ -142,12 +182,77 @@ class BleTransport(
                 }
                 gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, value)
             }
+            override fun onCharacteristicWriteRequest(device: BluetoothDevice, requestId: Int, ch: BluetoothGattCharacteristic, preparedWrite: Boolean, responseNeeded: Boolean, offset: Int, value: ByteArray?) {
+                if (ch.uuid == CH_RX && value != null) onGattData(device, value)
+                if (responseNeeded) gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null)
+            }
+            override fun onDescriptorWriteRequest(device: BluetoothDevice, requestId: Int, d: BluetoothGattDescriptor, preparedWrite: Boolean, responseNeeded: Boolean, offset: Int, value: ByteArray?) {
+                if (responseNeeded) gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null)
+            }
+            override fun onMtuChanged(device: BluetoothDevice, mtu: Int) { gattMtu[device.address] = mtu }
+            override fun onNotificationSent(device: BluetoothDevice, status: Int) { gattPeers[device.address]?.sent?.trySend(Unit) }
+            override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
+                if (newState != BluetoothProfile.STATE_DISCONNECTED) return
+                gattRx.remove(device.address); gattMtu.remove(device.address)
+                val p = gattPeers.remove(device.address) ?: return
+                p.close()
+                Log.i(TAG, "gatt central gone ${p.token}")
+                if (peers.remove(p.token, p)) events?.peerLost(this@BleTransport, p.token)
+            }
         }) ?: return
         val svc = BluetoothGattService(SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY)
         svc.addCharacteristic(BluetoothGattCharacteristic(CH_PSM, BluetoothGattCharacteristic.PROPERTY_READ, BluetoothGattCharacteristic.PERMISSION_READ))
         svc.addCharacteristic(BluetoothGattCharacteristic(CH_NODE, BluetoothGattCharacteristic.PROPERTY_READ, BluetoothGattCharacteristic.PERMISSION_READ))
+        svc.addCharacteristic(BluetoothGattCharacteristic(CH_RX, BluetoothGattCharacteristic.PROPERTY_WRITE or BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE, BluetoothGattCharacteristic.PERMISSION_WRITE))
+        val tx = BluetoothGattCharacteristic(CH_TX, BluetoothGattCharacteristic.PROPERTY_NOTIFY, BluetoothGattCharacteristic.PERMISSION_READ)
+        tx.addDescriptor(BluetoothGattDescriptor(CCCD, BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE))
+        svc.addCharacteristic(tx)
         gs.addService(svc)
         gattServer = gs
+    }
+
+    /** Reassembles the central's length-prefixed stream; its first frame is the 8-byte node id. */
+    private fun onGattData(dev: BluetoothDevice, chunk: ByteArray) {
+        val mac = dev.address
+        val buf = gattRx.getOrPut(mac) { java.io.ByteArrayOutputStream() }
+        val frames = ArrayList<ByteArray>()
+        synchronized(buf) {
+            buf.write(chunk)
+            var b = buf.toByteArray()
+            while (b.size >= 2) {
+                val len = ((b[0].toInt() and 0xFF) shl 8) or (b[1].toInt() and 0xFF)
+                if (len == 0 || len > 4096) { b = ByteArray(0); break }
+                if (b.size < 2 + len) break
+                frames += b.copyOfRange(2, 2 + len)
+                b = b.copyOfRange(2 + len, b.size)
+            }
+            buf.reset(); buf.write(b)
+        }
+        for (f in frames) {
+            val p = gattPeers[mac]
+            if (p == null) {
+                if (f.size != 8) continue
+                val np = GattPeer(f.toHex(), dev)
+                gattPeers[mac] = np
+                peers.put(np.token, np)?.close()
+                Log.i(TAG, "gatt central attached ${np.token} (${peers.size})")
+                events?.peerSeen(this, np.token)
+            } else {
+                events?.frame(this, p.token, f)
+            }
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun notify(dev: BluetoothDevice, value: ByteArray): Boolean {
+        val gs = gattServer ?: return false
+        val ch = gs.getService(SERVICE_UUID)?.getCharacteristic(CH_TX) ?: return false
+        return if (Build.VERSION.SDK_INT >= 33) {
+            gs.notifyCharacteristicChanged(dev, ch, false, value) == android.bluetooth.BluetoothStatusCodes.SUCCESS
+        } else {
+            ch.value = value
+            gs.notifyCharacteristicChanged(dev, ch, false)
+        }
     }
 
     private val advCb = object : AdvertiseCallback() {
@@ -269,14 +374,14 @@ class BleTransport(
     }
 
     private fun attach(token: String, sock: BluetoothSocket) {
-        val p = Peer(token, sock)
+        val p = L2capPeer(token, sock)
         peers.put(token, p)?.close()
         Log.i(TAG, "peer attached $token (${peers.size})")
         events?.peerSeen(this, token)
         scope.launch { readLoop(p) }
     }
 
-    private suspend fun readLoop(p: Peer) {
+    private suspend fun readLoop(p: L2capPeer) {
         try {
             while (scope.isActive) {
                 val len = p.inp.readUnsignedShort()
@@ -324,5 +429,8 @@ class BleTransport(
         val SERVICE_UUID: UUID = UUID.fromString("74697469-0001-4000-8000-746974690001")
         val CH_PSM: UUID = UUID.fromString("74697469-0002-4000-8000-746974690001")
         val CH_NODE: UUID = UUID.fromString("74697469-0003-4000-8000-746974690001")
+        val CH_RX: UUID = UUID.fromString("74697469-0004-4000-8000-746974690001")
+        val CH_TX: UUID = UUID.fromString("74697469-0005-4000-8000-746974690001")
+        private val CCCD: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
     }
 }

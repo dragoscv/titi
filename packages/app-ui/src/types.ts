@@ -24,6 +24,7 @@ export type UiEvent =
   | { type: "joinFailed"; reason: string }
   | { type: "memberJoined"; group: string; node: string; name: string }
   | { type: "memberLeft"; group: string; node: string }
+  | { type: "groupDissolved"; group: string; name: string }
   | { type: "message"; group: string; from: string; msg_uuid: string; sent_ms: number; body: MsgBody }
   | { type: "messageAcked"; msg_uuid: string; by: string }
   | { type: "handover"; group: string; state: string; link: LinkClass | null; profile: Profile }

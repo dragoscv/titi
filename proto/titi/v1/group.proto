@@ -42,6 +42,16 @@ message Leave {
   bytes node_id = 2;
 }
 
+// Creator deletes the group for everyone. Self-certifying: node_id(creator_pub)
+// must equal the group's creator and `signature` (Ed25519 over this message
+// with signature empty) must verify, so a member cannot dissolve it.
+message Dissolve {
+  bytes group_uuid = 1;
+  bytes creator_pub = 2;  // 32 bytes
+  uint64 ts_ms = 3;
+  bytes signature = 4;
+}
+
 // Signed by the group creator; new key delivered per member inside Noise.
 message KeyRotate {
   bytes group_uuid = 1;

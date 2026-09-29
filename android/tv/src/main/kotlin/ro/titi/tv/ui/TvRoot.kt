@@ -48,6 +48,11 @@ import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Sms
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.PowerSettingsNew
+import androidx.compose.material.icons.rounded.PersonAdd
+import androidx.compose.material.icons.rounded.Logout
+import androidx.compose.material.icons.rounded.Emergency
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -97,7 +102,7 @@ import ro.titi.tv.MainActivity
 import ro.titi.tv.R
 import uniffi.titi_ffi.FfiMessageBody
 
-private enum class Sheet { None, Invite, Join, Settings }
+private enum class Sheet { None, Invite, Join, Settings, Group }
 
 /** Overscan-safe margins for a 960×540 dp canvas. */
 private val SafeH = 48.dp
@@ -111,6 +116,11 @@ fun TvRoot(engine: EngineHost, prefs: Prefs, activity: MainActivity) {
     val res = androidx.compose.ui.platform.LocalResources.current
     var sheet by remember { mutableStateOf(Sheet.None) }
     var toast by remember { mutableStateOf<String?>(null) }
+    /** Latest un-cancelled SOS: owns the whole screen until dismissed (a room radio must not miss it). */
+    var sos by remember { mutableStateOf<ro.titi.app.core.Alert.Sos?>(null) }
+    LaunchedEffect(Unit) {
+        engine.alerts.collect { a -> if (a is ro.titi.app.core.Alert.Sos) sos = if (a.cancelled) sos?.takeIf { it.group != a.group } else a }
+    }
 
     LaunchedEffect(Unit) {
         merge(
@@ -161,7 +171,7 @@ fun TvRoot(engine: EngineHost, prefs: Prefs, activity: MainActivity) {
             )
             Spacer(Modifier.width(24.dp))
             Column(Modifier.weight(1f).fillMaxHeight().onFocusChanged { stageFocused = it.hasFocus }) {
-                if (sel != null) Stage(engine, sel, state.nodeId, state.muted, micUsable, talkReq, activity, onInvite = { sheet = Sheet.Invite })
+                if (sel != null) Stage(engine, sel, state.nodeId, state.muted, micUsable, talkReq, activity, onInvite = { sheet = Sheet.Invite }, onOptions = { sheet = Sheet.Group })
                 else Empty()
             }
         }
@@ -169,6 +179,7 @@ fun TvRoot(engine: EngineHost, prefs: Prefs, activity: MainActivity) {
         AnimatedVisibility(invite != null, Modifier.align(Alignment.TopCenter).padding(top = SafeV), enter = slideInVertically { -it } + fadeIn(), exit = slideOutVertically { -it } + fadeOut()) {
             invite?.let { InviteBanner(it) }
         }
+        sos?.let { s -> SosOverlay(s, onDismiss = { sos = null }) }
         AnimatedVisibility(toast != null, Modifier.align(Alignment.BottomCenter).padding(bottom = SafeV), enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut()) {
             Text(toast.orEmpty(), Modifier.background(Tv.Elevated, CircleShape).padding(horizontal = 20.dp, vertical = 10.dp), color = Tv.Ink, fontSize = 14.sp)
         }
@@ -180,6 +191,7 @@ fun TvRoot(engine: EngineHost, prefs: Prefs, activity: MainActivity) {
             JoinPanel(onJoin = { code -> engine.joinByCode(code); toast = res.getString(R.string.join_looking); sheet = Sheet.None })
         }
         Sheet.Settings -> settings?.let { s -> SheetDialog(onDismiss = { sheet = Sheet.None }) { SettingsPanel(prefs, engine, s, onQuit = activity::quit) } }
+        Sheet.Group -> sel?.let { g -> SheetDialog(onDismiss = { sheet = Sheet.None }) { GroupPanel(engine, g, state.nodeId, state.peers, onDone = { sheet = Sheet.None }) } }
         Sheet.None -> Unit
     }
 }
@@ -309,6 +321,7 @@ private fun Stage(
     talkReq: FocusRequester,
     activity: MainActivity,
     onInvite: () -> Unit,
+    onOptions: () -> Unit,
 ) {
     val level by engine.level.collectAsState()
     val messages by engine.messages.collectAsState()
@@ -413,6 +426,95 @@ private fun Stage(
             modifier = Modifier.weight(1f),
             onClick = { engine.setFullDuplex(g.id, !g.fullDuplex) },
         )
+        ActionTile(Icons.Rounded.MoreVert, stringResource(R.string.action_group), modifier = Modifier.weight(1f), onClick = onOptions)
+    }
+}
+
+/** Members (online dot), invite a nearby device, leave, and — for the creator — delete for everyone. Two-step confirm, D-pad only. */
+@Composable
+private fun GroupPanel(engine: EngineHost, g: GroupState, myNode: String, peers: Map<String, ro.titi.app.core.Peer>, onDone: () -> Unit) {
+    val first = remember { FocusRequester() }
+    var confirm by remember { mutableStateOf<String?>(null) } // "leave" | "dissolve"
+    // the confirm view swaps the list's content: focus must move with it or the D-pad has nowhere to go
+    LaunchedEffect(confirm) { delay(50); runCatching { first.requestFocus() } }
+    val nearby = peers.values.filter { !it.inGroup }.sortedBy { it.name }
+    Text(g.name, color = Tv.Ink, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+    Text(pluralStringResource(R.plurals.members_count, g.members.size, g.members.size), color = Tv.Muted, fontSize = 13.sp, modifier = Modifier.padding(bottom = 10.dp))
+    LazyColumn(Modifier.height(300.dp).focusGroup(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (confirm != null) {
+            val dissolve = confirm == "dissolve"
+            item(key = "q") {
+                Text(
+                    if (dissolve) stringResource(ro.titi.client.R.string.group_dissolve_confirm, g.name) else stringResource(R.string.leave_confirm, g.name),
+                    color = Tv.Ink, fontSize = 15.sp, modifier = Modifier.padding(vertical = 8.dp),
+                )
+            }
+            item(key = "yes") {
+                SettingRow(if (dissolve) stringResource(ro.titi.client.R.string.group_dissolve) else stringResource(R.string.leave), "", Modifier.focusRequester(first), icon = if (dissolve) Icons.Rounded.Delete else Icons.Rounded.Logout) {
+                    if (dissolve) engine.dissolveGroup(g.id) else engine.leaveGroup(g.id)
+                    onDone()
+                }
+            }
+            item(key = "no") { SettingRow(stringResource(R.string.cancel), "") { confirm = null } }
+            return@LazyColumn
+        }
+        item(key = "hdr-m") { Text(stringResource(R.string.members).uppercase(), color = Tv.Muted, fontSize = 10.sp, letterSpacing = 2.sp) }
+        itemsIndexed(g.members, key = { _, m -> "m" + m.node.toHex() }) { i, m ->
+            val hex = m.node.toHex()
+            val online = hex == myNode || peers[hex] != null
+            MemberRow(if (hex == myNode) stringResource(R.string.you) else m.name, m.hue.toInt(), online, if (i == 0) Modifier.focusRequester(first) else Modifier)
+        }
+        if (nearby.isNotEmpty()) {
+            item(key = "hdr-n") { Text(stringResource(R.string.invite_nearby).uppercase(), color = Tv.Muted, fontSize = 10.sp, letterSpacing = 2.sp, modifier = Modifier.padding(top = 8.dp)) }
+            itemsIndexed(nearby, key = { _, p -> "n" + p.node }) { _, p ->
+                SettingRow(p.name.ifEmpty { p.node.take(6) }, stringResource(R.string.action_invite), icon = Icons.Rounded.PersonAdd) {
+                    engine.invitePeer(g.id, p.node)
+                }
+            }
+        }
+        item(key = "leave") { Spacer(Modifier.height(8.dp)); SettingRow(stringResource(R.string.leave), "", icon = Icons.Rounded.Logout) { confirm = "leave" } }
+        if (g.isCreator) item(key = "dissolve") { SettingRow(stringResource(ro.titi.client.R.string.group_dissolve), "", icon = Icons.Rounded.Delete) { confirm = "dissolve" } }
+    }
+}
+
+@Composable
+private fun MemberRow(name: String, hue: Int, online: Boolean, modifier: Modifier) {
+    Surface(
+        onClick = {},
+        modifier = modifier.fillMaxWidth(),
+        shape = tileShape(12.dp),
+        colors = ClickableSurfaceDefaults.colors(containerColor = Tv.Elevated, contentColor = Tv.Ink, focusedContainerColor = Tv.Elevated, focusedContentColor = Tv.Ink),
+        border = amberFocusBorder(12.dp),
+    ) {
+        Row(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Avatar(name, hue, 28.dp)
+            Spacer(Modifier.width(10.dp))
+            Text(name, fontSize = 14.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Box(Modifier.size(10.dp).background(if (online) Tv.Teal else Tv.Outline, CircleShape))
+            Spacer(Modifier.width(6.dp))
+            Text(if (online) stringResource(R.string.online) else stringResource(R.string.offline), fontSize = 12.sp, color = Tv.Muted)
+        }
+    }
+}
+
+@Composable
+private fun SosOverlay(s: ro.titi.app.core.Alert.Sos, onDismiss: () -> Unit) {
+    val req = remember { FocusRequester() }
+    LaunchedEffect(s) { runCatching { req.requestFocus() } }
+    BackHandler { onDismiss() }
+    Box(Modifier.fillMaxSize().background(Tv.Emergency.copy(alpha = 0.94f)), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(Icons.Rounded.Emergency, null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(96.dp))
+            Text(stringResource(R.string.sos_title, s.fromName), color = androidx.compose.ui.graphics.Color.White, fontSize = 40.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 16.dp))
+            Text(s.groupName, color = androidx.compose.ui.graphics.Color.White, fontSize = 20.sp)
+            if (s.latE7 != 0L || s.lonE7 != 0L) Text("%.5f, %.5f".format(s.latE7 / 1e7, s.lonE7 / 1e7), color = androidx.compose.ui.graphics.Color.White, fontSize = 18.sp, fontFamily = FontFamily.Monospace, modifier = Modifier.padding(top = 8.dp))
+            Surface(
+                onClick = onDismiss,
+                modifier = Modifier.padding(top = 28.dp).focusRequester(req),
+                shape = tileShape(14.dp),
+                colors = ClickableSurfaceDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.White, contentColor = Tv.Emergency, focusedContainerColor = androidx.compose.ui.graphics.Color.White, focusedContentColor = Tv.Emergency),
+            ) { Text(stringResource(R.string.sos_ack), Modifier.padding(horizontal = 28.dp, vertical = 12.dp), fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+        }
     }
 }
 
@@ -497,7 +599,7 @@ private fun InvitePanel(engine: EngineHost, gid: String, name: String) {
     var link by remember { mutableStateOf<String?>(null) }
     val focus = remember { FocusRequester() }
     LaunchedEffect(gid) {
-        link = engine.deepLink(gid)?.replace("titi://j/", "https://titi.app/j/")
+        link = engine.deepLink(gid)?.let(ro.titi.app.util.InviteLinks::toWebLink)
         while (true) { code = engine.currentCode(gid); delay(1000) }
     }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }

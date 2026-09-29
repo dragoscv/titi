@@ -70,4 +70,14 @@
     <string name="sound_bird">Bird</string>
     <string name="sound_radio">Radio</string>
     <string name="sound_minimal">Minimal</string>
+    <string name="leave">Leave group</string>
+    <string name="leave_confirm">Leave %1$s? You will need a new invite to come back.</string>
+    <string name="cancel">Cancel</string>
+    <string name="members">Members</string>
+    <string name="online">online</string>
+    <string name="offline">offline</string>
+    <string name="invite_nearby">Invite nearby</string>
+    <string name="action_group">Group</string>
+    <string name="sos_title">SOS from %1$s</string>
+    <string name="sos_ack">I have seen it</string>
 </resources>

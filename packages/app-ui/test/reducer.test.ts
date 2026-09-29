@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { applyUi, setGroups, type ReducerHooks } from "../src/reducer";
 import { defaultSettings, useStore } from "../src/store";
 import type { GroupJson } from "../src/types";
@@ -8,7 +8,7 @@ const BOB = "bb".repeat(8);
 const G = "01".repeat(16);
 const group = (members: { node: string; name: string }[]): GroupJson => ({ id: G, name: "Ceas", fullDuplex: false, memberCount: members.length, isActive: true, isCreator: true, members: members.map((m) => ({ ...m, hue: 40 })) });
 
-type Hooks = { cue: ReturnType<typeof vi.fn<ReducerHooks["cue"]>>; refreshGroups: ReturnType<typeof vi.fn<() => void>>; syncRooms: ReturnType<typeof vi.fn<() => void>>; notify: ReturnType<typeof vi.fn<(title: string, body: string, tag: string) => void>> };
+type Hooks = { cue: Mock<ReducerHooks["cue"]>; refreshGroups: Mock<() => void>; syncRooms: Mock<() => void>; notify: Mock<(title: string, body: string, tag: string) => void> };
 let hooks: Hooks;
 
 beforeEach(() => {
@@ -83,5 +83,25 @@ describe("groups", () => {
     applyUi(inv, hooks);
     applyUi(inv, hooks);
     expect(useStore.getState().invites).toHaveLength(1);
+  });
+});
+
+describe("sos and dissolve", () => {
+  const sos = (cancelled: boolean, id: string) => ({ type: "message" as const, group: G, from: BOB, msg_uuid: id, sent_ms: 1, body: { kind: "sos" as const, lat_e7: 445_000_000, lon_e7: 261_000_000, note: "", cancelled } });
+
+  it("holds an SOS from someone else until it is cancelled", () => {
+    useStore.setState({ sos: null });
+    applyUi(sos(false, "s1"), hooks);
+    expect(useStore.getState().sos).toMatchObject({ group: G, groupName: "Ceas", latE7: 445_000_000 });
+    expect(hooks.cue).toHaveBeenCalledWith("sos");
+    applyUi(sos(true, "s2"), hooks);
+    expect(useStore.getState().sos).toBeNull();
+  });
+
+  it("tells the user and refreshes when the creator deletes a group", () => {
+    applyUi({ type: "groupDissolved", group: G, name: "Ceas" }, hooks);
+    expect(useStore.getState().toast).toContain("Ceas");
+    expect(hooks.refreshGroups).toHaveBeenCalled();
+    expect(hooks.syncRooms).toHaveBeenCalled();
   });
 });

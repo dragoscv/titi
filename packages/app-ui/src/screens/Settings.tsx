@@ -53,6 +53,7 @@ export function Settings({ go }: { go: (r: Route) => void }) {
         )}
         <Section title="Connection">
           {caps.lan && <Toggle label="Same Wi‑Fi (LAN)" hint="Talk to phones on this network with no internet" on={settings.lan} set={(v) => host.saveSettings({ lan: v })} />}
+          {caps.ble && <Toggle label="Bluetooth" hint="Talk to nearby phones with no Wi‑Fi or internet" on={settings.ble} set={(v) => host.saveSettings({ ble: v })} />}
           {caps.lan && <Toggle label="Internet relay" hint="Reach group members anywhere" on={settings.relay} set={(v) => host.saveSettings({ relay: v })} />}
           <label htmlFor="settings-relay" className="text-sm text-muted">Relay URL</label>
           <input id="settings-relay" className="mt-1 w-full rounded-xl border border-outline bg-graphite px-3.5 py-3 font-mono text-xs outline-none focus:border-amber" value={settings.relayUrl} onChange={(e) => host.saveSettings({ relayUrl: e.target.value })} />

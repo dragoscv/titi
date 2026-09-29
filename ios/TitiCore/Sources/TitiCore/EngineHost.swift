@@ -103,6 +103,7 @@ public final class EngineHost: @unchecked Sendable, TransportEvents {
     public func pttDown(_ prio: FfiPriority = .normal) { post { self.apply(self.engine.pttDown(prio: prio, nowMs: self.now())) } }
     public func pttUp() { post { self.apply(self.engine.pttUp(nowMs: self.now())) } }
     public func createGroup(_ name: String) { post { self.tryApply { try self.engine.createGroup(name: name, nowMs: self.now()) }; self.refreshGroups(); self.syncRelayRooms() } }
+    public func dissolveGroup(_ id: String) { post { self.tryApply { try self.engine.dissolveGroup(group: [UInt8](hex: id)!, nowMs: self.now()) }; self.refreshGroups(); self.syncRelayRooms() } }
     public func leaveGroup(_ id: String) { post { self.tryApply { try self.engine.leaveGroup(group: [UInt8](hex: id)!, nowMs: self.now()) }; self.refreshGroups(); self.syncRelayRooms() } }
     public func setActiveGroup(_ id: String) { post { try? self.engine.setActiveGroup(group: [UInt8](hex: id)!); self.refreshGroups(); self.syncRelayRooms(); self.update(id) { $0.unread = 0 } } }
     public func setFullDuplex(_ id: String, _ on: Bool) { post { self.tryApply { try self.engine.setFullDuplex(group: [UInt8](hex: id)!, on: on, nowMs: self.now()) }; self.refreshGroups() } }
@@ -167,6 +168,7 @@ public final class EngineHost: @unchecked Sendable, TransportEvents {
             case let .joinFailed(reason): toast = "Could not join: \(reason)"
             case let .memberJoined(_, node, name): names[node.hex] = name; refreshGroups()
             case .memberLeft: refreshGroups()
+            case let .groupDissolved(_, name): refreshGroups(); syncRelayRooms(); toast = "“\(name)” was deleted by its creator"
             case let .message(group, from, uuid, sentMs, body):
                 let m = ChatMessage(id: uuid.hex, group: group.hex, from: from.hex, fromName: names[from.hex] ?? String(from.hex.prefix(6)), sentMs: sentMs, body: body, mine: from.hex == nodeId)
                 messages.append(m); if messages.count > 500 { messages.removeFirst() }

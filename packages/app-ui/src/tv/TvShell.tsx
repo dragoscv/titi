@@ -5,9 +5,12 @@
 // needed (join by code shown on-screen; phone scans the QR).
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { AudioLines, Mic, Radio, Users, MessageSquare, Plus, QrCode, Settings as SettingsIcon, Power } from "lucide-react";
+import { AudioLines, Mic, Radio, Users, MessageSquare, Plus, QrCode, Settings as SettingsIcon, Power, LayoutGrid, LogIn, MoreHorizontal, LogOut, Trash2, UserPlus, Siren, Globe } from "lucide-react";
+import { Dashboard } from "../Dashboard";
+import { dashboardColumns } from "../dashboard-layout";
 import QRCode from "qrcode";
 import { host } from "../platform";
+import { toWebLink } from "../links";
 import { useStore, type GroupState } from "../store";
 import { Avatar } from "../Avatar";
 import { hueColor } from "../cn";
@@ -17,7 +20,16 @@ const KEY = { LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40, OK: 13, BACK: 10009, ESC: 2
 const HOLD_WATCHDOG_MS = 650;
 const MAX_TALK_MS = 60_000;
 
-type Pane = "groups" | "actions";
+type Pane = "groups" | "actions" | "wall";
+type RailItem = "join" | "create" | "all" | "settings";
+const RAIL: { id: RailItem; label: string; icon: React.ReactNode }[] = [
+  { id: "join", label: "Join a group", icon: <LogIn size={32} /> },
+  { id: "create", label: "Create a group", icon: <Plus size={32} /> },
+  { id: "all", label: "All groups", icon: <LayoutGrid size={32} /> },
+  { id: "settings", label: "Settings", icon: <SettingsIcon size={32} /> },
+];
+/** Names a TV can give a new group without a keyboard. */
+const GROUP_NAMES = ["Home", "Family", "Kitchen", "Living room", "Kids", "Garden"];
 
 export function TvShell() {
   const ready = useStore((s) => s.ready);
@@ -29,7 +41,10 @@ export function TvShell() {
   const [focus, setFocus] = useState(0);
   const [pane, setPane] = useState<Pane>("groups");
   const [action, setAction] = useState(0);
-  const [sheet, setSheet] = useState<"none" | "invite" | "create" | "join" | "settings">("none");
+  /** focused tile while the all-groups wall is open */
+  const [tile, setTile] = useState(0);
+  const [sheet, setSheet] = useState<"none" | "invite" | "join" | "settings" | "group">("none");
+  const sos = useStore((s) => s.sos);
   const talking = useRef(false);
   const lastRepeat = useRef(0);
   const talkStart = useRef(0);
@@ -48,7 +63,7 @@ export function TvShell() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const sel = groups[Math.min(focus, Math.max(0, groups.length - 1))];
+  const sel = pane === "wall" ? groups[Math.min(tile, Math.max(0, groups.length - 1))] : groups[Math.min(focus, Math.max(0, groups.length - 1))];
   useEffect(() => { if (sel && sel.id !== activeId) host.setActiveGroup(sel.id); }, [sel, activeId]);
 
   const down = useCallback(() => { if (talking.current) return; talking.current = true; talkStart.current = Date.now(); host.pttDown(); }, []);
@@ -68,10 +83,16 @@ export function TvShell() {
     { id: "talk", label: sel.fullDuplex ? "Open mic" : "Hold OK to talk", icon: <Mic size={34} /> },
     { id: "invite", label: "Invite", icon: <QrCode size={34} /> },
     { id: "mode", label: sel.fullDuplex ? "Push to talk" : "Open mic", icon: <Radio size={34} /> },
+    { id: "group", label: "Group", icon: <MoreHorizontal size={34} /> },
   ] : [];
 
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => {
+      // an SOS owns the screen until acknowledged
+      if (useStore.getState().sos) {
+        if (e.keyCode === KEY.OK || e.keyCode === KEY.BACK || e.keyCode === KEY.ESC) { e.preventDefault(); useStore.getState().set({ sos: null }); }
+        return;
+      }
       if (sheet !== "none") {
         if (e.keyCode === KEY.BACK || e.keyCode === KEY.ESC) { e.preventDefault(); setSheet("none"); }
         return;
@@ -79,7 +100,7 @@ export function TvShell() {
       const k = e.keyCode;
       if (invites[0] && k === KEY.OK) { e.preventDefault(); host.acceptInvite(invites[0].group, invites[0].host); return; }
       if (invites[0] && k === KEY.BACK) { e.preventDefault(); host.declineInvite(invites[0].group, invites[0].host); return; }
-      const isTalkKey = k === KEY.PLAY_PAUSE || k === KEY.RED || (k === KEY.OK && pane === "actions" && action === 0) || (k === KEY.OK && pane === "groups" && focus < groups.length);
+      const isTalkKey = k === KEY.PLAY_PAUSE || k === KEY.RED || (k === KEY.OK && pane === "actions" && action === 0) || (k === KEY.OK && pane === "groups" && focus < groups.length) || (k === KEY.OK && pane === "wall");
       if (isTalkKey && sel) {
         e.preventDefault();
         if (sel.fullDuplex) { if (!e.repeat) host.setMuted(!useStore.getState().muted); return; }
@@ -88,21 +109,43 @@ export function TvShell() {
         else down();
         return;
       }
+      if (pane === "wall") {
+        const cols = dashboardColumns(groups.length, 16 / 9);
+        const last = Math.max(0, groups.length - 1);
+        const move = (d: number) => { e.preventDefault(); setTile((t) => Math.max(0, Math.min(last, t + d))); };
+        if (k === KEY.LEFT) move(-1);
+        else if (k === KEY.RIGHT) move(1);
+        else if (k === KEY.UP) move(-cols);
+        else if (k === KEY.DOWN) move(cols);
+        else if (k === KEY.BACK || k === KEY.ESC) { e.preventDefault(); setPane("groups"); }
+        return;
+      }
       switch (k) {
         case KEY.UP: e.preventDefault(); if (pane === "groups") setFocus((f) => Math.max(0, f - 1)); else setAction((a) => Math.max(0, a - 1)); break;
-        case KEY.DOWN: e.preventDefault(); if (pane === "groups") setFocus((f) => Math.min(groups.length + 1, f + 1)); else setAction((a) => Math.min(actions.length - 1, a + 1)); break;
+        case KEY.DOWN: e.preventDefault(); if (pane === "groups") setFocus((f) => Math.min(groups.length + RAIL.length - 1, f + 1)); else setAction((a) => Math.min(actions.length - 1, a + 1)); break;
         case KEY.RIGHT: e.preventDefault(); if (sel) setPane("actions"); break;
         case KEY.LEFT: e.preventDefault(); setPane("groups"); break;
-        case KEY.OK:
+        case KEY.OK: {
           e.preventDefault();
-          if (pane === "groups" && focus === groups.length) setSheet("join");
-          else if (pane === "groups" && focus === groups.length + 1) setSheet("settings");
+          const item = pane === "groups" ? RAIL[focus - groups.length]?.id : undefined;
+          if (item === "join") setSheet("join");
+          else if (item === "create") {
+            const taken = new Set(groups.map((g) => g.name));
+            const name = GROUP_NAMES.find((n) => !taken.has(n)) ?? `Group ${groups.length + 1}`;
+            host.createGroup(name);
+            useStore.getState().set({ toast: `Created “${name}” · → Invite to add people` });
+            setFocus(groups.length); // the new group lands at the end of the list
+          }
+          else if (item === "all") { setTile(Math.max(0, groups.findIndex((g) => g.id === activeId))); setPane("wall"); }
+          else if (item === "settings") setSheet("settings");
           else if (pane === "actions" && sel) {
             const id = actions[action]?.id;
             if (id === "invite") setSheet("invite");
             if (id === "mode") host.setFullDuplex(sel.id, !sel.fullDuplex);
+            if (id === "group") setSheet("group");
           }
           break;
+        }
         case KEY.BACK:
           if (pane === "actions") { e.preventDefault(); setPane("groups"); }
           else host.quit?.();
@@ -115,7 +158,7 @@ export function TvShell() {
     window.addEventListener("keydown", onDown);
     window.addEventListener("keyup", onUp);
     return () => { window.removeEventListener("keydown", onDown); window.removeEventListener("keyup", onUp); };
-  }, [sheet, pane, action, actions, groups.length, sel, focus, invites, down, up]);
+  }, [sheet, pane, action, actions, groups, sel, focus, invites, down, up, activeId]);
 
   if (!ready) return <div className="grid h-[1080px] place-items-center text-4xl text-muted">Titi</div>;
 
@@ -131,14 +174,23 @@ export function TvShell() {
           </div>
         </div>
         {groups.map((g, i) => <GroupRow key={g.id} g={g} focused={pane === "groups" && focus === i} selected={sel?.id === g.id} />)}
-        <div className={`flex items-center gap-4 rounded-[26px] px-6 py-5 text-2xl transition-transform duration-150 ${pane === "groups" && focus === groups.length ? "scale-[1.04] bg-elevated ring-4 ring-amber" : "bg-surface text-muted"}`}>
-          <Plus size={32} /> Join a group
-        </div>
-        <div className={`flex items-center gap-4 rounded-[26px] px-6 py-5 text-2xl transition-transform duration-150 ${pane === "groups" && focus === groups.length + 1 ? "scale-[1.04] bg-elevated ring-4 ring-amber" : "bg-surface text-muted"}`}>
-          <SettingsIcon size={32} /> Settings
-        </div>
+        {RAIL.map((r, i) => (
+          <div key={r.id} className={`flex items-center gap-4 rounded-[26px] px-6 py-5 text-2xl transition-transform duration-150 ${pane === "groups" && focus === groups.length + i ? "scale-[1.04] bg-elevated ring-4 ring-amber" : "bg-surface text-muted"}`}>
+            {r.icon} {r.label}
+          </div>
+        ))}
         <div className="mt-auto text-lg text-muted">↑↓ choose · → actions · hold OK to talk · Back exits</div>
       </aside>
+
+      {pane === "wall" && (
+        <div className="absolute inset-0 z-30 flex flex-col bg-graphite px-[80px] py-[56px]">
+          <div className="mb-6 flex items-end justify-between">
+            <h1 className="text-[56px] font-extrabold">All groups</h1>
+            <div className="text-2xl text-muted">arrows choose · hold OK to talk · Back returns</div>
+          </div>
+          <Dashboard focus={tile} tenFoot />
+        </div>
+      )}
 
       {/* stage */}
       <main className="relative flex flex-1 flex-col py-[56px] pr-[80px]">
@@ -152,11 +204,22 @@ export function TvShell() {
               {sheet === "invite" && sel && <InvitePanel gid={sel.id} name={sel.name} />}
               {sheet === "join" && <JoinPanel />}
               {sheet === "settings" && <SettingsPanel />}
+              {sheet === "group" && sel && <GroupPanel g={sel} onDone={() => setSheet("none")} />}
               <div className="mt-10 text-center text-xl text-muted">Press Back to close</div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {sos && (
+        <div role="alertdialog" aria-label={`SOS from ${sos.fromName}`} className="absolute inset-0 z-[60] flex flex-col items-center justify-center bg-danger text-white">
+          <motion.div animate={{ scale: [1, 1.12, 1] }} transition={{ duration: 1, repeat: Infinity }}><Siren size={160} /></motion.div>
+          <div className="mt-8 text-[88px] font-extrabold leading-none">SOS · {sos.fromName}</div>
+          <div className="mt-4 text-4xl">{sos.groupName}{sos.note ? ` — ${sos.note}` : ""}</div>
+          {(sos.latE7 !== 0 || sos.lonE7 !== 0) && <div className="mt-4 font-mono text-4xl">{(sos.latE7 / 1e7).toFixed(5)}, {(sos.lonE7 / 1e7).toFixed(5)}</div>}
+          <div className="mt-14 rounded-full bg-white px-12 py-5 text-3xl font-bold text-danger">OK · I have seen it</div>
+        </div>
+      )}
 
       <AnimatePresence>
         {invites[0] && (
@@ -267,7 +330,7 @@ function InvitePanel({ gid, name }: { gid: string; name: string }) {
     const poll = () => void host.currentCode(gid).then((c) => { if (live) setCode(c); });
     poll();
     const t = setInterval(poll, 1000);
-    void host.deepLink(gid).then(async (l) => { if (l && live) setQr(await QRCode.toDataURL(l.replace("titi://j/", "https://titi.app/j/"), { margin: 1, width: 560 })); });
+    void host.deepLink(gid).then(async (l) => { if (l && live) setQr(await QRCode.toDataURL(toWebLink(l), { margin: 1, width: 560 })); });
     return () => { live = false; clearInterval(t); };
   }, [gid]);
   return (
@@ -310,6 +373,70 @@ function JoinPanel() {
 }
 
 
+/** ↑/↓ between the buttons of a remote-driven menu. */
+function menuNav(e: React.KeyboardEvent<HTMLDivElement>) {
+  if (e.keyCode !== KEY.UP && e.keyCode !== KEY.DOWN) return;
+  e.preventDefault();
+  const btns = Array.from(e.currentTarget.querySelectorAll("button"));
+  const i = btns.indexOf(document.activeElement as HTMLButtonElement);
+  const next = btns[Math.max(0, Math.min(btns.length - 1, i + (e.keyCode === KEY.DOWN ? 1 : -1)))];
+  next?.focus();
+  next?.scrollIntoView({ block: "nearest" });
+}
+
+/** Members with online state, invite a nearby device, leave, and (creator) delete for everyone — each destructive step asks once more. */
+function GroupPanel({ g, onDone }: { g: GroupState; onDone: () => void }) {
+  const nodeId = useStore((s) => s.nodeId);
+  const peersMap = useStore((s) => s.peers);
+  const [confirm, setConfirm] = useState<"leave" | "dissolve" | null>(null);
+  const [invited, setInvited] = useState<string[]>([]);
+  const first = useRef<HTMLButtonElement>(null);
+  useEffect(() => { first.current?.focus(); }, [confirm]);
+  const nearby = Object.values(peersMap).filter((p) => !p.inGroup);
+  const row = "flex w-full items-center gap-5 rounded-[22px] bg-elevated px-8 py-4 text-3xl outline-none focus:bg-amber focus:text-graphite";
+  if (confirm) {
+    const dissolve = confirm === "dissolve";
+    return (
+      <div role="menu" tabIndex={-1} onKeyDown={menuNav}>
+        <h2 className="text-[44px] font-bold">{dissolve ? "Delete for everyone?" : "Leave this group?"}</h2>
+        <p className="mt-3 text-2xl text-muted">{dissolve ? `“${g.name}” disappears from every member’s device.` : `You will need a new invite to come back to “${g.name}”.`}</p>
+        <div className="mt-8 flex flex-col gap-3">
+          <button ref={first} type="button" className={`${row} text-danger`} onClick={() => { if (dissolve) host.dissolveGroup(g.id); else host.leaveGroup(g.id); onDone(); }}>{dissolve ? <Trash2 size={32} /> : <LogOut size={32} />} {dissolve ? "Delete for everyone" : "Leave group"}</button>
+          <button type="button" className={row} onClick={() => setConfirm(null)}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div role="menu" tabIndex={-1} onKeyDown={menuNav}>
+      <h2 className="text-[44px] font-bold">{g.name}</h2>
+      <div className="mt-6 flex max-h-[560px] flex-col gap-3 overflow-y-auto p-1">
+        <div className="text-xl font-semibold uppercase tracking-widest text-muted">Members · {g.memberCount}</div>
+        {g.members.map((m, i) => {
+          const me = m.node === nodeId;
+          const online = me || !!peersMap[m.node];
+          return (
+            <button key={m.node} ref={i === 0 ? first : undefined} type="button" className={row}>
+              <Avatar name={me ? "TV" : m.name} hue={m.hue} size={52} />
+              <span className="flex-1 truncate text-left">{me ? `${m.name} (this TV)` : m.name}</span>
+              <span className={`h-4 w-4 rounded-full ${online ? "bg-teal" : "bg-outline"}`} /><span className="text-2xl">{online ? "online" : "offline"}</span>
+            </button>
+          );
+        })}
+        {nearby.length > 0 && <div className="mt-4 text-xl font-semibold uppercase tracking-widest text-muted">Invite nearby</div>}
+        {nearby.map((p) => (
+          <button key={p.node} type="button" className={row} onClick={() => { host.invitePeer(g.id, p.node); setInvited((v) => [...v, p.node]); }}>
+            <UserPlus size={32} /><span className="flex-1 truncate text-left">{p.name || p.node.slice(0, 6)}</span><b>{invited.includes(p.node) ? "Invited" : "Invite"}</b>
+          </button>
+        ))}
+        <div className="mt-4" />
+        <button type="button" className={`${row} text-danger`} onClick={() => setConfirm("leave")}><LogOut size={32} /> Leave group</button>
+        {g.isCreator && <button type="button" className={`${row} text-danger`} onClick={() => setConfirm("dissolve")}><Trash2 size={32} /> Delete for everyone</button>}
+      </div>
+    </div>
+  );
+}
+
 /** Every setting the TV host honours, operable with the remote: ↑/↓ move, OK changes. */
 function SettingsPanel() {
   const settings = useStore((s) => s.settings);
@@ -319,20 +446,14 @@ function SettingsPanel() {
   const nextRoom = rooms[(rooms.indexOf(settings.name) + 1) % rooms.length]!;
   const vols = [0.25, 0.5, 0.75, 1];
   const nextVol = vols.find((v) => v > settings.volume + 0.01) ?? vols[0]!;
-  const nav = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.keyCode !== KEY.UP && e.keyCode !== KEY.DOWN) return;
-    e.preventDefault();
-    const btns = Array.from(e.currentTarget.querySelectorAll("button"));
-    const i = btns.indexOf(document.activeElement as HTMLButtonElement);
-    btns[Math.max(0, Math.min(btns.length - 1, i + (e.keyCode === KEY.DOWN ? 1 : -1)))]?.focus();
-  };
   const row = "flex w-full items-center justify-between rounded-[22px] bg-elevated px-8 py-5 text-3xl outline-none focus:bg-amber focus:text-graphite";
   return (
-    <div role="menu" tabIndex={-1} onKeyDown={nav}>
+    <div role="menu" tabIndex={-1} onKeyDown={menuNav}>
       <h2 className="mb-6 text-[44px] font-bold">Settings</h2>
       <div className="flex flex-col gap-3">
         <button ref={first} type="button" className={row} onClick={() => host.saveSettings({ name: nextRoom })}><span>Name</span><b>{settings.name}</b></button>
         <button type="button" className={row} onClick={() => host.saveSettings({ volume: nextVol })}><span>Speaker volume</span><b>{Math.round(settings.volume * 100)}%</b></button>
+        <button type="button" className={row} onClick={() => host.saveSettings({ relay: !settings.relay })}><span className="flex items-center gap-4"><Globe size={32} /> Internet relay</span><b>{settings.relay ? "On" : "Off · this TV is offline"}</b></button>
         {host.quit && <button type="button" className={row} onClick={() => host.quit?.()}><span className="flex items-center gap-4"><Power size={32} /> Quit Titi</span><span /></button>}
       </div>
     </div>

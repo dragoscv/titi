@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { SignalSchema, WsTag, type Signal } from "@titi/protocol";
 import { RelayTransport, type RelayEvents } from "../src/web/relay";
@@ -53,7 +53,7 @@ const envelope = (src: string, len = 32) => {
   return out;
 };
 
-type Ev = { [K in keyof Required<RelayEvents>]: ReturnType<typeof vi.fn<NonNullable<RelayEvents[K]>>> };
+type Ev = { [K in keyof Required<RelayEvents>]: Mock<NonNullable<RelayEvents[K]>> };
 let ev: Ev;
 let relay: RelayTransport;
 const ws = () => FakeWs.all.at(-1)!;

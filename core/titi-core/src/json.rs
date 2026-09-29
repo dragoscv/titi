@@ -181,6 +181,10 @@ pub enum JsUi {
         group: String,
         node: String,
     },
+    GroupDissolved {
+        group: String,
+        name: String,
+    },
     Message {
         group: String,
         from: String,
@@ -291,6 +295,10 @@ impl From<UiEvent> for JsUi {
             UiEvent::MemberLeft { group, node } => J::MemberLeft {
                 group: hex(&group),
                 node: hex(&node),
+            },
+            UiEvent::GroupDissolved { group, name } => J::GroupDissolved {
+                group: hex(&group),
+                name,
             },
             UiEvent::Message {
                 group,

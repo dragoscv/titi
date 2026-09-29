@@ -71,4 +71,14 @@
     <string name="sound_bird">Pasăre</string>
     <string name="sound_radio">Stație</string>
     <string name="sound_minimal">Minimal</string>
+    <string name="leave">Părăsește grupul</string>
+    <string name="leave_confirm">Părăsești %1$s? Vei avea nevoie de o invitație nouă ca să revii.</string>
+    <string name="cancel">Anulează</string>
+    <string name="members">Membri</string>
+    <string name="online">conectat</string>
+    <string name="offline">deconectat</string>
+    <string name="invite_nearby">Invită din apropiere</string>
+    <string name="action_group">Grup</string>
+    <string name="sos_title">SOS de la %1$s</string>
+    <string name="sos_ack">Am văzut</string>
 </resources>

@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, MessageSquare, UserPlus, MoreVertical, Send, Share2 } from "lucide-react";
 import QRCode from "qrcode";
 import { host } from "../platform";
+import { toWebLink } from "../links";
 import { useStore } from "../store";
 import { Avatar, SignalBars } from "../Avatar";
 import { TalkButton } from "../TalkButton";
@@ -48,8 +49,9 @@ export function Group({ id, go }: { id: string; go: (r: Route) => void }) {
         <div className="relative">
           <button className="p-3 text-muted hover:text-ink" onClick={() => setMenu((m) => !m)} aria-label="More"><MoreVertical /></button>
           {menu && (
-            <div className="absolute right-2 top-12 z-30 w-48 overflow-hidden rounded-2xl bg-elevated shadow-2xl">
+            <div className="absolute right-2 top-12 z-30 w-56 overflow-hidden rounded-2xl bg-elevated shadow-2xl">
               <button className="block w-full px-4 py-3 text-left text-sm text-danger hover:bg-white/5" onClick={() => { setMenu(false); if (confirm(`Leave ${g.name}?`)) { host.leaveGroup(g.id); go({ name: "home" }); } }}>Leave group</button>
+              {g.isCreator && <button className="block w-full px-4 py-3 text-left text-sm text-danger hover:bg-white/5" onClick={() => { setMenu(false); if (confirm(`Delete ${g.name} for everyone? Members' copies are removed too.`)) { host.dissolveGroup(g.id); go({ name: "home" }); } }}>Delete for everyone</button>}
             </div>
           )}
         </div>
@@ -127,14 +129,14 @@ function InviteBody({ gid, gname }: { gid: string; gname: string }) {
     void host.deepLink(gid).then(async (l) => {
       if (!live || !l) return;
       setLink(l);
-      const url = await QRCode.toDataURL(l.replace("titi://j/", "https://titi.app/j/"), { margin: 1, width: 400, color: { dark: "#0E1013", light: "#FFFFFF" } });
+      const url = await QRCode.toDataURL(toWebLink(l), { margin: 1, width: 400, color: { dark: "#0E1013", light: "#FFFFFF" } });
       if (live) setQr(url);
     });
     return () => { live = false; clearInterval(t); };
   }, [gid]);
   const secs = code?.[1] ?? 0;
   const share = () => {
-    const url = link?.replace("titi://j/", "https://titi.app/j/") ?? "";
+    const url = (link ? toWebLink(link) : "");
     if (navigator.share) void navigator.share({ title: `Join ${gname} on Titi`, url }); else void navigator.clipboard.writeText(url);
   };
   return (

@@ -17,7 +17,7 @@ use titi_core::json::{self, hex, unhex, JsUi};
 use titi_core::link::LinkClass;
 
 use crate::audio::{self, PlayQueue};
-use crate::{lan, relay};
+use crate::{ble, lan, relay};
 
 pub type EngineTx = mpsc::Sender<Cmd>;
 
@@ -57,6 +57,8 @@ pub struct Settings {
     pub output_device: String,
     pub lan: bool,
     pub relay: bool,
+    /// Bluetooth LE (GATT central to Android peripherals) ΓÇö works with Wi-Fi off.
+    pub ble: bool,
 }
 
 impl Default for Settings {
@@ -75,6 +77,7 @@ impl Default for Settings {
             output_device: String::new(),
             lan: true,
             relay: true,
+            ble: true,
         }
     }
 }
@@ -120,6 +123,7 @@ pub struct Host {
     sink: Box<dyn Sink>,
     lan: Option<lan::LanHandle>,
     relay: Option<relay::RelayHandle>,
+    ble: Option<ble::BleHandle>,
     capture: Option<audio::Capture>,
     _playback: Option<audio::Playback>,
     play: PlayQueue,
@@ -163,6 +167,11 @@ impl Host {
                     relay::LINK_ID => {
                         if let Some(r) = &self.relay {
                             r.send(bytes)
+                        }
+                    }
+                    ble::LINK_ID => {
+                        if let Some(b) = &self.ble {
+                            b.send(peer, bytes)
                         }
                     }
                     _ => {}
@@ -241,7 +250,10 @@ impl Host {
         }
         let refresh = matches!(
             e,
-            UiEvent::Joined { .. } | UiEvent::MemberJoined { .. } | UiEvent::MemberLeft { .. }
+            UiEvent::Joined { .. }
+                | UiEvent::MemberJoined { .. }
+                | UiEvent::MemberLeft { .. }
+                | UiEvent::GroupDissolved { .. }
         );
         if let Ok(j) = serde_json::to_string(&JsUi::from(e)) {
             self.sink.ui(j);
@@ -342,6 +354,15 @@ impl Host {
                 self.apply(a)
             }
         }
+        if self.settings.ble != self.ble.is_some() {
+            if self.settings.ble {
+                self.ble = Some(ble::start(&rth, self.tx.clone(), self.eng.node_id()))
+            } else {
+                self.ble = None;
+                let a = self.eng.on_link_down(ble::LINK_ID, now_ms());
+                self.apply(a)
+            }
+        }
         let relay_changed = old.relay_url != self.settings.relay_url;
         if self.settings.relay != self.relay.is_some() || relay_changed {
             if self.relay.take().is_some() {
@@ -420,6 +441,9 @@ impl Host {
         unhex(s)
             .and_then(|v| v.try_into().ok())
             .ok_or_else(|| "bad node id".into())
+    }
+    pub fn apply_actions(&mut self, a: Vec<Action>) {
+        self.apply(a);
     }
     pub fn run(&mut self, f: impl FnOnce(&mut Engine, u64) -> Vec<Action>) {
         let a = f(&mut self.eng, now_ms());
@@ -500,6 +524,7 @@ pub fn spawn(dir: PathBuf, sink: Box<dyn Sink>) -> Started {
                 settings: Settings {
                     lan: false,
                     relay: false,
+                    ble: false,
                     ..s0.clone()
                 },
                 dir,
@@ -508,6 +533,7 @@ pub fn spawn(dir: PathBuf, sink: Box<dyn Sink>) -> Started {
                 sink,
                 lan: None,
                 relay: None,
+                ble: None,
                 capture: None,
                 _playback: playback,
                 play,
@@ -579,10 +605,11 @@ fn handle(h: &mut Host, c: Cmd) {
         Cmd::T(t) => {
             let a = match t {
                 TEvent::LinkUp(id) => {
-                    let (class, bps, rtt, mtu) = if id == lan::LINK_ID {
-                        (LinkClass::Lan, 5_000_000, 8, Some(1200))
-                    } else {
-                        (LinkClass::Internet, 200_000, 120, None)
+                    let (class, bps, rtt, mtu) = match id {
+                        lan::LINK_ID => (LinkClass::Lan, 5_000_000, 8, Some(1200)),
+                        // GATT notifications at 7.5ΓÇô15 ms intervals carry Opus comfortably
+                        ble::LINK_ID => (LinkClass::BleGatt, 120_000, 40, Some(ble::MTU)),
+                        _ => (LinkClass::Internet, 200_000, 120, None),
                     };
                     let mut a = h.eng.on_link_up(id, class, mtu, now);
                     a.extend(h.eng.on_link_stats(id, bps, rtt, 0, now));

@@ -217,6 +217,28 @@ Legend of surfaces: **C** core (Rust) · **B** backend · **A** Android ·
 | GT-04 | Talk from TV when a USB/BT mic exists | done (code) | Chromecast has no mic — not device-verified |
 | GT-05 | Play Console Android TV track | todo | needs TV screenshots + review |
 
+## 5h. TV parity + delete for everyone (user request 2026-09-29)
+
+| ID | Item | Status | Evidence |
+|---|---|---|---|
+| TVP-01 | Core: creator-signed `Dissolve` (proto `Dissolve`, `ControlKind::Dissolve`=24, `Engine::dissolve_group`, `UiEvent::GroupDissolved`) | done | tests `creator_dissolves_group_for_every_member`, `only_the_creator_can_dissolve` (10/10 two_engines) |
+| TVP-02 | FFI / wasm / JSON + every host: Android client, phone, watch, iOS, web, desktop "Delete for everyone" (creator only, confirm) | done | Chromecast (creator) deleted "Living room" → A51 logcat `ui GroupDissolved`, group gone, back on Home (2026-09-29 20:24); iOS not compiled here |
+| TVP-03 | Google TV: Group action → members with online state, invite nearby, leave, delete (two-step confirm) | done | Chromecast: sheet listed members with online/offline, Leave, Delete; confirm view (focus fix: refocus on confirm) screenshot `.copilot-tmp/gtv-d2.png` |
+| TVP-04 | Tizen: rail Create a group, Group sheet (members, invite nearby, leave, delete), Internet relay toggle (WebHost honours it) | done | Odyssey: rail Join/Create/All groups/Settings; Create made "Home"; Group sheet "Members · 3 … Leave group · Delete for everyone"; delete confirm → "Home" removed; relay toggle not device-toggled |
+| TVP-05 | Full-screen SOS on both TVs until acknowledged | done (Tizen) | Odyssey: A51 SOS → alertdialog "SOS · Ana · Sufragerie · 45.04273, 23.27547 · OK"; Google TV: message arrives (`ui Message`) but overlay not seen on screen — open |
+| TVP-06 | 21:9 all-groups wall (Tizen rail "All groups", desktop wide window) | done (code) | `dashboard-layout.test.ts`; rail entry on Odyssey; wall screen not captured (monitor went to standby) |
+
+## 5i. Voice-first chat milestone (ADR-0009)
+
+| ID | Item | Status | Evidence |
+|---|---|---|---|
+| CH-A2 | Durable per-conversation store + FTS search + drafts (SQLite/FTS5 native, IndexedDB web) | todo | |
+| CH-A1 | Message model v2: reply, react, edit, delete for everyone, forward, mention | todo | needs CH-A2 |
+| CH-A4 | Encrypted attachments: STREAM chunks, content-addressed resume over LAN/BLE/relay, relay blob TTL | todo | |
+| CH-A6 | Multi-device identity on HIDE `hide-identity` (enrol, revoke, recovery key) | todo | measure HIDE size on armv7 + wasm first |
+| CH-A5 | 1:1 PQ ratchet (PQXDH + SPQR from spec) | todo | |
+| CH-B1 | Voice-first timeline + on-device transcription + voice search + catch-up | todo | |
+
 ## 6. iOS (`ios/`) — skeleton now, CI after Apple enrolment
 
 | ID | Item | Status | Evidence |

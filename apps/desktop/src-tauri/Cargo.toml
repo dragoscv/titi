@@ -2,7 +2,7 @@
 name = "titi-desktop"
 version = "0.1.0"
 edition = "2021"
-license = "UNLICENSED"
+license = "AGPL-3.0-only"
 rust-version = "1.90"
 description = "Titi desktop (Windows / macOS / Linux): Tauri 2 shell around the native Rust engine"
 
@@ -39,7 +39,9 @@ parking_lot = "0.12.5"
 log = "0.4.34"
 env_logger = "0.11.11"
 dirs = "7.0.0"
-rand = "0.9"
+rand = "0.10"
+btleplug = "0.13.3"
+uuid = "1"
 
 [target.'cfg(windows)'.dependencies]
 window-vibrancy = "0.8.1"

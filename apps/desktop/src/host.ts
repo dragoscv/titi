@@ -9,7 +9,7 @@ interface InitInfo { nodeId: string; settings: Settings; groups: string; platfor
 
 export class DesktopHost implements TitiHost {
   readonly kind = "desktop" as const;
-  readonly caps: Capabilities = { lan: true, ble: false, globalPtt: true, qrScan: false, mic: true, tenFoot: false };
+  readonly caps: Capabilities = { lan: true, ble: true, globalPtt: true, qrScan: false, mic: true, tenFoot: false };
   private inited = false;
   private hooks = {
     cue: (k: CueKind) => void invoke("titi_cue", { kind: k }),
@@ -48,6 +48,7 @@ export class DesktopHost implements TitiHost {
   createGroup(name: string) { void invoke("titi_create_group", { name }).catch(this.err); }
   private op(op: string, group: string, arg?: string, flag?: boolean) { void invoke("titi_group_op", { op, group, arg, flag }).catch(this.err); }
   leaveGroup(id: string) { this.op("leave", id); }
+  dissolveGroup(id: string) { this.op("dissolve", id); }
   setActiveGroup(id: string) { this.op("active", id); useStore.getState().updateGroup(id, (g) => ({ ...g, unread: 0 })); }
   setFullDuplex(id: string, on: boolean) { this.op("duplex", id, undefined, on); }
   invitePeer(g: string, node: string) { this.op("invite", g, node); }
