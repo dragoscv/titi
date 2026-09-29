@@ -280,4 +280,5 @@ Legend of surfaces: **C** core (Rust) · **B** backend · **A** Android ·
 ## Deferred (V1.5+)
 SFU for large internet duplex groups · watchOS · Android Auto /
 CarPlay · sub-channels · MLS group forward secrecy · rotating node ids ·
-Codec2/Lyra ULTRA profile · NFC invites.
+Codec2/Lyra ULTRA profile · NFC invites · phone as a linked remote mic for a
+TV (scan the TV's QR, talk *as* the TV; deferred by the user 2026-09-30).
