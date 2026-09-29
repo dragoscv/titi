@@ -54,7 +54,7 @@ jobs:
           key: turbo-${{ runner.os }}-${{ github.sha }}
           restore-keys: turbo-${{ runner.os }}-
       # core-wasm/pkg is committed (prebuilt); skip its Rust build task on Linux runners
-      - run: pnpm turbo run typecheck lint test build --filter='!@titi/core-wasm' --cache-dir=.turbo --output-logs=errors-only
+      - run: pnpm turbo run typecheck lint test build --filter='!@titi/core-wasm' --only --cache-dir=.turbo --output-logs=errors-only
         env: { TITI_TYPECHECKED: "1" }
       - run: pnpm --filter @titi/app-ui --filter @titi/backend exec vitest run --coverage
       - run: pnpm audit --audit-level high
