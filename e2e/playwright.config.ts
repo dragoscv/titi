@@ -55,7 +55,7 @@ export default defineConfig({
           reuseExistingServer: !ci,
           stdout: "pipe",
           stderr: "pipe",
-          timeout: 120_000,
+          timeout: 300_000, // cold next dev compile
         },
       ],
 });

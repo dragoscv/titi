@@ -92,10 +92,14 @@ test("push-to-talk: host holds the floor, guest sees who is talking", async ({ u
   const box = (await talk.boundingBox())!;
   await host.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await host.page.mouse.down();
-  // either the floor is granted or the host surfaces why not (mic/codec error toast): assert on the reason
-  const outcome = host.page.getByText(/You are talking|Microphone unavailable.*/);
-  await expect(outcome).toBeVisible();
-  expect(await outcome.first().textContent()).toBe("You are talking");
+  // engine-level diagnostics (window.__titi = WebHost) so a failure names its cause, not just "not visible"
+  const diag = () => host.page.evaluate(() => {
+    const h = (window as unknown as { __titi?: { dbg: { ui: string[]; tx: number; rx: number } } }).__titi;
+    return h ? { ui: h.dbg.ui.slice(-12), tx: h.dbg.tx, rx: h.dbg.rx } : null;
+  });
+  await expect.poll(async () => (await diag())?.ui.includes("floorGranted") ?? false, { message: "engine never granted the floor" }).toBe(true)
+    .catch(async (e: unknown) => { throw new Error(`${String(e)}\nengine: ${JSON.stringify(await diag())}`); });
+  await expect(host.page.getByText("You are talking")).toBeVisible();
   await expect(guest.page.getByText("Ana is talking")).toBeVisible();
   await host.page.mouse.up();
   await expect(host.page.getByText("Channel free")).toBeVisible();
