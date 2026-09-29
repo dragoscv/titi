@@ -11,6 +11,7 @@ export const wasmengine_create_group: (a: number, b: number, c: number, d: numbe
 export const wasmengine_current_code: (a: number, b: number, c: number, d: number, e: number) => void;
 export const wasmengine_decline_invite: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
 export const wasmengine_deep_link: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+export const wasmengine_dissolve_group: (a: number, b: number, c: number, d: number, e: number) => void;
 export const wasmengine_groups_json: (a: number, b: number) => void;
 export const wasmengine_identity_seed: (a: number, b: number) => void;
 export const wasmengine_invite_peer: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;

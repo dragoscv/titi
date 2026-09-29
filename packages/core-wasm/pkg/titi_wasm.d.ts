@@ -9,6 +9,10 @@ export class WasmEngine {
     current_code(group: Uint8Array, now_ms: number): string | undefined;
     decline_invite(group: Uint8Array, host: Uint8Array, now_ms: number): string;
     deep_link(group: Uint8Array, now_ms: number, valid_ms: number): string | undefined;
+    /**
+     * Creator only: delete the group for every member.
+     */
+    dissolve_group(group: Uint8Array, now_ms: number): string;
     groups_json(): string;
     identity_seed(): Uint8Array;
     invite_peer(group: Uint8Array, node: Uint8Array, now_ms: number): string;

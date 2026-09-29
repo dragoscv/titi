@@ -13,7 +13,7 @@ describe("store", () => {
     expect(s.settings).toBe(defaultSettings);
     expect(defaultSettings.relayUrl).toBe(DEFAULT_RELAY);
     expect(DEFAULT_RELAY.startsWith("wss://")).toBe(true);
-    expect(defaultSettings).toMatchObject({ hue: 40, onboarded: false, volume: 1, lan: true, relay: true, closeToTray: true });
+    expect(defaultSettings).toMatchObject({ hue: 40, onboarded: false, volume: 1, lan: true, relay: true, ble: true, closeToTray: true });
   });
 
   it("set accepts both a partial object and an updater function", () => {
