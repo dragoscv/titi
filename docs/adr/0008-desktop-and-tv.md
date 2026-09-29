@@ -46,7 +46,13 @@ Measured on the devices (2026-09-28):
    autostart minimised, single instance + `titi://` deep links, notifications.
 7. **Distribution**: NSIS per-machine installer adds a Private/Domain-only UDP
    firewall rule; Microsoft Store (MSIX via winapp CLI) chosen for signing.
-8. **BLE on Windows**: GATT data profile (no L2CAP) — planned after LAN + relay.
+8. **BLE on Windows**: GATT data profile (Windows has no L2CAP CoC API). The
+   desktop is a GATT central (`btleplug`, `src/ble.rs`, link 6 `BleGatt`, MTU
+   1000) against the Android peripheral's service `74697469-0001`: RX `0004`
+   (write without response) and TX `0005` (notify). Both carry the L2CAP
+   socket's framing (u16 BE length + frame) chunked to the ATT MTU; the
+   central's first frame is its 8-byte node id. Peers are keyed by node id
+   from the advert's service data, so MAC rotation does not create new peers.
 9. **Installers (2026-09-29)**: NSIS per-machine (`scripts/desktop-bundle.ps1`,
    hook adds the "Titi LAN" UDP rule, Private/Domain only) is the direct-download
    channel; MSIX (`scripts/desktop-msix.ps1`, `windows/msix/Package.appxmanifest`
