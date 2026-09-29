@@ -73,11 +73,13 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="titi" android:host="j" />
             </intent-filter>
-            <!-- https://titi.app/j/<token> (verified app link; assetlinks served by web) -->
+            <!-- https://titi.dragoscatalin.ro/j/<token> (verified app link; assetlinks served by web).
+                 Legacy https://titi.app/j/ kept so old QR codes still open the app. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="titi.dragoscatalin.ro" android:pathPrefix="/j/" />
                 <data android:scheme="https" android:host="titi.app" android:pathPrefix="/j/" />
             </intent-filter>
         </activity>

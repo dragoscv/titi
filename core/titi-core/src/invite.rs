@@ -203,11 +203,19 @@ impl DeepLink {
         )
     }
 
-    /// Accepts `titi://j/...` and `https://titi.app/j/...`.
+    /// Accepts `titi://j/...`, `https://titi.dragoscatalin.ro/j/...` ([`WEB_ORIGIN`])
+    /// and the legacy `https://titi.app/j/...` (old QR codes).
     pub fn parse(url: &str) -> Result<Self> {
         let path = url
             .strip_prefix("titi://j/")
-            .or_else(|| url.split("/j/").nth(1))
+            .or_else(|| {
+                let rest = url
+                    .strip_prefix("https://")
+                    .or_else(|| url.strip_prefix("http://"))?;
+                WEB_HOSTS
+                    .iter()
+                    .find_map(|h| rest.strip_prefix(h)?.strip_prefix("/j/"))
+            })
             .ok_or(Error::InviteCode)?;
         let parts: Vec<&str> = path.trim_end_matches('/').split('/').collect();
         if parts.len() != 5 {
@@ -242,6 +250,11 @@ impl DeepLink {
 }
 
 const B64: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+
+/// Public web origin for generated invite links.
+pub const WEB_ORIGIN: &str = "https://titi.dragoscatalin.ro";
+/// Hosts whose `/j/` links parse as invites: current origin + legacy `titi.app`.
+const WEB_HOSTS: [&str; 2] = ["titi.dragoscatalin.ro", "titi.app"];
 
 pub fn b64url(data: &[u8]) -> String {
     let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
@@ -321,6 +334,10 @@ mod tests {
         assert!(p.verify(11_000).is_err());
         let https = url.replace("titi://j/", "https://titi.app/j/");
         assert_eq!(DeepLink::parse(&https).unwrap(), d);
+        let web = url.replace("titi://j/", &format!("{WEB_ORIGIN}/j/"));
+        assert_eq!(DeepLink::parse(&web).unwrap(), d);
+        let evil = url.replace("titi://j/", "https://evil.com/titi.app/j/");
+        assert!(DeepLink::parse(&evil).is_err());
     }
 
     #[test]

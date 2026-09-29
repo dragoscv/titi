@@ -69,7 +69,7 @@ fun JoinScreen(engine: EngineHost, state: RadioState, onBack: () -> Unit) {
             Box(Modifier.fillMaxWidth().weight(1f).padding(20.dp).clip(RoundedCornerShape(24.dp))) {
                 QrScanner { text ->
                     scanning = false
-                    if (text.startsWith("titi://") || text.contains("titi.app/j/")) {
+                    if (text.startsWith("titi://") || ro.titi.app.util.InviteLinks.HOSTS.any { text.contains("$it/j/") }) {
                         engine.joinByLink(if (text.startsWith("http")) "titi://j/" + text.substringAfter("/j/") else text); searching = true
                     } else { code = text }
                 }

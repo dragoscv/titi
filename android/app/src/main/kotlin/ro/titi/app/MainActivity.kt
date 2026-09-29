@@ -86,7 +86,7 @@ class MainActivity : ComponentActivity() {
         val uri = i?.data ?: return
         val link = when {
             uri.scheme == "titi" -> uri.toString()
-            uri.host == "titi.app" && uri.path?.startsWith("/j/") == true -> "titi://j/" + uri.path!!.removePrefix("/j/")
+            uri.host in ro.titi.app.util.InviteLinks.HOSTS && uri.path?.startsWith("/j/") == true -> "titi://j/" + uri.path!!.removePrefix("/j/")
             else -> return
         }
         pendingLink.value = link

@@ -21,7 +21,7 @@ class PhoneBridgeService : WearableListenerService() {
         val body = String(event.data, Charsets.UTF_8)
         when (event.path) {
             PATH_JOIN -> {
-                if (!body.startsWith("titi://j/") && !body.startsWith("https://titi.app/j/")) { Log.w(TAG, "ignored non-invite payload"); return }
+                if (!ro.titi.app.util.InviteLinks.isInviteUrl(body)) { Log.w(TAG, "ignored non-invite payload"); return }
                 app.engine.joinByLink(body)
                 app.pendingFromPhone.value = true
             }

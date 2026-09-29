@@ -46,7 +46,7 @@ targets:
     entitlements:
       path: Titi/Titi.entitlements
       properties:
-        com.apple.developer.associated-domains: [applinks:titi.app]
+        com.apple.developer.associated-domains: [applinks:titi.dragoscatalin.ro, applinks:titi.app]
         com.apple.developer.push-to-talk: true
         com.apple.developer.networking.multicast: true
         com.apple.developer.networking.wifi-aware: [titi]

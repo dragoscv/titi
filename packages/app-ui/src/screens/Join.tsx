@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, QrCode } from "lucide-react";
 import { host } from "../platform";
+import { isInviteUrl } from "../links";
 import { useStore } from "../store";
 import type { Route } from "../Shell";
 
@@ -29,7 +30,7 @@ export function Join({ go }: { go: (r: Route) => void }) {
         <h1 className="text-xl font-semibold">Join a group</h1>
       </header>
       {scan ? (
-        <Scanner onResult={(t) => { setScan(false); if (t.startsWith("titi://") || t.includes("titi.app/j/")) { void host.start(); host.joinByLink(t.startsWith("http") ? "titi://j/" + t.split("/j/")[1] : t); setSearching(true); } else setCode(t); }} onCancel={() => setScan(false)} />
+        <Scanner onResult={(t) => { setScan(false); if (isInviteUrl(t)) { void host.start(); host.joinByLink(t.startsWith("http") ? "titi://j/" + t.split("/j/")[1] : t); setSearching(true); } else setCode(t); }} onCancel={() => setScan(false)} />
       ) : (
         <div className="p-6">
           <p className="text-[17px] text-muted">Ask the host for the three words and two digits shown on their screen. Both of you need to be in the same room — online, or a phone on your Wi‑Fi.</p>
