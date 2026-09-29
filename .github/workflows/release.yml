@@ -32,6 +32,7 @@ jobs:
   ci:
     needs: verify
     uses: ./.github/workflows/ci.yml
+    permissions: { contents: read, pull-requests: write }
 
   android:
     needs: ci
