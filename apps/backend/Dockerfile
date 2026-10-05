@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # Build from the monorepo root:  docker build -f apps/backend/Dockerfile -t titi-relay .
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 RUN corepack enable && corepack prepare pnpm@10.18.0 --activate
 WORKDIR /repo
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
