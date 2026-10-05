@@ -19,7 +19,7 @@ catalog:
   "@vitest/coverage-v8": 5.0.2
   "@playwright/test": 1.63.0
   zustand: 5.0.15
-  motion: 13.4.5
+  motion: 14.0.0
   lucide-react: 1.48.0
   qrcode: 1.5.4
   "@types/qrcode": 1.5.6
