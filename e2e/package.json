@@ -12,7 +12,7 @@
     "lint": "oxlint --type-aware -c ../.oxlintrc.json ."
   },
   "devDependencies": {
-    "@axe-core/playwright": "4.13.0",
+    "@axe-core/playwright": "4.14.0",
     "@playwright/test": "catalog:",
     "@types/node": "catalog:",
     "typescript": "catalog:"
