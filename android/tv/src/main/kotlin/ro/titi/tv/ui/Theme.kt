@@ -4,17 +4,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
+import ro.titi.brand.BrandDark
 
+/** Tokens from brand/ (brand pack v1, ADR-0007). */
 object Tv {
-    val Graphite = Color(0xFF0E1013)
-    val Surface = Color(0xFF16191E)
-    val Elevated = Color(0xFF1E2229)
-    val Outline = Color(0xFF2A2F38)
-    val Ink = Color(0xFFF2F4F7)
-    val Muted = Color(0xFF9AA3B2)
-    val Amber = Color(0xFFFFB020)
-    val Teal = Color(0xFF2DD4BF)
-    val Emergency = Color(0xFFE5484D)
+    val Graphite = BrandDark.bgCanvas
+    val Surface = BrandDark.bgSurface
+    val Elevated = BrandDark.bgElevated
+    val Outline = BrandDark.borderDefault
+    val Ink = BrandDark.fgDefault
+    val Muted = BrandDark.fgMuted
+    val Amber = BrandDark.accentSolid
+    val Teal = BrandDark.receiveSolid
+    val Emergency = BrandDark.emergencySolid
 }
 
 fun hueColor(hue: Int): Color = Color.hsl(hue.coerceIn(0, 359).toFloat(), 0.72f, 0.62f)

@@ -1,0 +1,1762 @@
+{
+  "$description": "Layer 1 - raw 12-step ramps (Radix step jobs). Components never read these; semantic tokens reference them. Source: brand/scripts/palette.mjs (direction 'signal').",
+  "color": {
+    "$type": "color",
+    "dark": {
+      "neutral": {
+        "1": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.172,
+              0.012,
+              258
+            ],
+            "hex": "#0d1015"
+          },
+          "$description": "app background"
+        },
+        "2": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.2125,
+              0.012,
+              258
+            ],
+            "hex": "#15191e"
+          },
+          "$description": "subtle background"
+        },
+        "3": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.251,
+              0.012,
+              258
+            ],
+            "hex": "#1e2228"
+          },
+          "$description": "component bg"
+        },
+        "4": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.28,
+              0.012,
+              258
+            ],
+            "hex": "#25292f"
+          },
+          "$description": "component bg hover"
+        },
+        "5": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.3041,
+              0.012,
+              258
+            ],
+            "hex": "#2b2f35"
+          },
+          "$description": "component bg active"
+        },
+        "6": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.35,
+              0.012,
+              258
+            ],
+            "hex": "#373b41"
+          },
+          "$description": "subtle border"
+        },
+        "7": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.42,
+              0.0156,
+              258
+            ],
+            "hex": "#484d56"
+          },
+          "$description": "border"
+        },
+        "8": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.5,
+              0.0156,
+              258
+            ],
+            "hex": "#5e646c"
+          },
+          "$description": "strong border / focus"
+        },
+        "9": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.6,
+              0.0156,
+              258
+            ],
+            "hex": "#7b818a"
+          },
+          "$description": "solid"
+        },
+        "10": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.66,
+              0.0156,
+              258
+            ],
+            "hex": "#8c939c"
+          },
+          "$description": "solid hover"
+        },
+        "11": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.78,
+              0.0156,
+              258
+            ],
+            "hex": "#b1b8c2"
+          },
+          "$description": "low-contrast text"
+        },
+        "12": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.9665,
+              0.0048,
+              258
+            ],
+            "hex": "#f2f4f7"
+          },
+          "$description": "high-contrast text"
+        }
+      },
+      "amber": {
+        "1": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.19,
+              0.0197,
+              75.04
+            ],
+            "hex": "#19130a"
+          },
+          "$description": "app background"
+        },
+        "2": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.22,
+              0.0295,
+              75.04
+            ],
+            "hex": "#23190a"
+          },
+          "$description": "subtle background"
+        },
+        "3": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.27,
+              0.0492,
+              75.04
+            ],
+            "hex": "#342306"
+          },
+          "$description": "component bg"
+        },
+        "4": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.31,
+              0.0656,
+              75.04
+            ],
+            "hex": "#432b00"
+          },
+          "$description": "component bg hover"
+        },
+        "5": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.35,
+              0.0787,
+              75.04
+            ],
+            "hex": "#513400"
+          },
+          "$description": "component bg active"
+        },
+        "6": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.42,
+              0.0902,
+              75.04
+            ],
+            "hex": "#694500"
+          },
+          "$description": "subtle border"
+        },
+        "7": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.5,
+              0.1066,
+              75.04
+            ],
+            "hex": "#865900"
+          },
+          "$description": "border"
+        },
+        "8": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.6,
+              0.1312,
+              75.04
+            ],
+            "hex": "#ac7300"
+          },
+          "$description": "strong border / focus"
+        },
+        "9": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.8131,
+              0.164,
+              75.04
+            ],
+            "hex": "#ffb023"
+          },
+          "$description": "solid"
+        },
+        "10": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.8481,
+              0.164,
+              75.04
+            ],
+            "hex": "#ffc064"
+          },
+          "$description": "solid hover"
+        },
+        "11": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.84,
+              0.1312,
+              75.04
+            ],
+            "hex": "#fcbe61"
+          },
+          "$description": "low-contrast text"
+        },
+        "12": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.94,
+              0.0574,
+              75.04
+            ],
+            "hex": "#ffe7c8"
+          },
+          "$description": "high-contrast text"
+        }
+      },
+      "receive": {
+        "1": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.19,
+              0.0159,
+              181.91
+            ],
+            "hex": "#0c1614"
+          },
+          "$description": "app background"
+        },
+        "2": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.22,
+              0.0238,
+              181.91
+            ],
+            "hex": "#0d1e1b"
+          },
+          "$description": "subtle background"
+        },
+        "3": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.27,
+              0.0398,
+              181.91
+            ],
+            "hex": "#0b2d28"
+          },
+          "$description": "component bg"
+        },
+        "4": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.31,
+              0.053,
+              181.91
+            ],
+            "hex": "#043932"
+          },
+          "$description": "component bg hover"
+        },
+        "5": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.35,
+              0.0636,
+              181.91
+            ],
+            "hex": "#00453d"
+          },
+          "$description": "component bg active"
+        },
+        "6": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.42,
+              0.0729,
+              181.91
+            ],
+            "hex": "#075a50"
+          },
+          "$description": "subtle border"
+        },
+        "7": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.5,
+              0.0861,
+              181.91
+            ],
+            "hex": "#0f7367"
+          },
+          "$description": "border"
+        },
+        "8": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.6,
+              0.106,
+              181.91
+            ],
+            "hex": "#0a9485"
+          },
+          "$description": "strong border / focus"
+        },
+        "9": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.7845,
+              0.1325,
+              181.91
+            ],
+            "hex": "#2dd4bf"
+          },
+          "$description": "solid"
+        },
+        "10": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.8195,
+              0.1325,
+              181.91
+            ],
+            "hex": "#40e0ca"
+          },
+          "$description": "solid hover"
+        },
+        "11": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.84,
+              0.106,
+              181.91
+            ],
+            "hex": "#72e1d0"
+          },
+          "$description": "low-contrast text"
+        },
+        "12": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.94,
+              0.0464,
+              181.91
+            ],
+            "hex": "#caf6ed"
+          },
+          "$description": "high-contrast text"
+        }
+      },
+      "danger": {
+        "1": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.19,
+              0.024,
+              22
+            ],
+            "hex": "#1d0f0f"
+          },
+          "$description": "app background"
+        },
+        "2": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.22,
+              0.036,
+              22
+            ],
+            "hex": "#291313"
+          },
+          "$description": "subtle background"
+        },
+        "3": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.27,
+              0.06,
+              22
+            ],
+            "hex": "#3f1919"
+          },
+          "$description": "component bg"
+        },
+        "4": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.31,
+              0.08,
+              22
+            ],
+            "hex": "#521c1d"
+          },
+          "$description": "component bg hover"
+        },
+        "5": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.35,
+              0.096,
+              22
+            ],
+            "hex": "#632123"
+          },
+          "$description": "component bg active"
+        },
+        "6": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.42,
+              0.11,
+              22
+            ],
+            "hex": "#7e2f31"
+          },
+          "$description": "subtle border"
+        },
+        "7": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.5,
+              0.13,
+              22
+            ],
+            "hex": "#a03f40"
+          },
+          "$description": "border"
+        },
+        "8": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.6,
+              0.16,
+              22
+            ],
+            "hex": "#ce5053"
+          },
+          "$description": "strong border / focus"
+        },
+        "9": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.65,
+              0.2,
+              22
+            ],
+            "hex": "#f04c55"
+          },
+          "$description": "solid"
+        },
+        "10": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.685,
+              0.2,
+              22
+            ],
+            "hex": "#fd595f"
+          },
+          "$description": "solid hover"
+        },
+        "11": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.84,
+              0.16,
+              22
+            ],
+            "hex": "#ffb4b1"
+          },
+          "$description": "low-contrast text"
+        },
+        "12": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.94,
+              0.07,
+              22
+            ],
+            "hex": "#ffe4e2"
+          },
+          "$description": "high-contrast text"
+        }
+      },
+      "success": {
+        "1": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.19,
+              0.0204,
+              152
+            ],
+            "hex": "#0d160f"
+          },
+          "$description": "app background"
+        },
+        "2": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.22,
+              0.0306,
+              152
+            ],
+            "hex": "#0f1f13"
+          },
+          "$description": "subtle background"
+        },
+        "3": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.27,
+              0.051,
+              152
+            ],
+            "hex": "#102d1a"
+          },
+          "$description": "component bg"
+        },
+        "4": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.31,
+              0.068,
+              152
+            ],
+            "hex": "#0f3a1e"
+          },
+          "$description": "component bg hover"
+        },
+        "5": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.35,
+              0.0816,
+              152
+            ],
+            "hex": "#0f4624"
+          },
+          "$description": "component bg active"
+        },
+        "6": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.42,
+              0.0935,
+              152
+            ],
+            "hex": "#1b5b32"
+          },
+          "$description": "subtle border"
+        },
+        "7": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.5,
+              0.1105,
+              152
+            ],
+            "hex": "#267542"
+          },
+          "$description": "border"
+        },
+        "8": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.6,
+              0.136,
+              152
+            ],
+            "hex": "#2f9756"
+          },
+          "$description": "strong border / focus"
+        },
+        "9": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.75,
+              0.17,
+              152
+            ],
+            "hex": "#43cc76"
+          },
+          "$description": "solid"
+        },
+        "10": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.785,
+              0.17,
+              152
+            ],
+            "hex": "#51d781"
+          },
+          "$description": "solid hover"
+        },
+        "11": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.84,
+              0.136,
+              152
+            ],
+            "hex": "#81e49e"
+          },
+          "$description": "low-contrast text"
+        },
+        "12": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.94,
+              0.0595,
+              152
+            ],
+            "hex": "#cff7d8"
+          },
+          "$description": "high-contrast text"
+        }
+      },
+      "emergency": {
+        "1": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.19,
+              0.0286,
+              18
+            ],
+            "hex": "#1f0e0f"
+          },
+          "$description": "app background"
+        },
+        "2": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.22,
+              0.0429,
+              18
+            ],
+            "hex": "#2c1213"
+          },
+          "$description": "subtle background"
+        },
+        "3": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.27,
+              0.0715,
+              18
+            ],
+            "hex": "#431519"
+          },
+          "$description": "component bg"
+        },
+        "4": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.31,
+              0.0953,
+              18
+            ],
+            "hex": "#57151d"
+          },
+          "$description": "component bg hover"
+        },
+        "5": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.35,
+              0.1144,
+              18
+            ],
+            "hex": "#691823"
+          },
+          "$description": "component bg active"
+        },
+        "6": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.42,
+              0.1311,
+              18
+            ],
+            "hex": "#862531"
+          },
+          "$description": "subtle border"
+        },
+        "7": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.5,
+              0.1549,
+              18
+            ],
+            "hex": "#a93240"
+          },
+          "$description": "border"
+        },
+        "8": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.6,
+              0.1906,
+              18
+            ],
+            "hex": "#da3f53"
+          },
+          "$description": "strong border / focus"
+        },
+        "9": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.6497,
+              0.2383,
+              18
+            ],
+            "hex": "#ff2d55"
+          },
+          "$description": "solid"
+        },
+        "10": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.6847,
+              0.2383,
+              18
+            ],
+            "hex": "#ff5468"
+          },
+          "$description": "solid hover"
+        },
+        "11": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.84,
+              0.1906,
+              18
+            ],
+            "hex": "#ffb4b5"
+          },
+          "$description": "low-contrast text"
+        },
+        "12": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.94,
+              0.0834,
+              18
+            ],
+            "hex": "#ffe4e4"
+          },
+          "$description": "high-contrast text"
+        }
+      }
+    },
+    "light": {
+      "neutral": {
+        "1": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.99,
+              0.0096,
+              258
+            ],
+            "hex": "#fafcff"
+          },
+          "$description": "app background"
+        },
+        "2": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.975,
+              0.0096,
+              258
+            ],
+            "hex": "#f3f7fd"
+          },
+          "$description": "subtle background"
+        },
+        "3": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.95,
+              0.0096,
+              258
+            ],
+            "hex": "#ebeff5"
+          },
+          "$description": "component bg"
+        },
+        "4": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.925,
+              0.0096,
+              258
+            ],
+            "hex": "#e2e6ed"
+          },
+          "$description": "component bg hover"
+        },
+        "5": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.9,
+              0.0096,
+              258
+            ],
+            "hex": "#dadee4"
+          },
+          "$description": "component bg active"
+        },
+        "6": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.87,
+              0.0096,
+              258
+            ],
+            "hex": "#d0d4db"
+          },
+          "$description": "subtle border"
+        },
+        "7": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.8,
+              0.0125,
+              258
+            ],
+            "hex": "#b9bec6"
+          },
+          "$description": "border"
+        },
+        "8": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.62,
+              0.0125,
+              258
+            ],
+            "hex": "#82878e"
+          },
+          "$description": "strong border / focus"
+        },
+        "9": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.56,
+              0.0125,
+              258
+            ],
+            "hex": "#70757c"
+          },
+          "$description": "solid"
+        },
+        "10": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.52,
+              0.0125,
+              258
+            ],
+            "hex": "#656970"
+          },
+          "$description": "solid hover"
+        },
+        "11": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.46,
+              0.0125,
+              258
+            ],
+            "hex": "#54585f"
+          },
+          "$description": "low-contrast text"
+        },
+        "12": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.24,
+              0.0038,
+              258
+            ],
+            "hex": "#1e1f21"
+          },
+          "$description": "high-contrast text"
+        }
+      },
+      "amber": {
+        "1": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.99,
+              0.0098,
+              75.04
+            ],
+            "hex": "#fffbf6"
+          },
+          "$description": "app background"
+        },
+        "2": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.975,
+              0.0197,
+              75.04
+            ],
+            "hex": "#fff5e9"
+          },
+          "$description": "subtle background"
+        },
+        "3": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.95,
+              0.0361,
+              75.04
+            ],
+            "hex": "#fdecd4"
+          },
+          "$description": "component bg"
+        },
+        "4": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.92,
+              0.0525,
+              75.04
+            ],
+            "hex": "#fae0bf"
+          },
+          "$description": "component bg hover"
+        },
+        "5": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.89,
+              0.0689,
+              75.04
+            ],
+            "hex": "#f6d5a8"
+          },
+          "$description": "component bg active"
+        },
+        "6": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.85,
+              0.082,
+              75.04
+            ],
+            "hex": "#eec791"
+          },
+          "$description": "subtle border"
+        },
+        "7": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.79,
+              0.0984,
+              75.04
+            ],
+            "hex": "#e0b271"
+          },
+          "$description": "border"
+        },
+        "8": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.72,
+              0.123,
+              75.04
+            ],
+            "hex": "#d19941"
+          },
+          "$description": "strong border / focus"
+        },
+        "9": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.8131,
+              0.164,
+              75.04
+            ],
+            "hex": "#ffb023"
+          },
+          "$description": "solid"
+        },
+        "10": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.7731,
+              0.164,
+              75.04
+            ],
+            "hex": "#f1a300"
+          },
+          "$description": "solid hover"
+        },
+        "11": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.5,
+              0.123,
+              75.04
+            ],
+            "hex": "#865900"
+          },
+          "$description": "low-contrast text"
+        },
+        "12": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.3,
+              0.0738,
+              75.04
+            ],
+            "hex": "#402800"
+          },
+          "$description": "high-contrast text"
+        }
+      },
+      "receive": {
+        "1": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.99,
+              0.008,
+              181.91
+            ],
+            "hex": "#f6fefc"
+          },
+          "$description": "app background"
+        },
+        "2": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.975,
+              0.0159,
+              181.91
+            ],
+            "hex": "#ecfbf7"
+          },
+          "$description": "subtle background"
+        },
+        "3": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.95,
+              0.0292,
+              181.91
+            ],
+            "hex": "#daf5f0"
+          },
+          "$description": "component bg"
+        },
+        "4": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.92,
+              0.0424,
+              181.91
+            ],
+            "hex": "#c7eee6"
+          },
+          "$description": "component bg hover"
+        },
+        "5": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.89,
+              0.0556,
+              181.91
+            ],
+            "hex": "#b3e7dd"
+          },
+          "$description": "component bg active"
+        },
+        "6": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.85,
+              0.0663,
+              181.91
+            ],
+            "hex": "#9dddd1"
+          },
+          "$description": "subtle border"
+        },
+        "7": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.79,
+              0.0795,
+              181.91
+            ],
+            "hex": "#7eccbe"
+          },
+          "$description": "border"
+        },
+        "8": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.72,
+              0.0994,
+              181.91
+            ],
+            "hex": "#51b9a9"
+          },
+          "$description": "strong border / focus"
+        },
+        "9": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.7845,
+              0.1325,
+              181.91
+            ],
+            "hex": "#2dd4bf"
+          },
+          "$description": "solid"
+        },
+        "10": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.7445,
+              0.1325,
+              181.91
+            ],
+            "hex": "#09c7b2"
+          },
+          "$description": "solid hover"
+        },
+        "11": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.5,
+              0.0994,
+              181.91
+            ],
+            "hex": "#007467"
+          },
+          "$description": "low-contrast text"
+        },
+        "12": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.3,
+              0.0596,
+              181.91
+            ],
+            "hex": "#003630"
+          },
+          "$description": "high-contrast text"
+        }
+      },
+      "danger": {
+        "1": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.99,
+              0.012,
+              22
+            ],
+            "hex": "#fffbfa"
+          },
+          "$description": "app background"
+        },
+        "2": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.975,
+              0.024,
+              22
+            ],
+            "hex": "#fff4f3"
+          },
+          "$description": "subtle background"
+        },
+        "3": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.95,
+              0.044,
+              22
+            ],
+            "hex": "#ffe8e7"
+          },
+          "$description": "component bg"
+        },
+        "4": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.92,
+              0.064,
+              22
+            ],
+            "hex": "#ffdbd8"
+          },
+          "$description": "component bg hover"
+        },
+        "5": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.89,
+              0.084,
+              22
+            ],
+            "hex": "#ffcdca"
+          },
+          "$description": "component bg active"
+        },
+        "6": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.85,
+              0.1,
+              22
+            ],
+            "hex": "#ffb9b6"
+          },
+          "$description": "subtle border"
+        },
+        "7": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.79,
+              0.12,
+              22
+            ],
+            "hex": "#fe9b98"
+          },
+          "$description": "border"
+        },
+        "8": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.72,
+              0.15,
+              22
+            ],
+            "hex": "#f47a79"
+          },
+          "$description": "strong border / focus"
+        },
+        "9": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.65,
+              0.2,
+              22
+            ],
+            "hex": "#f04c55"
+          },
+          "$description": "solid"
+        },
+        "10": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.61,
+              0.2,
+              22
+            ],
+            "hex": "#e23e49"
+          },
+          "$description": "solid hover"
+        },
+        "11": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.5,
+              0.15,
+              22
+            ],
+            "hex": "#a8353a"
+          },
+          "$description": "low-contrast text"
+        },
+        "12": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.3,
+              0.09,
+              22
+            ],
+            "hex": "#521518"
+          },
+          "$description": "high-contrast text"
+        }
+      },
+      "success": {
+        "1": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.99,
+              0.0102,
+              152
+            ],
+            "hex": "#f7fef8"
+          },
+          "$description": "app background"
+        },
+        "2": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.975,
+              0.0204,
+              152
+            ],
+            "hex": "#edfbf0"
+          },
+          "$description": "subtle background"
+        },
+        "3": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.95,
+              0.0374,
+              152
+            ],
+            "hex": "#ddf6e2"
+          },
+          "$description": "component bg"
+        },
+        "4": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.92,
+              0.0544,
+              152
+            ],
+            "hex": "#cbf0d3"
+          },
+          "$description": "component bg hover"
+        },
+        "5": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.89,
+              0.0714,
+              152
+            ],
+            "hex": "#b8e9c4"
+          },
+          "$description": "component bg active"
+        },
+        "6": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.85,
+              0.085,
+              152
+            ],
+            "hex": "#a4deb3"
+          },
+          "$description": "subtle border"
+        },
+        "7": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.79,
+              0.102,
+              152
+            ],
+            "hex": "#87ce9a"
+          },
+          "$description": "border"
+        },
+        "8": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.72,
+              0.1275,
+              152
+            ],
+            "hex": "#60bb7c"
+          },
+          "$description": "strong border / focus"
+        },
+        "9": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.75,
+              0.17,
+              152
+            ],
+            "hex": "#43cc76"
+          },
+          "$description": "solid"
+        },
+        "10": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.71,
+              0.17,
+              152
+            ],
+            "hex": "#31bf6a"
+          },
+          "$description": "solid hover"
+        },
+        "11": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.5,
+              0.1275,
+              152
+            ],
+            "hex": "#0c773c"
+          },
+          "$description": "low-contrast text"
+        },
+        "12": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.3,
+              0.0765,
+              152
+            ],
+            "hex": "#033819"
+          },
+          "$description": "high-contrast text"
+        }
+      },
+      "emergency": {
+        "1": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.99,
+              0.0143,
+              18
+            ],
+            "hex": "#fffafa"
+          },
+          "$description": "app background"
+        },
+        "2": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.975,
+              0.0286,
+              18
+            ],
+            "hex": "#fff4f4"
+          },
+          "$description": "subtle background"
+        },
+        "3": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.95,
+              0.0524,
+              18
+            ],
+            "hex": "#ffe8e8"
+          },
+          "$description": "component bg"
+        },
+        "4": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.92,
+              0.0763,
+              18
+            ],
+            "hex": "#ffdada"
+          },
+          "$description": "component bg hover"
+        },
+        "5": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.89,
+              0.1001,
+              18
+            ],
+            "hex": "#ffcccc"
+          },
+          "$description": "component bg active"
+        },
+        "6": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.85,
+              0.1192,
+              18
+            ],
+            "hex": "#ffb9ba"
+          },
+          "$description": "subtle border"
+        },
+        "7": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.79,
+              0.143,
+              18
+            ],
+            "hex": "#ff999d"
+          },
+          "$description": "border"
+        },
+        "8": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.72,
+              0.1787,
+              18
+            ],
+            "hex": "#ff6f7a"
+          },
+          "$description": "strong border / focus"
+        },
+        "9": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.6497,
+              0.2383,
+              18
+            ],
+            "hex": "#ff2d55"
+          },
+          "$description": "solid"
+        },
+        "10": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.6097,
+              0.2383,
+              18
+            ],
+            "hex": "#f01349"
+          },
+          "$description": "solid hover"
+        },
+        "11": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.5,
+              0.1787,
+              18
+            ],
+            "hex": "#b2213a"
+          },
+          "$description": "low-contrast text"
+        },
+        "12": {
+          "$value": {
+            "colorSpace": "oklch",
+            "components": [
+              0.3,
+              0.1072,
+              18
+            ],
+            "hex": "#570b18"
+          },
+          "$description": "high-contrast text"
+        }
+      }
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { brand } from "@titi/app-ui/brand-tokens";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -9,8 +10,8 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#0E1013",
-    theme_color: "#0E1013",
+    background_color: brand.dark["bg.canvas"],
+    theme_color: brand.dark["bg.canvas"],
     lang: "en",
     categories: ["communication", "utilities"],
     icons: [

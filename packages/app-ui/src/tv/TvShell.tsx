@@ -17,6 +17,7 @@ import { forwardedLabel, previewOf, QUICK_REACTIONS, quoteText, reactionLabel } 
 import { t } from "../i18n";
 import type { ChatItem } from "../types";
 import { Avatar } from "../Avatar";
+import { BrandMark } from "../BrandMark";
 import { cn, hueColor } from "../cn";
 
 const KEY = { LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40, OK: 13, BACK: 10009, ESC: 27, PLAY_PAUSE: 10252, RED: 403 } as const;
@@ -174,14 +175,14 @@ export function TvShell() {
     return () => { window.removeEventListener("keydown", onDown); window.removeEventListener("keyup", onUp); };
   }, [sheet, pane, action, actions, groups, sel, focus, invites, down, up, activeId]);
 
-  if (!ready) return <div className="grid h-[1080px] place-items-center text-4xl text-muted">Titi</div>;
+  if (!ready) return <div className="grid h-[1080px] place-items-center"><BrandMark size={240} state="searching" label="Titi is starting" /></div>;
 
   return (
     <div className="tv relative flex h-[1080px] w-[1920px] overflow-hidden bg-graphite text-ink">
       {/* rail */}
       <aside className="flex w-[520px] shrink-0 flex-col gap-4 py-[56px] pl-[80px] pr-8">
         <div className="mb-6 flex items-center gap-4">
-          <span className="grid h-16 w-16 place-items-center rounded-[22px] bg-amber text-graphite"><Mic size={34} /></span>
+          <span className="grid h-16 w-16 place-items-center rounded-[22px] bg-surface"><BrandMark size={56} state="intro" /></span>
           <div>
             <div className="text-[40px] font-extrabold leading-none">Titi</div>
             <div className="mt-1 text-xl text-muted">{settings.name}</div>

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 500" width="1024" height="500">
+  <defs>
+    <radialGradient id="g" cx="78%" cy="50%" r="60%">
+      <stop offset="0" stop-color="#FFB020" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#0E1013" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="500" fill="#0E1013"/>
+  <rect width="1024" height="500" fill="url(#g)"/>
+  <g stroke="#2A2F38" stroke-width="1.5" fill="none" opacity="0.8">
+    <circle cx="800" cy="250" r="90"/><circle cx="800" cy="250" r="160"/><circle cx="800" cy="250" r="230"/>
+  </g>
+  <g transform="translate(720 170) scale(1.5)">
+    <path fill="#FFB020" d="M36,38 C36,29 43,23 54,23 C66,23 74,30 74,40 C74,50 66,57 54,57 L50,57 L42,66 L43,57 C39,55 36,48 36,38 Z"/>
+    <circle cx="62.6" cy="36" r="2.6" fill="#0E1013"/>
+    <path fill="#D98E00" d="M73,39 L81,42 L73,45 Z"/>
+    <path stroke="#FFB020" stroke-width="3.2" stroke-linecap="round" d="M52,23 L46,12"/>
+    <circle cx="46" cy="12" r="3" fill="#FFB020"/>
+    <path stroke="#2DD4BF" stroke-width="2.6" stroke-linecap="round" fill="none" d="M31,20 A16,16 0 0,1 40,10"/>
+    <path stroke="#2DD4BF" stroke-width="2.6" stroke-linecap="round" fill="none" d="M25,14 A24,24 0 0,1 38,4"/>
+  </g>
+  <text x="72" y="215" font-family="Manrope, Segoe UI, Arial, sans-serif" font-weight="800" font-size="92" fill="#F2F4F7">Titi</text>
+  <text x="72" y="285" font-family="Manrope, Segoe UI, Arial, sans-serif" font-weight="700" font-size="44" fill="#FFB020">Talk anywhere. No signal needed.</text>
+  <text x="72" y="340" font-family="Manrope, Segoe UI, Arial, sans-serif" font-size="26" fill="#9AA3B2">Walkie-talkie over Wi‑Fi, hotspot &amp; Bluetooth · encrypted · free</text>
+</svg>

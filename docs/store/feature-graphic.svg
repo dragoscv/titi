@@ -1,25 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 500" width="1024" height="500">
-  <defs>
-    <radialGradient id="g" cx="78%" cy="50%" r="60%">
-      <stop offset="0" stop-color="#FFB020" stop-opacity="0.35"/>
-      <stop offset="1" stop-color="#0E1013" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-  <rect width="1024" height="500" fill="#0E1013"/>
-  <rect width="1024" height="500" fill="url(#g)"/>
-  <g stroke="#2A2F38" stroke-width="1.5" fill="none" opacity="0.8">
-    <circle cx="800" cy="250" r="90"/><circle cx="800" cy="250" r="160"/><circle cx="800" cy="250" r="230"/>
-  </g>
-  <g transform="translate(720 170) scale(1.5)">
-    <path fill="#FFB020" d="M36,38 C36,29 43,23 54,23 C66,23 74,30 74,40 C74,50 66,57 54,57 L50,57 L42,66 L43,57 C39,55 36,48 36,38 Z"/>
-    <circle cx="62.6" cy="36" r="2.6" fill="#0E1013"/>
-    <path fill="#D98E00" d="M73,39 L81,42 L73,45 Z"/>
-    <path stroke="#FFB020" stroke-width="3.2" stroke-linecap="round" d="M52,23 L46,12"/>
-    <circle cx="46" cy="12" r="3" fill="#FFB020"/>
-    <path stroke="#2DD4BF" stroke-width="2.6" stroke-linecap="round" fill="none" d="M31,20 A16,16 0 0,1 40,10"/>
-    <path stroke="#2DD4BF" stroke-width="2.6" stroke-linecap="round" fill="none" d="M25,14 A24,24 0 0,1 38,4"/>
-  </g>
-  <text x="72" y="215" font-family="Manrope, Segoe UI, Arial, sans-serif" font-weight="800" font-size="92" fill="#F2F4F7">Titi</text>
-  <text x="72" y="285" font-family="Manrope, Segoe UI, Arial, sans-serif" font-weight="700" font-size="44" fill="#FFB020">Talk anywhere. No signal needed.</text>
-  <text x="72" y="340" font-family="Manrope, Segoe UI, Arial, sans-serif" font-size="26" fill="#9AA3B2">Walkie-talkie over Wi‑Fi, hotspot &amp; Bluetooth · encrypted · free</text>
+<defs><radialGradient id="g" cx="76%" cy="52%" r="55%"><stop offset="0" stop-color="#ffb023" stop-opacity="0.28"/><stop offset="1" stop-color="#0d1015" stop-opacity="0"/></radialGradient></defs>
+<rect width="1024" height="500" fill="#0d1015"/><rect width="1024" height="500" fill="url(#g)"/>
+<g fill="none" stroke="#2A2F38" stroke-width="1.5"><circle cx="780" cy="262" r="120"/><circle cx="780" cy="262" r="190"/><circle cx="780" cy="262" r="260"/><circle cx="780" cy="262" r="330"/></g>
+<g transform="translate(601.429 63.587) scale(7.937)"><path d="M11,26a11,11 0 1,0 22,0a11,11 0 1,0 -22,0Z" fill="#ffb023"/><path d="M12.03,30.65L17.35,35.97L11,39.5Z" fill="#ffb023"/><path d="M32,22.6L38.2,26L32,29.4Z" fill="#D98E00"/><path d="M24.3,22.4a1.9,1.9 0 1,0 3.8,0a1.9,1.9 0 1,0 -3.8,0Z" fill="#0d1015"/><path d="M7.046,19.027A16.5,16.5 0 0,1 17.729,10.062" stroke="#2dd4bf" stroke-width="2.6" stroke-linecap="round" fill="none"/></g>
+<g transform="translate(66.667 86.963) scale(1.481)"><path d="M11,26a11,11 0 1,0 22,0a11,11 0 1,0 -22,0Z" fill="#ffb023"/><path d="M12.03,30.65L17.35,35.97L11,39.5Z" fill="#ffb023"/><path d="M32,22.6L38.2,26L32,29.4Z" fill="#D98E00"/><path d="M24.3,22.4a1.9,1.9 0 1,0 3.8,0a1.9,1.9 0 1,0 -3.8,0Z" fill="#0d1015"/><path d="M7.046,19.027A16.5,16.5 0 0,1 17.729,10.062" stroke="#2dd4bf" stroke-width="2.6" stroke-linecap="round" fill="none"/></g><g transform="translate(140.6 96) scale(0.03650586701434159) translate(0 1510)"><g fill="#f2f4f7" transform="scale(1 -1)"><path transform="translate(0 0)" d="M788 0Q676 -21 568.5 -18.5Q461 -16 376.5 19.5Q292 55 248 134Q208 208 206.0 284.5Q204 361 204 458V1380H476V474Q476 411 477.5 360.5Q479 310 498 280Q534 223 613.0 218.0Q692 213 788 226ZM118 870V1080H788V870Z"/><path transform="translate(852 0)" d="M160 0V1080H432V0Z"/><path transform="translate(1408 0)" d="M788 0Q676 -21 568.5 -18.5Q461 -16 376.5 19.5Q292 55 248 134Q208 208 206.0 284.5Q204 361 204 458V1380H476V474Q476 411 477.5 360.5Q479 310 498 280Q534 223 613.0 218.0Q692 213 788 226ZM118 870V1080H788V870Z"/><path transform="translate(2260 0)" d="M160 0V1080H432V0Z"/></g><g fill="#ffb023"><path d="M990,-1352a158,158 0 1,0 316,0a158,158 0 1,0 -316,0Z"/><path d="M2398,-1352a158,158 0 1,0 316,0a158,158 0 1,0 -316,0Z"/></g></g>
+<text x="72" y="268" fill="#f2f4f7" font-family="Manrope" font-weight="800" font-size="54" letter-spacing="-1.5">Talk anywhere.</text>
+<text x="72" y="330" fill="#ffb023" font-family="Manrope" font-weight="800" font-size="54" letter-spacing="-1.5">No signal needed.</text>
+<text x="72" y="392" fill="#b1b8c2" font-family="Manrope" font-weight="500" font-size="22">Wi‑Fi · hotspot · Bluetooth · encrypted</text>
 </svg>

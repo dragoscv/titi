@@ -16,29 +16,32 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import ro.titi.app.R
 import ro.titi.app.data.ThemeMode
+import ro.titi.brand.BrandDark
+import ro.titi.brand.BrandLight
 
-// ADR-0007 "Signal Amber"
+// ADR-0007 "Signal Amber" — tokens come from brand/ (brand pack v1) via the generated
+// ro.titi.brand.BrandTokens.kt; never hand-type hex here.
 object Palette {
-    val Graphite = Color(0xFF0E1013)
-    val Surface = Color(0xFF16191E)
-    val Elevated = Color(0xFF1E2229)
-    val Outline = Color(0xFF2A2F38)
-    val Text = Color(0xFFF2F4F7)
-    val Muted = Color(0xFF9AA3B2)
-    val Amber = Color(0xFFFFB020)
-    val AmberDeep = Color(0xFFD98E00)
-    val Teal = Color(0xFF2DD4BF)
-    val Danger = Color(0xFFFF5A5F)
-    val Success = Color(0xFF3DDC84)
-    val Emergency = Color(0xFFFF2D55)
+    val Graphite = BrandDark.bgCanvas
+    val Surface = BrandDark.bgSurface
+    val Elevated = BrandDark.bgElevated
+    val Outline = BrandDark.borderDefault
+    val Text = BrandDark.fgDefault
+    val Muted = BrandDark.fgMuted
+    val Amber = BrandDark.accentSolid
+    val AmberDeep = BrandDark.accentPressed
+    val Teal = BrandDark.receiveSolid
+    val Danger = BrandDark.dangerSolid
+    val Success = BrandDark.successSolid
+    val Emergency = BrandDark.emergencySolid
 
     // light
-    val LightBg = Color(0xFFF7F8FA)
-    val LightSurface = Color(0xFFFFFFFF)
-    val LightElevated = Color(0xFFEEF0F4)
-    val LightOutline = Color(0xFFD5D9E1)
-    val LightText = Color(0xFF14171C)
-    val LightMuted = Color(0xFF5B6473)
+    val LightBg = BrandLight.bgCanvas
+    val LightSurface = BrandLight.bgSurface
+    val LightElevated = BrandLight.bgElevated
+    val LightOutline = BrandLight.borderDefault
+    val LightText = BrandLight.fgDefault
+    val LightMuted = BrandLight.fgMuted
 }
 
 /** Semantic colours that Material 3 has no slot for. */
@@ -72,19 +75,19 @@ private val Dark: ColorScheme = darkColorScheme(
     onSurfaceVariant = Palette.Muted,
     surfaceContainer = Palette.Surface,
     surfaceContainerHigh = Palette.Elevated,
-    surfaceContainerHighest = Color(0xFF262B33),
+    surfaceContainerHighest = BrandDark.bgHighest,
     outline = Palette.Outline,
-    outlineVariant = Color(0xFF1F242B),
+    outlineVariant = BrandDark.borderSubtle,
     error = Palette.Danger,
     onError = Palette.Graphite,
 )
 
 private val Light: ColorScheme = lightColorScheme(
-    primary = Palette.AmberDeep,
+    primary = BrandLight.accentFg,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFFFE4B3),
-    onPrimaryContainer = Color(0xFF3D2A00),
-    secondary = Color(0xFF0F9F8F),
+    primaryContainer = BrandLight.accentContainer,
+    onPrimaryContainer = BrandLight.accentOnContainer,
+    secondary = BrandLight.receiveFg,
     onSecondary = Color.White,
     background = Palette.LightBg,
     onBackground = Palette.LightText,
@@ -94,10 +97,10 @@ private val Light: ColorScheme = lightColorScheme(
     onSurfaceVariant = Palette.LightMuted,
     surfaceContainer = Palette.LightSurface,
     surfaceContainerHigh = Palette.LightElevated,
-    surfaceContainerHighest = Color(0xFFE4E7EC),
+    surfaceContainerHighest = BrandLight.bgHighest,
     outline = Palette.LightOutline,
-    outlineVariant = Color(0xFFE6E9EE),
-    error = Color(0xFFD32F2F),
+    outlineVariant = BrandLight.borderSubtle,
+    error = BrandLight.dangerFg,
     onError = Color.White,
 )
 

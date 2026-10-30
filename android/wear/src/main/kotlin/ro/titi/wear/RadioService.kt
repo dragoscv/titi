@@ -153,7 +153,7 @@ class RadioService : LifecycleService() {
             else -> getString(R.string.notif_listening, g.name)
         }
         return NotificationCompat.Builder(this, WearApp.CHANNEL_RADIO)
-            .setSmallIcon(R.drawable.ic_launcher_monochrome)
+            .setSmallIcon(R.drawable.ic_stat_titi)
             .setContentTitle(title)
             .setContentText(g?.let { resources.getQuantityString(R.plurals.members_count, it.members.size, it.members.size) })
             .setContentIntent(openIntent())
@@ -195,7 +195,7 @@ class RadioService : LifecycleService() {
         val nm = NotificationManagerCompat.from(this)
         if (!nm.areNotificationsEnabled()) return
         val b = NotificationCompat.Builder(this, WearApp.CHANNEL_ALERTS)
-            .setSmallIcon(R.drawable.ic_launcher_monochrome)
+            .setSmallIcon(R.drawable.ic_stat_titi)
             .setContentIntent(openIntent(2))
             .setAutoCancel(true)
             .setColor(getColor(R.color.amber))

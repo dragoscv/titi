@@ -1,0 +1,322 @@
+{
+  "pairs": [
+    {
+      "name": "dark: fg.default on bg.canvas",
+      "fg": "oklch(0.9665 0.012 265)",
+      "bg": "oklch(0.172 0.03 265)",
+      "use": "body"
+    },
+    {
+      "name": "dark: fg.muted on bg.canvas",
+      "fg": "oklch(0.78 0.039 265)",
+      "bg": "oklch(0.172 0.03 265)",
+      "use": "body"
+    },
+    {
+      "name": "dark: accent.fg on bg.canvas",
+      "fg": "oklch(0.84 0.132 75)",
+      "bg": "oklch(0.172 0.03 265)",
+      "use": "body"
+    },
+    {
+      "name": "dark: receive.fg on bg.canvas",
+      "fg": "oklch(0.84 0.096 230)",
+      "bg": "oklch(0.172 0.03 265)",
+      "use": "body"
+    },
+    {
+      "name": "dark: danger.fg on bg.canvas",
+      "fg": "oklch(0.84 0.16 22)",
+      "bg": "oklch(0.172 0.03 265)",
+      "use": "body"
+    },
+    {
+      "name": "dark: success.fg on bg.canvas",
+      "fg": "oklch(0.84 0.136 152)",
+      "bg": "oklch(0.172 0.03 265)",
+      "use": "body"
+    },
+    {
+      "name": "dark: fg.default on bg.surface",
+      "fg": "oklch(0.9665 0.012 265)",
+      "bg": "oklch(0.2125 0.03 265)",
+      "use": "body"
+    },
+    {
+      "name": "dark: fg.muted on bg.surface",
+      "fg": "oklch(0.78 0.039 265)",
+      "bg": "oklch(0.2125 0.03 265)",
+      "use": "body"
+    },
+    {
+      "name": "dark: accent.fg on bg.surface",
+      "fg": "oklch(0.84 0.132 75)",
+      "bg": "oklch(0.2125 0.03 265)",
+      "use": "body"
+    },
+    {
+      "name": "dark: receive.fg on bg.surface",
+      "fg": "oklch(0.84 0.096 230)",
+      "bg": "oklch(0.2125 0.03 265)",
+      "use": "body"
+    },
+    {
+      "name": "dark: danger.fg on bg.surface",
+      "fg": "oklch(0.84 0.16 22)",
+      "bg": "oklch(0.2125 0.03 265)",
+      "use": "body"
+    },
+    {
+      "name": "dark: success.fg on bg.surface",
+      "fg": "oklch(0.84 0.136 152)",
+      "bg": "oklch(0.2125 0.03 265)",
+      "use": "body"
+    },
+    {
+      "name": "dark: fg.default on bg.elevated",
+      "fg": "oklch(0.9665 0.012 265)",
+      "bg": "oklch(0.251 0.03 265)",
+      "use": "body"
+    },
+    {
+      "name": "dark: fg.muted on bg.elevated",
+      "fg": "oklch(0.78 0.039 265)",
+      "bg": "oklch(0.251 0.03 265)",
+      "use": "body"
+    },
+    {
+      "name": "dark: accent.fg on bg.elevated",
+      "fg": "oklch(0.84 0.132 75)",
+      "bg": "oklch(0.251 0.03 265)",
+      "use": "body"
+    },
+    {
+      "name": "dark: receive.fg on bg.elevated",
+      "fg": "oklch(0.84 0.096 230)",
+      "bg": "oklch(0.251 0.03 265)",
+      "use": "body"
+    },
+    {
+      "name": "dark: danger.fg on bg.elevated",
+      "fg": "oklch(0.84 0.16 22)",
+      "bg": "oklch(0.251 0.03 265)",
+      "use": "body"
+    },
+    {
+      "name": "dark: success.fg on bg.elevated",
+      "fg": "oklch(0.84 0.136 152)",
+      "bg": "oklch(0.251 0.03 265)",
+      "use": "body"
+    },
+    {
+      "name": "dark: fg.on-accent on accent.solid",
+      "fg": "oklch(0.172 0.03 265)",
+      "bg": "oklch(0.8131 0.165 75)",
+      "use": "body"
+    },
+    {
+      "name": "dark: fg.on-accent on accent.pressed",
+      "fg": "oklch(0.172 0.03 265)",
+      "bg": "oklch(0.8481 0.165 75)",
+      "use": "body"
+    },
+    {
+      "name": "dark: fg.on-accent on receive.solid",
+      "fg": "oklch(0.172 0.03 265)",
+      "bg": "oklch(0.76 0.12 230)",
+      "use": "body"
+    },
+    {
+      "name": "dark: fg.on-emergency on emergency.solid",
+      "fg": "oklch(1 0 0)",
+      "bg": "oklch(0.6497 0.2383 18)",
+      "use": "large"
+    },
+    {
+      "name": "dark: accent.solid on bg.canvas",
+      "fg": "oklch(0.8131 0.165 75)",
+      "bg": "oklch(0.172 0.03 265)",
+      "use": "ui"
+    },
+    {
+      "name": "dark: focus.ring on bg.canvas",
+      "fg": "oklch(0.8131 0.165 75)",
+      "bg": "oklch(0.172 0.03 265)",
+      "use": "ui"
+    },
+    {
+      "name": "dark: focus.ring on bg.surface",
+      "fg": "oklch(0.8131 0.165 75)",
+      "bg": "oklch(0.2125 0.03 265)",
+      "use": "ui"
+    },
+    {
+      "name": "dark: border.strong on bg.canvas",
+      "fg": "oklch(0.5 0.039 265)",
+      "bg": "oklch(0.172 0.03 265)",
+      "use": "ui"
+    },
+    {
+      "name": "dark: danger.solid on bg.canvas",
+      "fg": "oklch(0.65 0.2 22)",
+      "bg": "oklch(0.172 0.03 265)",
+      "use": "ui"
+    },
+    {
+      "name": "light: fg.default on bg.canvas",
+      "fg": "oklch(0.24 0.0096 265)",
+      "bg": "oklch(0.99 0.024 265)",
+      "use": "body"
+    },
+    {
+      "name": "light: fg.muted on bg.canvas",
+      "fg": "oklch(0.46 0.0312 265)",
+      "bg": "oklch(0.99 0.024 265)",
+      "use": "body"
+    },
+    {
+      "name": "light: accent.fg on bg.canvas",
+      "fg": "oklch(0.5 0.1237 75)",
+      "bg": "oklch(0.99 0.024 265)",
+      "use": "body"
+    },
+    {
+      "name": "light: receive.fg on bg.canvas",
+      "fg": "oklch(0.5 0.09 230)",
+      "bg": "oklch(0.99 0.024 265)",
+      "use": "body"
+    },
+    {
+      "name": "light: danger.fg on bg.canvas",
+      "fg": "oklch(0.5 0.15 22)",
+      "bg": "oklch(0.99 0.024 265)",
+      "use": "body"
+    },
+    {
+      "name": "light: success.fg on bg.canvas",
+      "fg": "oklch(0.5 0.1275 152)",
+      "bg": "oklch(0.99 0.024 265)",
+      "use": "body"
+    },
+    {
+      "name": "light: fg.default on bg.surface",
+      "fg": "oklch(0.24 0.0096 265)",
+      "bg": "oklch(0.975 0.024 265)",
+      "use": "body"
+    },
+    {
+      "name": "light: fg.muted on bg.surface",
+      "fg": "oklch(0.46 0.0312 265)",
+      "bg": "oklch(0.975 0.024 265)",
+      "use": "body"
+    },
+    {
+      "name": "light: accent.fg on bg.surface",
+      "fg": "oklch(0.5 0.1237 75)",
+      "bg": "oklch(0.975 0.024 265)",
+      "use": "body"
+    },
+    {
+      "name": "light: receive.fg on bg.surface",
+      "fg": "oklch(0.5 0.09 230)",
+      "bg": "oklch(0.975 0.024 265)",
+      "use": "body"
+    },
+    {
+      "name": "light: danger.fg on bg.surface",
+      "fg": "oklch(0.5 0.15 22)",
+      "bg": "oklch(0.975 0.024 265)",
+      "use": "body"
+    },
+    {
+      "name": "light: success.fg on bg.surface",
+      "fg": "oklch(0.5 0.1275 152)",
+      "bg": "oklch(0.975 0.024 265)",
+      "use": "body"
+    },
+    {
+      "name": "light: fg.default on bg.elevated",
+      "fg": "oklch(0.24 0.0096 265)",
+      "bg": "oklch(0.95 0.024 265)",
+      "use": "body"
+    },
+    {
+      "name": "light: fg.muted on bg.elevated",
+      "fg": "oklch(0.46 0.0312 265)",
+      "bg": "oklch(0.95 0.024 265)",
+      "use": "body"
+    },
+    {
+      "name": "light: accent.fg on bg.elevated",
+      "fg": "oklch(0.5 0.1237 75)",
+      "bg": "oklch(0.95 0.024 265)",
+      "use": "body"
+    },
+    {
+      "name": "light: receive.fg on bg.elevated",
+      "fg": "oklch(0.5 0.09 230)",
+      "bg": "oklch(0.95 0.024 265)",
+      "use": "body"
+    },
+    {
+      "name": "light: danger.fg on bg.elevated",
+      "fg": "oklch(0.5 0.15 22)",
+      "bg": "oklch(0.95 0.024 265)",
+      "use": "body"
+    },
+    {
+      "name": "light: success.fg on bg.elevated",
+      "fg": "oklch(0.5 0.1275 152)",
+      "bg": "oklch(0.95 0.024 265)",
+      "use": "body"
+    },
+    {
+      "name": "light: fg.on-accent on accent.solid",
+      "fg": "oklch(0.172 0.03 265)",
+      "bg": "oklch(0.8131 0.165 75)",
+      "use": "body"
+    },
+    {
+      "name": "light: fg.on-accent on accent.pressed",
+      "fg": "oklch(0.172 0.03 265)",
+      "bg": "oklch(0.7731 0.165 75)",
+      "use": "body"
+    },
+    {
+      "name": "light: fg.on-accent on receive.solid",
+      "fg": "oklch(0.172 0.03 265)",
+      "bg": "oklch(0.76 0.12 230)",
+      "use": "body"
+    },
+    {
+      "name": "light: fg.on-emergency on emergency.solid",
+      "fg": "oklch(1 0 0)",
+      "bg": "oklch(0.6497 0.2383 18)",
+      "use": "large"
+    },
+    {
+      "name": "light: focus.ring on bg.canvas",
+      "fg": "oklch(0.5 0.1237 75)",
+      "bg": "oklch(0.99 0.024 265)",
+      "use": "ui"
+    },
+    {
+      "name": "light: focus.ring on bg.surface",
+      "fg": "oklch(0.5 0.1237 75)",
+      "bg": "oklch(0.975 0.024 265)",
+      "use": "ui"
+    },
+    {
+      "name": "light: border.strong on bg.canvas",
+      "fg": "oklch(0.62 0.0312 265)",
+      "bg": "oklch(0.99 0.024 265)",
+      "use": "ui"
+    },
+    {
+      "name": "light: danger.solid on bg.canvas",
+      "fg": "oklch(0.65 0.2 22)",
+      "bg": "oklch(0.99 0.024 265)",
+      "use": "ui"
+    }
+  ]
+}

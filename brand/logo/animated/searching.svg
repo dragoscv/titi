@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1.9 0.6 48.8 48.8" class="titi-mark" data-mark-state="searching" role="img" aria-label="Titi"><style>.titi-mark [data-part] { transform-box: view-box; }
+.titi-mark [data-part="mark"] { transform-origin: 22px 26px; }
+.titi-mark [data-part="body"] { transform-origin: 22px 26px; }
+.titi-mark [data-part="tail"] { transform-origin: 12px 38px; }
+.titi-mark [data-part="beak"] { transform-origin: 32px 26px; }
+.titi-mark [data-part="eye"] { transform-origin: 26.2px 22.4px; }
+.titi-mark [data-part="arc"] { transform-origin: 22px 26px; }
+.titi-mark [data-part="arc2"] { transform-origin: 22px 26px; }
+.titi-mark path[stroke] { stroke-dasharray: 1; stroke-dashoffset: 0; }
+.titi-mark [data-part="arc2"] { opacity: 0; }
+@keyframes titi-intro-body {
+  0% { scale: 0; }
+  33% { scale: 1; }
+  100% { scale: 1; }
+}
+.titi-mark[data-mark-state="intro"] [data-part="body"] { animation: titi-intro-body 900ms cubic-bezier(0.34, 1.56, 0.64, 1) 1 both; }
+@keyframes titi-intro-tail {
+  0% { scale: 0; }
+  15% { scale: 0; }
+  42% { scale: 1; }
+  100% { scale: 1; }
+}
+.titi-mark[data-mark-state="intro"] [data-part="tail"] { animation: titi-intro-tail 900ms cubic-bezier(0.34, 1.56, 0.64, 1) 1 both; }
+@keyframes titi-intro-beak {
+  0% { translate: -6px 0; opacity: 0; }
+  20% { opacity: 0; }
+  22% { translate: -6px 0; }
+  28% { opacity: 1; }
+  50% { translate: 0px 0; }
+  100% { translate: 0px 0; opacity: 1; }
+}
+.titi-mark[data-mark-state="intro"] [data-part="beak"] { animation: titi-intro-beak 900ms cubic-bezier(0.34, 1.56, 0.64, 1) 1 both; }
+@keyframes titi-intro-eye {
+  0% { scale: 0; }
+  40% { scale: 0; }
+  55% { scale: 1; }
+  100% { scale: 1; }
+}
+.titi-mark[data-mark-state="intro"] [data-part="eye"] { animation: titi-intro-eye 900ms cubic-bezier(0.34, 1.56, 0.64, 1) 1 both; }
+@keyframes titi-intro-arc {
+  0% { stroke-dashoffset: 1; opacity: 0; }
+  50% { opacity: 0; stroke-dashoffset: 1; }
+  54% { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+.titi-mark[data-mark-state="intro"] [data-part="arc"] { animation: titi-intro-arc 900ms cubic-bezier(0.34, 1.56, 0.64, 1) 1 both; }
+@keyframes titi-searching-arc {
+  0% { stroke-dashoffset: 1; opacity: 0; }
+  6% { opacity: 1; }
+  45% { stroke-dashoffset: 0; }
+  70% { opacity: 1; }
+  100% { opacity: 0; stroke-dashoffset: 0; }
+}
+.titi-mark[data-mark-state="searching"] [data-part="arc"] { animation: titi-searching-arc 1600ms cubic-bezier(0.2, 0, 0, 1) infinite none; }
+@keyframes titi-searching-arc2 {
+  0% { opacity: 0; }
+  25% { stroke-dashoffset: 1; }
+  31% { opacity: 1; }
+  70% { stroke-dashoffset: 0; }
+  85% { opacity: 1; }
+  100% { opacity: 0; stroke-dashoffset: 0; }
+}
+.titi-mark[data-mark-state="searching"] [data-part="arc2"] { animation: titi-searching-arc2 1600ms cubic-bezier(0.2, 0, 0, 1) infinite none; }
+@keyframes titi-talking-arc {
+  0% { opacity: 1; }
+  50% { opacity: 0.45; }
+  100% { opacity: 1; }
+}
+.titi-mark[data-mark-state="talking"] [data-part="arc"] { animation: titi-talking-arc 1000ms cubic-bezier(0.2, 0, 0, 1) infinite none; }
+@keyframes titi-talking-arc2 {
+  0% { opacity: 0.2; }
+  50% { opacity: 1; }
+  100% { opacity: 0.2; }
+}
+.titi-mark[data-mark-state="talking"] [data-part="arc2"] { animation: titi-talking-arc2 1000ms cubic-bezier(0.2, 0, 0, 1) infinite none; }
+@keyframes titi-talking-beak {
+  0% { rotate: 0deg; }
+  25% { rotate: -10deg; }
+  50% { rotate: 0deg; }
+  75% { rotate: -10deg; }
+  100% { rotate: 0deg; }
+}
+.titi-mark[data-mark-state="talking"] [data-part="beak"] { animation: titi-talking-beak 1000ms cubic-bezier(0.2, 0, 0, 1) infinite none; }
+@keyframes titi-success-mark {
+  0% { translate: 0 0px; }
+  40% { translate: 0 -2.2px; }
+  100% { translate: 0 0px; }
+}
+.titi-mark[data-mark-state="success"] [data-part="mark"] { animation: titi-success-mark 320ms cubic-bezier(0.34, 1.56, 0.64, 1) 1 both; }
+@keyframes titi-success-arc {
+  0% { scale: 1; }
+  40% { scale: 1.08; }
+  100% { scale: 1; }
+}
+.titi-mark[data-mark-state="success"] [data-part="arc"] { animation: titi-success-arc 320ms cubic-bezier(0.34, 1.56, 0.64, 1) 1 both; }
+@keyframes titi-error-mark {
+  0% { translate: 0px 0; }
+  17% { translate: -1.6px 0; }
+  50% { translate: 1.6px 0; }
+  83% { translate: -1.2px 0; }
+  100% { translate: 0px 0; }
+}
+.titi-mark[data-mark-state="error"] [data-part="mark"] { animation: titi-error-mark 180ms cubic-bezier(0.2, 0, 0, 1) 1 both; }
+@keyframes titi-error-arc {
+  0% { opacity: 1; }
+  50% { opacity: 0.3; }
+  100% { opacity: 1; }
+}
+.titi-mark[data-mark-state="error"] [data-part="arc"] { animation: titi-error-arc 180ms cubic-bezier(0.2, 0, 0, 1) 1 both; }
+@keyframes titi-hover-mark {
+  0% { rotate: 0deg; }
+  100% { rotate: -8deg; }
+}
+.titi-mark[data-mark-state="hover"] [data-part="mark"] { animation: titi-hover-mark 160ms cubic-bezier(0.2, 0, 0, 1) 1 forwards; }
+@keyframes titi-hover-arc {
+  0% { scale: 1; }
+  100% { scale: 1.06; }
+}
+.titi-mark[data-mark-state="hover"] [data-part="arc"] { animation: titi-hover-arc 160ms cubic-bezier(0.2, 0, 0, 1) 1 forwards; }
+@keyframes titi-press-mark {
+  0% { scale: 1; }
+  100% { scale: 0.92; }
+}
+.titi-mark[data-mark-state="press"] [data-part="mark"] { animation: titi-press-mark 120ms cubic-bezier(0.2, 0, 0, 1) 1 forwards; }
+@keyframes titi-morph-tail {
+  0% { scale: 1; }
+  45% { scale: 0; }
+  100% { scale: 0; }
+}
+.titi-mark[data-mark-state="morph"] [data-part="tail"] { transform-origin: 22px 26px; animation: titi-morph-tail 420ms cubic-bezier(0.05, 0.7, 0.1, 1) 1 forwards; }
+@keyframes titi-morph-beak {
+  0% { scale: 1; }
+  40% { scale: 0; }
+  100% { scale: 0; }
+}
+.titi-mark[data-mark-state="morph"] [data-part="beak"] { transform-origin: 22px 26px; animation: titi-morph-beak 420ms cubic-bezier(0.05, 0.7, 0.1, 1) 1 forwards; }
+@keyframes titi-morph-eye {
+  0% { scale: 1; }
+  30% { scale: 0; }
+  100% { scale: 0; }
+}
+.titi-mark[data-mark-state="morph"] [data-part="eye"] { transform-origin: 26.2px 22.4px; animation: titi-morph-eye 420ms cubic-bezier(0.05, 0.7, 0.1, 1) 1 forwards; }
+@keyframes titi-morph-arc {
+  0% { scale: 1; opacity: 1; }
+  70% { scale: 1.3; opacity: 0; }
+  100% { scale: 1.3; opacity: 0; }
+}
+.titi-mark[data-mark-state="morph"] [data-part="arc"] { transform-origin: 22px 26px; animation: titi-morph-arc 420ms cubic-bezier(0.05, 0.7, 0.1, 1) 1 forwards; }
+@keyframes titi-morph-body {
+  0% { scale: 1; }
+  25% { scale: 1; }
+  100% { scale: 1.55; }
+}
+.titi-mark[data-mark-state="morph"] [data-part="body"] { transform-origin: 22px 26px; animation: titi-morph-body 420ms cubic-bezier(0.05, 0.7, 0.1, 1) 1 forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .titi-mark [data-part] { animation: none !important; }
+  .titi-mark[data-mark-state="talking"] [data-part="arc2"] { opacity: 1; }
+}
+</style><g data-part="mark"><path data-part="body" d="M11,26a11,11 0 1,0 22,0a11,11 0 1,0 -22,0Z" fill="#ffb023"/><path data-part="tail" d="M12.03,30.65L17.35,35.97L11,39.5Z" fill="#ffb023"/><path data-part="beak" d="M32,22.6L38.2,26L32,29.4Z" fill="#D98E00"/><path data-part="eye" d="M24.3,22.4a1.9,1.9 0 1,0 3.8,0a1.9,1.9 0 1,0 -3.8,0Z" fill="#0d1015"/><path data-part="arc" d="M7.046,19.027A16.5,16.5 0 0,1 17.729,10.062" stroke="#2dd4bf" stroke-width="2.6" stroke-linecap="round" fill="none" pathLength="1"/><path data-part="arc2" d="M2.954,14.556A22.22,22.22 0 0,1 14.037,5.256" stroke="#2dd4bf" stroke-width="2.6" stroke-linecap="round" fill="none" pathLength="1"/></g></svg>

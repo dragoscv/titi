@@ -57,6 +57,12 @@ jobs:
       - run: pnpm turbo run typecheck lint test build --filter='!@titi/core-wasm' --only --cache-dir=.turbo --output-logs=errors-only
         env: { TITI_TYPECHECKED: "1" }
       - run: pnpm --filter @titi/app-ui --filter @titi/backend exec vitest run --coverage
+      - name: brand gates (token/vector drift, WCAG contrast, Romanian glyphs)
+        run: |
+          node brand/scripts/build.mjs --check-text
+          node brand/scripts/contrast-gate.mjs brand/contrast-pairs.json
+          pip install --quiet fonttools==4.60.2 brotli==1.2.1
+          python3 brand/scripts/check-glyphs.py --union brand/fonts/Manrope-Variable.woff2 brand/fonts/GeistMono-Variable.woff2
       - run: pnpm audit --audit-level high
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

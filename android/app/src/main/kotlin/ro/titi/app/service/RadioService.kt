@@ -181,7 +181,7 @@ class RadioService : LifecycleService() {
         if (!nm.areNotificationsEnabled()) return
         val open = PendingIntent.getActivity(this, 10, Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val b = NotificationCompat.Builder(this, TitiApp.CHANNEL_ALERTS)
-            .setSmallIcon(R.drawable.ic_launcher_monochrome)
+            .setSmallIcon(R.drawable.ic_stat_titi)
             .setContentIntent(open)
             .setAutoCancel(true)
             .setColor(getColor(R.color.amber))
@@ -220,8 +220,14 @@ class RadioService : LifecycleService() {
             else -> getString(R.string.notif_listening, g.name)
         }
         val talkLabel = if (g?.floor == FloorState.Talking) getString(R.string.notif_action_stop) else getString(R.string.notif_action_talk)
+        val smallIcon = when {
+            g?.floor == FloorState.Talking -> ro.titi.client.R.drawable.ic_stat_titi_talk
+            s.muted -> ro.titi.client.R.drawable.ic_stat_titi_muted
+            g?.floor == FloorState.Busy -> ro.titi.client.R.drawable.ic_stat_titi_talk
+            else -> R.drawable.ic_stat_titi
+        }
         return NotificationCompat.Builder(this, TitiApp.CHANNEL_RADIO)
-            .setSmallIcon(R.drawable.ic_launcher_monochrome)
+            .setSmallIcon(smallIcon)
             .setContentTitle(title)
             .setContentText(g?.let { gs -> listOfNotNull(resources.getQuantityString(R.plurals.members, gs.members.size, gs.members.size), gs.link?.let { getString(it.labelRes()) }).joinToString(" · ") })
             .setContentIntent(open)

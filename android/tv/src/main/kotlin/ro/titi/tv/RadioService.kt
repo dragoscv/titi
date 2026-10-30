@@ -124,7 +124,7 @@ class RadioService : LifecycleService() {
             else -> getString(R.string.notif_listening, g.name)
         }
         return NotificationCompat.Builder(this, TvApp.CHANNEL_RADIO)
-            .setSmallIcon(R.drawable.ic_launcher_monochrome)
+            .setSmallIcon(R.drawable.ic_stat_titi)
             .setContentTitle(title)
             .setContentText(g?.let { resources.getQuantityString(R.plurals.members_count, it.members.size, it.members.size) })
             .setContentIntent(openIntent())
@@ -142,7 +142,7 @@ class RadioService : LifecycleService() {
     private fun postAlert(a: Alert) {
         if (a !is Alert.Sos) return // invites are shown in the TV UI itself
         val b = NotificationCompat.Builder(this, TvApp.CHANNEL_ALERTS)
-            .setSmallIcon(R.drawable.ic_launcher_monochrome)
+            .setSmallIcon(R.drawable.ic_stat_titi)
             .setContentIntent(openIntent())
             .setAutoCancel(true)
             .setColor(getColor(R.color.amber))

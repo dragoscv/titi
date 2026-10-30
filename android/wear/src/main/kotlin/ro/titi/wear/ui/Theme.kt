@@ -8,24 +8,25 @@ import androidx.wear.compose.material3.ColorScheme
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.MotionScheme
 import androidx.wear.compose.material3.dynamicColorScheme
+import ro.titi.brand.BrandDark
 
-/** ADR-0007 "Signal Amber" on true black (WO-V13); semantic colours stay fixed across watch faces. */
+/** ADR-0007 "Signal Amber" on true black (WO-V13); semantic colours stay fixed across watch faces. Tokens from brand/ (brand pack v1). */
 object Titi {
-    val Amber = Color(0xFFFFB020)
-    val AmberDeep = Color(0xFFD98E00)
+    val Amber = BrandDark.accentSolid
+    val AmberDeep = BrandDark.accentPressed
     val Transmit = Color(0xFFFF6A3D)
-    val Teal = Color(0xFF2DD4BF)
-    val Emergency = Color(0xFFFF2D55)
-    val Graphite = Color(0xFF0E1013)
+    val Teal = BrandDark.receiveSolid
+    val Emergency = BrandDark.emergencySolid
+    val Graphite = BrandDark.bgCanvas
     val Surface = Color(0xFF1B1F25)
-    val Muted = Color(0xFF9AA3B2)
+    val Muted = BrandDark.fgMuted
 }
 
 private val Brand = ColorScheme(
     primary = Titi.Amber,
     onPrimary = Titi.Graphite,
-    primaryContainer = Color(0xFF3A2A00),
-    onPrimaryContainer = Color(0xFFFFDDA0),
+    primaryContainer = BrandDark.accentContainer,
+    onPrimaryContainer = BrandDark.accentOnContainer,
     tertiary = Titi.Teal,
     onTertiary = Titi.Graphite,
     error = Titi.Emergency,

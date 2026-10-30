@@ -1,5 +1,7 @@
 # Titi
 
+![Titi — offline-first walkie-talkie](docs/brand-header.png)
+
 [![ci](https://github.com/dragoscv/titi/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dragoscv/titi/actions/workflows/ci.yml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/dragoscv/titi/badge)](https://securityscorecards.dev/viewer/?uri=github.com/dragoscv/titi)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)

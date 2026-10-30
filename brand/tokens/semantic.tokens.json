@@ -1,0 +1,227 @@
+{
+  "$description": "Layer 2 - references only. Themes remap ONLY this layer. Dark is the primary theme.",
+  "dark": {
+    "bg": {
+      "$type": "color",
+      "canvas": {
+        "$value": "{color.dark.neutral.1}"
+      },
+      "surface": {
+        "$value": "{color.dark.neutral.2}"
+      },
+      "elevated": {
+        "$value": "{color.dark.neutral.3}"
+      },
+      "highest": {
+        "$value": "{color.dark.neutral.4}"
+      }
+    },
+    "border": {
+      "$type": "color",
+      "subtle": {
+        "$value": "{color.dark.neutral.5}"
+      },
+      "default": {
+        "$value": "{color.dark.neutral.6}"
+      },
+      "strong": {
+        "$value": "{color.dark.neutral.8}"
+      }
+    },
+    "fg": {
+      "$type": "color",
+      "default": {
+        "$value": "{color.dark.neutral.12}"
+      },
+      "muted": {
+        "$value": "{color.dark.neutral.11}"
+      },
+      "on-accent": {
+        "$value": "{color.dark.neutral.1}"
+      },
+      "on-emergency": {
+        "$value": {
+          "colorSpace": "oklch",
+          "components": [
+            1,
+            0,
+            0
+          ],
+          "hex": "#ffffff"
+        }
+      }
+    },
+    "accent": {
+      "$type": "color",
+      "solid": {
+        "$value": "{color.dark.amber.9}"
+      },
+      "pressed": {
+        "$value": "{color.dark.amber.10}"
+      },
+      "fg": {
+        "$value": "{color.dark.amber.11}"
+      },
+      "subtle": {
+        "$value": "{color.dark.amber.3}"
+      },
+      "container": {
+        "$value": "{color.dark.amber.4}"
+      },
+      "on-container": {
+        "$value": "{color.dark.amber.12}"
+      }
+    },
+    "receive": {
+      "$type": "color",
+      "solid": {
+        "$value": "{color.dark.receive.9}"
+      },
+      "fg": {
+        "$value": "{color.dark.receive.11}"
+      }
+    },
+    "danger": {
+      "$type": "color",
+      "solid": {
+        "$value": "{color.dark.danger.9}"
+      },
+      "fg": {
+        "$value": "{color.dark.danger.11}"
+      }
+    },
+    "success": {
+      "$type": "color",
+      "solid": {
+        "$value": "{color.dark.success.9}"
+      },
+      "fg": {
+        "$value": "{color.dark.success.11}"
+      }
+    },
+    "emergency": {
+      "$type": "color",
+      "solid": {
+        "$value": "{color.dark.emergency.9}"
+      }
+    },
+    "focus": {
+      "$type": "color",
+      "ring": {
+        "$value": "{color.dark.amber.9}"
+      }
+    }
+  },
+  "light": {
+    "bg": {
+      "$type": "color",
+      "canvas": {
+        "$value": "{color.light.neutral.1}"
+      },
+      "surface": {
+        "$value": "{color.light.neutral.2}"
+      },
+      "elevated": {
+        "$value": "{color.light.neutral.3}"
+      },
+      "highest": {
+        "$value": "{color.light.neutral.4}"
+      }
+    },
+    "border": {
+      "$type": "color",
+      "subtle": {
+        "$value": "{color.light.neutral.5}"
+      },
+      "default": {
+        "$value": "{color.light.neutral.6}"
+      },
+      "strong": {
+        "$value": "{color.light.neutral.8}"
+      }
+    },
+    "fg": {
+      "$type": "color",
+      "default": {
+        "$value": "{color.light.neutral.12}"
+      },
+      "muted": {
+        "$value": "{color.light.neutral.11}"
+      },
+      "on-accent": {
+        "$value": "{color.dark.neutral.1}"
+      },
+      "on-emergency": {
+        "$value": {
+          "colorSpace": "oklch",
+          "components": [
+            1,
+            0,
+            0
+          ],
+          "hex": "#ffffff"
+        }
+      }
+    },
+    "accent": {
+      "$type": "color",
+      "solid": {
+        "$value": "{color.light.amber.9}"
+      },
+      "pressed": {
+        "$value": "{color.light.amber.10}"
+      },
+      "fg": {
+        "$value": "{color.light.amber.11}"
+      },
+      "subtle": {
+        "$value": "{color.light.amber.3}"
+      },
+      "container": {
+        "$value": "{color.light.amber.4}"
+      },
+      "on-container": {
+        "$value": "{color.light.amber.12}"
+      }
+    },
+    "receive": {
+      "$type": "color",
+      "solid": {
+        "$value": "{color.light.receive.9}"
+      },
+      "fg": {
+        "$value": "{color.light.receive.11}"
+      }
+    },
+    "danger": {
+      "$type": "color",
+      "solid": {
+        "$value": "{color.light.danger.9}"
+      },
+      "fg": {
+        "$value": "{color.light.danger.11}"
+      }
+    },
+    "success": {
+      "$type": "color",
+      "solid": {
+        "$value": "{color.light.success.9}"
+      },
+      "fg": {
+        "$value": "{color.light.success.11}"
+      }
+    },
+    "emergency": {
+      "$type": "color",
+      "solid": {
+        "$value": "{color.light.emergency.9}"
+      }
+    },
+    "focus": {
+      "$type": "color",
+      "ring": {
+        "$value": "{color.light.amber.11}"
+      }
+    }
+  }
+}

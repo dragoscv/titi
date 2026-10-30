@@ -1,18 +1,22 @@
-/* ADR-0007 Signal Amber — CSS-first Tailwind v4 theme. Hosts `@import "tailwindcss"` first. */
-@theme {
-  --color-graphite: #0e1013;
-  --color-surface: #16191e;
-  --color-elevated: #1e2229;
-  --color-outline: #2a2f38;
-  --color-ink: #f2f4f7;
-  --color-muted: #9aa3b2;
-  --color-amber: #ffb020;
-  --color-amber-deep: #d98e00;
-  --color-teal: #2dd4bf;
-  --color-danger: #ff5a5f;
-  --color-success: #3ddc84;
-  --color-emergency: #ff2d55;
+/* Brand pack v1 (brand/, ADR-0007 Signal Amber) — CSS-first Tailwind v4 theme. Hosts `@import "tailwindcss"` first.
+   Colours, durations and easings come from the generated brand-tokens.css; never type a hex here. */
+@import "./brand-tokens.css";
+@import "./brand-mark.css";
 
+@font-face {
+  font-family: "Manrope";
+  src: url("./fonts/Manrope-Variable.woff2") format("woff2");
+  font-weight: 200 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("./fonts/GeistMono-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@theme {
   --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
 
@@ -20,7 +24,7 @@
   --radius-2xl: 28px;
   --radius-pill: 999px;
 
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-spring: var(--ease-chirp);
 }
 
 :root {

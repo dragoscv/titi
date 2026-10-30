@@ -1,0 +1,58 @@
+{
+  "name": "Titi",
+  "version": "1.0.0",
+  "owner": "Dragos Catalin Vladulescu <vladulescu.catalin@gmail.com>",
+  "writtenAs": "Titi",
+  "wordmark": "titi",
+  "locales": ["en", "ro"],
+  "concept": "Chirp — a speech-bubble bird with one signal arc",
+  "tokens": {
+    "format": "dtcg-2025.10",
+    "sources": [
+      "tokens/primitives.tokens.json",
+      "tokens/semantic.tokens.json",
+      "tokens/typography.tokens.json",
+      "tokens/motion.tokens.json"
+    ],
+    "generator": "scripts/palette.mjs (direction 'signal') + scripts/motion-spec.mjs",
+    "contrastPairs": "contrast-pairs.json"
+  },
+  "fonts": [
+    {
+      "family": "Manrope",
+      "role": "ui + wordmark base",
+      "licence": "OFL-1.1",
+      "licenceFile": "fonts/LICENSE-Manrope.txt",
+      "files": ["fonts/Manrope-Variable.woff2", "fonts/Manrope-Medium.ttf", "fonts/Manrope-Bold.ttf", "fonts/Manrope-ExtraBold.ttf"],
+      "verifiedGlyphs": { "date": "2026-10-30", "mode": "union", "result": "OK (678 code points, ă â î ș ț + ş ţ)" }
+    },
+    {
+      "family": "Geist Mono",
+      "role": "codes, telemetry",
+      "licence": "OFL-1.1",
+      "licenceFile": "fonts/LICENSE-GeistMono.txt",
+      "files": ["fonts/GeistMono-Variable.woff2", "fonts/GeistMono-Medium.ttf"],
+      "verifiedGlyphs": { "date": "2026-10-30", "mode": "single", "result": "OK (889 code points)" }
+    }
+  ],
+  "outputs": {
+    "css": "packages/app-ui/src/brand-tokens.css",
+    "logoCss": "packages/app-ui/src/brand-mark.css",
+    "ts": "packages/app-ui/src/brand-tokens.ts",
+    "markTs": "packages/app-ui/src/brand-mark.ts",
+    "kotlin": "android/client/src/main/kotlin/ro/titi/brand/BrandTokens.kt",
+    "swift": "ios/Titi/BrandTokens.swift",
+    "androidColors": "android/{app,wear,tv}/src/main/res/values/colors.xml"
+  },
+  "platforms": ["web", "pwa", "android", "wear-os", "google-tv", "tizen", "windows", "macos", "ios", "tray", "play-store", "app-store"],
+  "consumers": [
+    { "surface": "web PWA", "path": "apps/web/public/*, apps/web/src/app/{layout,manifest}.tsx", "imports": "brand-tokens.ts, icons" },
+    { "surface": "shared UI (web, desktop, Tizen)", "path": "packages/app-ui/src/theme.css, BrandMark.tsx", "imports": "brand-tokens.css, brand-mark.css/ts, fonts/" },
+    { "surface": "Android phone / Wear / TV", "path": "android/*/src/main/res, */ui/theme/Theme.kt", "imports": "BrandTokens.kt, drawables, splash_intro AVD" },
+    { "surface": "desktop (Tauri)", "path": "apps/desktop/src-tauri/icons/**", "imports": "ico/icns/png, msix targetsize set, tray states" },
+    { "surface": "Tizen TV", "path": "apps/tv/tizen/icon.png" },
+    { "surface": "iOS", "path": "ios/Titi/Resources/Assets.xcassets, ios/Titi/BrandTokens.swift, Resources/Fonts" },
+    { "surface": "stores", "path": "docs/store/*" },
+    { "surface": "README / social", "path": "docs/brand-header.png, brand/templates/*" }
+  ]
+}

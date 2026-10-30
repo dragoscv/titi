@@ -9,6 +9,7 @@
     ".": "./src/index.ts",
     "./web": "./src/web/index.ts",
     "./theme.css": "./src/theme.css",
+    "./brand-tokens": "./src/brand-tokens.ts",
     "./tv": "./src/tv/index.ts"
   },
   "sideEffects": [

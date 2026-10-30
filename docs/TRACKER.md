@@ -255,12 +255,28 @@ Ideas from the 2026-10-30 research round (decided with the user: all go on the l
 | CH-I10 | Desktop dispatcher console (several groups, per-group volume / pan) | todo | L |
 | CH-I11 | Battery-aware mesh duty cycle shown in the UI | todo | M; Android / Wear |
 
+## 5j. Brand pack v1 (`brand/`, ADR-0007 amended 2026-10-30)
+
+| ID | Item | Status | Evidence |
+|---|---|---|---|
+| BR-01 | Platform, voice RO/EN, naming (Gate A) | done | `brand/BRAND.md § Platform/Voice`; decided via askQuestions 2026-10-30 |
+| BR-02 | Mark "Chirp" + optical sizes, wordmark, lockups, construction (Gate B) | done | 4 concepts on `brand/concepts/sheet.png` (16→256 px, mask, taskbar, mono, inverse, squint); `brand/logo/*`; old mark in `brand/archive/v0/` |
+| BR-03 | OKLCH palette, 12-step ramps, dark+light semantic tokens (Gate C) | done | `brand/tokens/*.tokens.json` (DTCG 2025.10); `contrast-gate.mjs brand/contrast-pairs.json` → 53 pairs, 0 WCAG failures |
+| BR-04 | Fonts Manrope + Geist Mono, Romanian glyph check (Gate D) | done | `check-glyphs.py --union` OK on every shipped file (Manrope 678 cp, Geist Mono 889 cp); bundled on iOS (`UIAppFonts`) and desktop/Tizen (WOFF2) |
+| BR-05 | Logo motion (8 states) from one spec + Android splash AVD (Gate E) | done | `brand/scripts/motion-spec.mjs` → `app-ui/src/brand-mark.css`, `brand/logo/animated/*.svg`, `android/*/res/drawable/splash_intro.xml`; v1 rejected (morph/hover/press), v2 approved; `brand/demo/motion.html` |
+| BR-06 | Platform exports: web/PWA, Android phone/Wear/TV, Windows/MSIX, macOS, iOS, Tizen, stores | done | `node brand/scripts/build.mjs` (~170 files); CI `build.mjs --check-text` |
+| BR-07 | Live-state icons (tray, notification) shape-coded | done | desktop tray idle/talk/muted (`lib.rs refresh_tray_icon`); Android `ic_stat_titi(_talk/_muted)` chosen from floor/mute state in `RadioService.kt` |
+| BR-08 | Social kit, README header, A6 invite card EN/RO, stickers | done | `brand/templates/*`, `docs/brand-header.png`, `brand/stickers/*` |
+| BR-09 | Store assets: Play icon, feature graphic EN/RO, App Store icon, captioned screenshots EN/RO | done (Android set); iPhone set in part 2 | `docs/store/*`; `docs/store/screenshots/{en,ro}/01–05.png` from A51 captures (`raw/a51/`) via `brand/scripts/screenshots.mjs` |
+| BR-10 | Roll-out to every surface | done | theme.css/Theme.kt ×3/Design.swift read generated tokens (no hand-typed hex); A51 2026-10-30: launcher search shows new icon (3 profiles), Android 12 splash plays intro, app renders; Windows release exe: taskbar + title icon new; JS typecheck/lint/test 9/9, Android compile + resources OK, desktop clippy OK. Google TV off (no ping) and Tizen refused sdb at the time — banner/icon built, device check pending |
+| BR-11 | design-critic score | done | 52/60 "ship it" (`brand/BRAND.md § Design review`) |
+
 ## 6. iOS (`ios/`) — skeleton now, CI after Apple enrolment
 
 | ID | Item | Status | Evidence |
 |---|---|---|---|
 | I-01 | XcodeGen `project.yml`, SwiftUI app target, TitiCore SwiftPM | done (unbuilt on device) | `ios/project.yml`, `ios/TitiCore/Package.swift`; xcframework via `scripts/ios-build-core.sh` |
-| I-02 | Design system Signal Amber, Liquid Glass adoption | partial | `Design.swift` palette/spring; Liquid Glass materials todo (iOS 26 only) |
+| I-02 | Design system Signal Amber, Liquid Glass adoption | partial | `Design.swift` Palette reads generated `BrandTokens.swift`; `Assets.xcassets` AppIcon (default/dark/tinted), LaunchMark/LaunchBackground, AccentColor; fonts bundled; Liquid Glass icon layers in `brand/icons/ios-liquid-glass/`; Liquid Glass UI materials todo (iOS 26 only) |
 | I-03 | Home / group / PTT screens with matchedGeometry morph | done (unbuilt) | `Views/*.swift`, `TalkButton.swift` |
 | I-04 | Audio: AVAudioEngine `.voiceChat`, PushToTalk framework | done (unbuilt) | `AudioEngine.swift`, `PttChannel.swift` |
 | I-05 | Transport UDP multicast + unicast (Network.framework), same group/port as Android | done (unbuilt) | `LanTransport.swift` |
@@ -276,7 +292,7 @@ Ideas from the 2026-10-30 research round (decided with the user: all go on the l
 | ID | Item | Status | Evidence |
 |---|---|---|---|
 | O-01 | Privacy policy page (web) EN/RO | done | `apps/web/src/app/privacy/page.tsx`, live `/privacy` 200 |
-| O-02 | Play listing assets: icon, feature graphic, screenshots, descriptions EN/RO | done | `docs/store/LISTING.md`, `docs/store/*.png`, `docs/store/screenshots/01–05.png` (S25 captures); uploaded to Console (phone/7"/10") |
+| O-02 | Play listing assets: icon, feature graphic, screenshots, descriptions EN/RO | done | `docs/store/LISTING.md`, `docs/store/*.png`, `docs/store/screenshots/01–05.png` (S25 captures); uploaded to Console (phone/7"/10"). Brand v1 assets (icon, feature graphic EN/RO, captioned screenshots EN/RO in `screenshots/{en,ro}/`) generated 2026-10-30 — Console re-upload pending with the next release |
 | O-03 | Play Console: app created, Data safety, content rating, FGS + BT declarations | done | app id 4975577701631730555; all 11 App content declarations saved; store settings (Communication, contact) published |
 | O-04 | Internal testing track upload | done | release 1 (0.1.0) Active, opt-in https://play.google.com/apps/internaltest/4701032077694258196 |
 | O-05 | Closed testing 12 testers × 14 days (new-account rule) | in progress | track "Alpha" 4698786537336980903, release 1 (0.1.0), list "Titi friends"; **sent for review 2026-09-14** (14 changes). Need ≥12 opted-in testers for 14 days before production |

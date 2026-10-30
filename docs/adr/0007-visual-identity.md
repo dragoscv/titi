@@ -2,6 +2,14 @@
 
 Date: 2026-09-14 · Status: Accepted (user chose among 3 directions, research 05)
 
+> **Amended 2026-10-30 — brand pack v1** (`brand/`, all gates decided with the user): the mark is redrawn as
+> **"Chirp"** (speech-bubble bird + one concentric signal arc, optical sizes for 16/24/64 px); the palette keeps
+> Signal Amber but is now generated as 12-step OKLCH ramps with dark + light semantic tokens
+> (`brand/tokens/*.tokens.json`, 53 WCAG-proven pairs); Manrope + Geist Mono confirmed (OFL, Romanian glyphs
+> verified) and bundled on iOS/desktop/TV; a logo motion set (intro/searching/talking/success/error/hover/press/morph)
+> is generated from one spec; state icons are shape-coded (2 arcs = talking, slash = muted). App code must import
+> the generated outputs; the hex values below are historical. Source of truth: `brand/BRAND.md`.
+
 ## Decision
 - **Palette** (dark-first): graphite `#0E1013` background, surface `#16191E`,
   elevated `#1E2229`, outline `#2A2F38`, text `#F2F4F7` / muted `#9AA3B2`.

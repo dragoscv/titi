@@ -31,13 +31,20 @@ targets:
       - path: Titi/Resources
     dependencies:
       - package: TitiCore
+    settings:
+      base:
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
     info:
       path: Titi/Info.plist
       properties:
         CFBundleDisplayName: Titi
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, ro]
-        UILaunchScreen: {}
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+          UIImageName: LaunchMark
+        UIAppFonts: [Manrope-Medium.ttf, Manrope-Bold.ttf, Manrope-ExtraBold.ttf, GeistMono-Medium.ttf]
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIBackgroundModes: [audio, bluetooth-central, bluetooth-peripheral, push-to-talk]
         NSMicrophoneUsageDescription: Titi transmits your voice to your group.

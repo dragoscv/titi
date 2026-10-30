@@ -1,18 +1,18 @@
 import SwiftUI
 
-// ADR-0007 Signal Amber
+// Brand pack v1 (brand/, ADR-0007 Signal Amber): values come from the generated BrandTokens.swift.
 enum Palette {
-    static let graphite = Color(red: 0x0E / 255, green: 0x10 / 255, blue: 0x13 / 255)
-    static let surface = Color(red: 0x16 / 255, green: 0x19 / 255, blue: 0x1E / 255)
-    static let elevated = Color(red: 0x1E / 255, green: 0x22 / 255, blue: 0x29 / 255)
-    static let outline = Color(red: 0x2A / 255, green: 0x2F / 255, blue: 0x38 / 255)
-    static let ink = Color(red: 0xF2 / 255, green: 0xF4 / 255, blue: 0xF7 / 255)
-    static let muted = Color(red: 0x9A / 255, green: 0xA3 / 255, blue: 0xB2 / 255)
-    static let amber = Color(red: 1.0, green: 0xB0 / 255, blue: 0x20 / 255)
-    static let amberDeep = Color(red: 0xD9 / 255, green: 0x8E / 255, blue: 0)
-    static let teal = Color(red: 0x2D / 255, green: 0xD4 / 255, blue: 0xBF / 255)
-    static let danger = Color(red: 1.0, green: 0x5A / 255, blue: 0x5F / 255)
-    static let emergency = Color(red: 1.0, green: 0x2D / 255, blue: 0x55 / 255)
+    static let graphite = BrandDark.bgCanvas
+    static let surface = BrandDark.bgSurface
+    static let elevated = BrandDark.bgElevated
+    static let outline = BrandDark.borderDefault
+    static let ink = BrandDark.fgDefault
+    static let muted = BrandDark.fgMuted
+    static let amber = BrandDark.accentSolid
+    static let amberDeep = BrandDark.accentPressed
+    static let teal = BrandDark.receiveSolid
+    static let danger = BrandDark.dangerSolid
+    static let emergency = BrandDark.emergencySolid
 }
 
 func hueColor(_ hue: Int) -> Color { Color(hue: Double(hue % 360) / 360, saturation: 0.72, brightness: 0.85) }

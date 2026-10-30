@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 320x180 TV launcher banner: graphite field, amber tile with mic, "titi" wordmark drawn as shapes. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <path android:fillColor="#FF0E1013" android:pathData="M0,0h320v180h-320z" />
+    <!-- amber rounded tile -->
+    <path
+        android:fillColor="#FFFFB020"
+        android:pathData="M58,50h60a22,22 0 0,1 22,22v36a22,22 0 0,1 -22,22h-60a22,22 0 0,1 -22,-22v-36a22,22 0 0,1 22,-22z" />
+    <!-- mic glyph (white) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M88,100c5.5,0 10,-4.5 10,-10V70c0,-5.5 -4.5,-10 -10,-10s-10,4.5 -10,10v20c0,5.5 4.5,10 10,10zM105.7,90c0,10 -8.5,17 -17.7,17s-17.7,-7 -17.7,-17H64.7c0,11.4 9,20.8 20,22.4V121h6.6v-8.6c11,-1.6 20,-11 20,-22.4h-5.6z" />
+    <!-- wordmark "titi" -->
+    <!-- t -->
+    <path android:fillColor="#FFF2F4F7" android:pathData="M166,62h10v14h10v10h-10v22c0,3 1.5,4 4,4h6v10h-8c-8,0 -12,-4 -12,-12v-24h-7v-10h7z" />
+    <!-- i -->
+    <path android:fillColor="#FFF2F4F7" android:pathData="M194,76h11v46h-11z" />
+    <path android:fillColor="#FFFFB020" android:pathData="M199.5,58a6.5,6.5 0 1,0 0.01,0z" />
+    <!-- t -->
+    <path android:fillColor="#FFF2F4F7" android:pathData="M218,62h10v14h10v10h-10v22c0,3 1.5,4 4,4h6v10h-8c-8,0 -12,-4 -12,-12v-24h-7v-10h7z" />
+    <!-- i -->
+    <path android:fillColor="#FFF2F4F7" android:pathData="M246,76h11v46h-11z" />
+    <path android:fillColor="#FFFFB020" android:pathData="M251.5,58a6.5,6.5 0 1,0 0.01,0z" />
+    <!-- teal signal arcs -->
+    <path
+        android:strokeColor="#FF2DD4BF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M272,62a26,26 0 0,1 0,36" />
+    <path
+        android:strokeColor="#FF2DD4BF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M284,52a40,40 0 0,1 0,56" />
+</vector>

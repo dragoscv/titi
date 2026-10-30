@@ -1,0 +1,120 @@
+{
+  "$description": "Type tokens. Families pass brand/scripts/check-glyphs.py (Romanian ă â î ș ț + cedilla legacy) before shipping.",
+  "font": {
+    "family": {
+      "$type": "fontFamily",
+      "ui": {
+        "$value": [
+          "Manrope",
+          "ui-sans-serif",
+          "system-ui",
+          "Segoe UI",
+          "Roboto",
+          "sans-serif"
+        ]
+      },
+      "code": {
+        "$value": [
+          "Geist Mono",
+          "ui-monospace",
+          "SFMono-Regular",
+          "Cascadia Code",
+          "monospace"
+        ]
+      }
+    },
+    "weight": {
+      "$type": "fontWeight",
+      "regular": {
+        "$value": 400
+      },
+      "medium": {
+        "$value": 500
+      },
+      "semibold": {
+        "$value": 600
+      },
+      "bold": {
+        "$value": 700
+      },
+      "extrabold": {
+        "$value": 800
+      }
+    },
+    "size": {
+      "$type": "dimension",
+      "caption": {
+        "$value": {
+          "value": 12,
+          "unit": "px"
+        }
+      },
+      "body": {
+        "$value": {
+          "value": 16,
+          "unit": "px"
+        }
+      },
+      "title": {
+        "$value": {
+          "value": 20,
+          "unit": "px"
+        }
+      },
+      "headline": {
+        "$value": {
+          "value": 28,
+          "unit": "px"
+        }
+      },
+      "display": {
+        "$value": {
+          "value": 40,
+          "unit": "px"
+        }
+      }
+    },
+    "tracking": {
+      "$type": "dimension",
+      "display": {
+        "$value": {
+          "value": -1.5,
+          "unit": "px"
+        }
+      },
+      "headline": {
+        "$value": {
+          "value": -0.5,
+          "unit": "px"
+        }
+      },
+      "body": {
+        "$value": {
+          "value": 0,
+          "unit": "px"
+        }
+      }
+    }
+  },
+  "radius": {
+    "$type": "dimension",
+    "xl": {
+      "$value": {
+        "value": 22,
+        "unit": "px"
+      }
+    },
+    "2xl": {
+      "$value": {
+        "value": 28,
+        "unit": "px"
+      }
+    },
+    "pill": {
+      "$value": {
+        "value": 999,
+        "unit": "px"
+      }
+    }
+  }
+}

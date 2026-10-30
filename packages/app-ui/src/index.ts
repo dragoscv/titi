@@ -5,6 +5,8 @@ export { applyUi, setGroups, mergeChatItems, nameOf, type CueKind, type ReducerH
 export { t, setLocale, locale, detectLocale, dictionaries, type I18nKey, type Locale } from "./i18n";
 export { mergeChat, canEdit, canDelete, CHAT_CAP, EDIT_WINDOW_MS, MAX_EDITS, FORWARDED_MANY, QUICK_REACTIONS } from "./chat";
 export { TalkButton } from "./TalkButton";
+export { BrandMark } from "./BrandMark";
+export { brand, type BrandColor } from "./brand-tokens";
 export { Avatar, SignalBars } from "./Avatar";
 export { cn, hueColor, initials } from "./cn";
 export { WEB_ORIGIN, toWebLink, isInviteUrl } from "./links";

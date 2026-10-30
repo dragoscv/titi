@@ -228,6 +228,8 @@ fn set_muted(app: &AppHandle, muted: bool) {
         let _ = call(&st.tx, move |h| h.set_muted(muted));
     }
     let _ = app.emit("titi://muted", muted);
+    TRAY_MUTED.store(muted, Ordering::Relaxed);
+    refresh_tray_icon(app);
     if let Some(m) = app.try_state::<MuteItem>() {
         let _ = m.0.set_text(if muted {
             "Unmute microphone"
@@ -265,7 +267,34 @@ fn handle_args(app: &AppHandle, args: &[String]) {
     }
 }
 
+// Shape-coded tray states (brand pack): idle mark, talk = signal arcs, muted = slash.
+const TRAY_IDLE: &[u8] = include_bytes!("../icons/tray/idle.png");
+const TRAY_TALK: &[u8] = include_bytes!("../icons/tray/talk.png");
+const TRAY_MUTED_ICON: &[u8] = include_bytes!("../icons/tray/muted.png");
+static TRAY_TALKING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static TRAY_MUTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+fn tray_image(bytes: &'static [u8]) -> Option<tauri::image::Image<'static>> {
+    tauri::image::Image::from_bytes(bytes).ok()
+}
+
+/// Tray icon follows talk > muted > idle.
+fn refresh_tray_icon(app: &AppHandle) {
+    let bytes = if TRAY_TALKING.load(Ordering::Relaxed) {
+        TRAY_TALK
+    } else if TRAY_MUTED.load(Ordering::Relaxed) {
+        TRAY_MUTED_ICON
+    } else {
+        TRAY_IDLE
+    };
+    if let (Some(t), Some(img)) = (app.tray_by_id("main"), tray_image(bytes)) {
+        let _ = t.set_icon(Some(img));
+    }
+}
+
 fn update_tray(app: &AppHandle, talking: bool, talker: Option<&str>) {
+    TRAY_TALKING.store(talking, Ordering::Relaxed);
+    refresh_tray_icon(app);
     if let Some(t) = app.tray_by_id("main") {
         let tip = match (talking, talker) {
             (true, Some(n)) => format!("Titi — {n} is talking"),
@@ -838,7 +867,11 @@ pub fn run() {
             app.manage(MuteItem(mute.clone()));
             let tx = started.tx.clone();
             TrayIconBuilder::with_id("main")
-                .icon(app.default_window_icon().cloned().expect("icon"))
+                .icon(
+                    tray_image(TRAY_IDLE)
+                        .or_else(|| app.default_window_icon().cloned())
+                        .expect("icon"),
+                )
                 .tooltip("Titi — channel free")
                 .menu(&menu)
                 .show_menu_on_left_click(false)

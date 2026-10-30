@@ -1,10 +1,11 @@
 "use client";
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Check, Mic } from "lucide-react";
+import { Check } from "lucide-react";
 import { host } from "../platform";
 import { hueColor } from "../cn";
 import { Avatar } from "../Avatar";
+import { BrandMark } from "../BrandMark";
 import { focusOnMount } from "../Sheet";
 
 const HUES = [40, 15, 350, 290, 220, 170, 120, 80];
@@ -15,8 +16,8 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-between p-6">
       <div>
-        <div className="mt-8 grid h-[72px] w-[72px] place-items-center rounded-[22px] bg-amber">
-          <Mic size={36} className="text-graphite" />
+        <div className="mt-8 grid h-[72px] w-[72px] place-items-center rounded-[22px] bg-surface">
+          <BrandMark size={64} state="intro" />
         </div>
         <h1 className="mt-7 text-4xl font-extrabold leading-[1.05] tracking-tight">Talk anywhere.<br />No signal needed.</h1>
         <p className="mt-3 text-[17px] text-muted">Titi turns nearby phones into a private radio. The web version joins over the internet, or over Wi‑Fi to a phone running the app.</p>
