@@ -44,4 +44,16 @@ describe("i18n", () => {
     expect(t("chat.replyingTo")).toBe("Replying to {name}");
     expect(t("chat.replyingTo", { other: 1 })).toBe("Replying to {name}");
   });
+
+  it("follows navigator.language when no locale is forced", () => {
+    const g = globalThis as { navigator?: unknown };
+    const had = Object.getOwnPropertyDescriptor(g, "navigator");
+    Object.defineProperty(g, "navigator", { value: { language: "ro-RO" }, configurable: true });
+    try {
+      expect(locale()).toBe("ro");
+    } finally {
+      if (had) Object.defineProperty(g, "navigator", had);
+      else delete g.navigator;
+    }
+  });
 });

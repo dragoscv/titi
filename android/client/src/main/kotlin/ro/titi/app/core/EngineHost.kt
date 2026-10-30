@@ -178,6 +178,8 @@ class EngineHost(private val ctx: Context, private val prefs: Prefs) : Transport
     private var codeJob: Job? = null
     private val names = HashMap<String, String>() // node hex → display name
     private var pendingCode: Pair<String, Long>? = null // code, until
+    /** Groups whose newest history page is loaded; declared before `init` (refreshGroups runs there). */
+    private val loadedGroups = HashSet<String>()
 
     init {
         if (prefs.identitySeed() == null) prefs.saveIdentitySeed(engine.identitySeed())
@@ -458,8 +460,6 @@ class EngineHost(private val ctx: Context, private val prefs: Prefs) : Transport
     }
 
     // ---- chat timeline ----------------------------------------------------
-
-    private val loadedGroups = HashSet<String>()
 
     /** Loads the newest page for groups seen for the first time; drops rows of groups we left. */
     private fun syncHistory(ids: Set<String>) {

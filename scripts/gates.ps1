@@ -33,6 +33,8 @@ if ($Build) { $gradleTasks += @(':app:assembleGmsDebug', ':wear:assembleDebug', 
 $lanes = [ordered]@{
   js     = @(
     @{ Name = 'turbo-check'; Dir = '.'; Cmd = 'pnpm turbo run typecheck lint test --output-logs=errors-only' }
+    # same command as ci.yml: coverage thresholds (95 %) only fail with --coverage
+    @{ Name = 'coverage';    Dir = '.'; Cmd = 'pnpm --filter @titi/app-ui --filter @titi/backend exec vitest run --coverage --silent' }
   )
   desktop = @(
     @{ Name = 'desktop-rust'; Dir = '.'; Cmd = 'pwsh -NoProfile -File scripts/desktop-check.ps1' }
