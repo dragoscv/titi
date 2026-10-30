@@ -38,8 +38,8 @@ final class AppModel {
             let h = try EngineHost(displayName: settings.name, hue: settings.hue)
             host = h
             var ts: [any Transport] = [LanTransport()]
-            ts.append(BleTransport(nodeId: { h.engine.nodeId() }))
-            ts.append(RelayTransport(url: { URL(string: self.settings.relayUrl)! }, nodeId: { h.engine.nodeId() }, displayName: { self.settings.name }, hue: { self.settings.hue }))
+            ts.append(BleTransport(nodeId: { [UInt8](h.engine.nodeId()) }))
+            ts.append(RelayTransport(url: { URL(string: self.settings.relayUrl)! }, nodeId: { [UInt8](h.engine.nodeId()) }, displayName: { self.settings.name }, hue: { self.settings.hue }))
             h.start(ts)
             ptt = PttChannel(host: h)
         } catch {

@@ -9,4 +9,23 @@
     <string name="join_failed_generic">Could not join — check the code and try again</string>
     <string name="error_mic">Microphone unavailable — another app may be using it</string>
     <string name="error_generic">Something went wrong</string>
+
+    <!-- Chat v2 (shared by phone, watch and TV) -->
+    <string name="chat_you">You</string>
+    <string name="chat_deleted">This message was deleted</string>
+    <string name="chat_edited">edited</string>
+    <string name="chat_forwarded">Forwarded</string>
+    <string name="chat_forwarded_many">Forwarded many times</string>
+    <string name="chat_reply_deleted">Original message deleted</string>
+    <string name="chat_reply_missing">Message not on this device</string>
+    <string name="chat_quote_voice">Voice note</string>
+    <string name="chat_quote_location">Location</string>
+    <string name="chat_quote_sos">SOS</string>
+    <string name="chat_mentions_you">Mentions you</string>
+    <string name="chat_action_reply">Reply</string>
+    <string name="chat_action_react">React</string>
+    <string name="cd_reaction">%1$s %2$d</string>
+    <string name="cd_reaction_mine">%1$s %2$d, including you</string>
+    <string name="cd_react_with">React with %1$s</string>
+    <string name="cd_reply_quote">Reply to %1$s: %2$s</string>
 </resources>

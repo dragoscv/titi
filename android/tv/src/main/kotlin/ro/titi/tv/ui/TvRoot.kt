@@ -77,6 +77,9 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -326,6 +329,8 @@ private fun Stage(
     val level by engine.level.collectAsState()
     val messages by engine.messages.collectAsState()
     val recent = remember(messages, g.id) { messages.filter { it.group == g.id }.takeLast(4) }
+    var reactFor by remember(g.id) { mutableStateOf<String?>(null) }
+    val res = androidx.compose.ui.platform.LocalResources.current
     val me = g.floor == FloorState.Talking
     val busy = g.floor == FloorState.Busy || me
     val talker = g.members.firstOrNull { it.node.toHex() == g.talkerNode }
@@ -391,18 +396,54 @@ private fun Stage(
             }
         }
         if (recent.isNotEmpty()) {
-            Column(Modifier.align(Alignment.BottomStart).padding(16.dp).width(320.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(Modifier.align(Alignment.BottomStart).padding(16.dp).width(360.dp).focusGroup(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 recent.forEach { m ->
-                    Row(Modifier.background(Tv.Elevated, RoundedCornerShape(11.dp)).padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.Sms, null, tint = Tv.Muted, modifier = Modifier.size(12.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(m.fromName, color = Tv.Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.width(6.dp))
-                        Text(bodyText(m.body), color = Tv.Ink, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    val cd = stringResource(R.string.cd_message_react, m.fromName)
+                    Surface(
+                        onClick = { if (!m.deleted) reactFor = m.id },
+                        modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = cd },
+                        shape = tileShape(11.dp),
+                        colors = ClickableSurfaceDefaults.colors(containerColor = Tv.Elevated, contentColor = Tv.Ink, focusedContainerColor = Tv.Elevated, focusedContentColor = Tv.Ink),
+                        border = amberFocusBorder(11.dp),
+                    ) {
+                        Column(Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                            m.reply?.takeIf { !m.deleted }?.let { r ->
+                                Text(
+                                    "↩ " + ro.titi.app.core.ChatText.replySender(res, r) + ": " + ro.titi.app.core.ChatText.replyPreview(res, r),
+                                    color = Tv.Muted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                    fontStyle = if (r.state == uniffi.titi_ffi.FfiReplyState.PRESENT) FontStyle.Normal else FontStyle.Italic,
+                                )
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Rounded.Sms, null, tint = Tv.Muted, modifier = Modifier.size(12.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(m.fromName, color = Tv.Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    bodyText(m.body), color = if (m.deleted) Tv.Muted else Tv.Ink, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                    fontStyle = if (m.deleted) FontStyle.Italic else FontStyle.Normal, modifier = Modifier.weight(1f, fill = false),
+                                )
+                                if (m.edited > 0 && !m.deleted) { Spacer(Modifier.width(6.dp)); Text(stringResource(ro.titi.client.R.string.chat_edited), color = Tv.Muted, fontSize = 10.sp, fontStyle = FontStyle.Italic) }
+                            }
+                            if (m.reactions.isNotEmpty() && !m.deleted) Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 2.dp)) {
+                                m.reactions.take(6).forEach { r ->
+                                    val rcd = ro.titi.app.core.ChatText.reaction(res, r)
+                                    Text(
+                                        if (r.count > 1) "${r.emoji} ${r.count}" else r.emoji,
+                                        color = if (r.mine) Tv.Amber else Tv.Ink, fontSize = 11.sp,
+                                        modifier = Modifier.semantics { contentDescription = rcd },
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
+                Text(stringResource(R.string.messages_hint), color = Tv.Muted, fontSize = 9.sp)
             }
         }
+    }
+    recent.firstOrNull { it.id == reactFor }?.let { m ->
+        SheetDialog(onDismiss = { reactFor = null }) { ReactPanel(m, onPick = { e -> engine.toggleReaction(m, e); reactFor = null }) }
     }
 
     Row(Modifier.padding(top = 14.dp).fillMaxWidth().focusRestorer(talkReq).focusGroup(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -518,8 +559,35 @@ private fun SosOverlay(s: ro.titi.app.core.Alert.Sos, onDismiss: () -> Unit) {
     }
 }
 
+/** Quick 6 reactions in one D-pad row; focus starts on the first. */
 @Composable
-private fun bodyText(b: FfiMessageBody): String = when (b) {
+private fun ReactPanel(m: ro.titi.app.core.ChatMessage, onPick: (String) -> Unit) {
+    val first = remember { FocusRequester() }
+    LaunchedEffect(Unit) { delay(50); runCatching { first.requestFocus() } }
+    Text(stringResource(ro.titi.client.R.string.chat_action_react), color = Tv.Ink, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+    Text(bodyText(m.body), color = Tv.Muted, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp, bottom = 14.dp))
+    Row(Modifier.focusGroup(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        ro.titi.app.core.ChatRules.quickReactions.forEachIndexed { i, e ->
+            val mine = m.reactions.any { it.mine && it.emoji == e }
+            val cd = stringResource(ro.titi.client.R.string.cd_react_with, e)
+            Surface(
+                onClick = { onPick(e) },
+                modifier = (if (i == 0) Modifier.focusRequester(first) else Modifier).size(54.dp).semantics { contentDescription = cd },
+                shape = tileShape(14.dp),
+                colors = ClickableSurfaceDefaults.colors(
+                    containerColor = if (mine) Tv.Amber.copy(alpha = 0.3f) else Tv.Elevated, contentColor = Tv.Ink,
+                    focusedContainerColor = if (mine) Tv.Amber.copy(alpha = 0.45f) else Tv.Elevated, focusedContentColor = Tv.Ink,
+                ),
+                scale = ClickableSurfaceDefaults.scale(focusedScale = 1.12f),
+                border = amberFocusBorder(14.dp),
+            ) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(e, fontSize = 24.sp) } }
+        }
+    }
+}
+
+@Composable
+private fun bodyText(b: FfiMessageBody?): String = when (b) {
+    null -> stringResource(ro.titi.client.R.string.chat_deleted)
     is FfiMessageBody.Text -> b.text
     is FfiMessageBody.Sos -> "SOS"
     is FfiMessageBody.VoiceNote -> "🎙 ${b.durationMs.toInt() / 1000}s"

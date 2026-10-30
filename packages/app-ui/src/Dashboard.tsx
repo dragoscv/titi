@@ -4,7 +4,9 @@
 import { useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { AudioLines, MessageSquare, Radio, Users } from "lucide-react";
-import { useStore, type GroupState } from "./store";
+import { chatOf, useStore, type GroupState } from "./store";
+import { nameOf } from "./reducer";
+import { previewOf } from "./chat";
 import { Avatar } from "./Avatar";
 import { cn, hueColor } from "./cn";
 import { dashboardColumns } from "./dashboard-layout";
@@ -43,8 +45,8 @@ export function Dashboard({ focus = -1, onPick, tenFoot = false, className }: Da
 function Tile({ g, focused, tenFoot, onPick }: { g: GroupState; focused: boolean; tenFoot: boolean; onPick?: (g: GroupState) => void }) {
   const nodeId = useStore((s) => s.nodeId);
   const level = useStore((s) => s.levelDbfs);
-  const msgs = useStore((s) => s.messages);
-  const last = msgs.filter((m) => m.group === g.id).slice(tenFoot ? -2 : -3);
+  const rows = useStore(chatOf(g.id));
+  const last = rows.slice(tenFoot ? -2 : -3);
   const me = g.floor === "talking";
   const live = me || g.floor === "busy";
   const talker = g.members.find((m) => m.node === g.talkerNode);
@@ -94,9 +96,9 @@ function Tile({ g, focused, tenFoot, onPick }: { g: GroupState; focused: boolean
       {last.length > 0 && (
         <div className="relative flex flex-col gap-2">
           {last.map((m) => (
-            <div key={m.id} className={cn("flex items-center gap-2 truncate rounded-2xl bg-graphite/50 px-4 py-2", tenFoot ? "text-xl" : "text-sm")}>
-              <MessageSquare size={tenFoot ? 20 : 14} className="shrink-0 text-muted" /><b className="shrink-0">{m.fromName}</b>
-              <span className="truncate">{m.body.kind === "text" ? m.body.text : m.body.kind === "sos" ? "SOS" : m.body.kind}</span>
+            <div key={m.msg_uuid} className={cn("flex items-center gap-2 truncate rounded-2xl bg-graphite/50 px-4 py-2", tenFoot ? "text-xl" : "text-sm")}>
+              <MessageSquare size={tenFoot ? 20 : 14} className="shrink-0 text-muted" /><b className="shrink-0">{nameOf(m.from)}</b>
+              <span className={cn("truncate", m.deleted && "italic text-muted")}>{previewOf(m, nameOf(m.from))}</span>
             </div>
           ))}
         </div>

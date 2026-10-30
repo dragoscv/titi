@@ -10,7 +10,14 @@ public enum FloorState: Sendable { case idle, pending, talking, busy, queued }
 public struct Peer: Identifiable, Sendable { public var id: String { node }; public let node: String; public var name: String; public var hue: Int; public var link: FfiLinkClass; public var inGroup: Bool; public var bars: Int = 0; public var hops: Int = 0 }
 public struct Invite: Identifiable, Sendable { public var id: String { group }; public let group: String; public let name: String; public let host: String; public let hostName: String; public let members: Int }
 public struct Member: Identifiable, Sendable { public var id: String { node }; public let node: String; public let name: String; public let hue: Int }
-public struct ChatMessage: Identifiable, Sendable { public let id: String; public let group: String; public let from: String; public let fromName: String; public let sentMs: UInt64; public let body: FfiMessageBody; public let mine: Bool; public var acked = false }
+
+/// Timeline rows are keyed by message uuid (hex); `chatUpdated` replaces by id.
+extension FfiChatItem: Identifiable { public var id: String { msgUuid.hex } }
+
+public extension Data {
+    var hex: String { map { String(format: "%02x", $0) }.joined() }
+    init?(hex: String) { guard let b = [UInt8](hex: hex) else { return nil }; self.init(b) }
+}
 
 public struct GroupState: Identifiable, Sendable {
     public let id: String
@@ -36,7 +43,10 @@ public final class EngineHost: @unchecked Sendable, TransportEvents {
     public var activeGroup: String?
     public var peers: [String: Peer] = [:]
     public var invites: [Invite] = []
-    public var messages: [ChatMessage] = []
+    /// Chat timeline per group id (hex), sorted by `sortMs`.
+    public var chats: [String: [FfiChatItem]] = [:]
+    /// Whether an older history page may exist, per group id.
+    public var chatHasMore: [String: Bool] = [:]
     public var levelDbfs: Float = -60
     public var muted = false { didSet { audio.muted = muted } }
     public var running = false
@@ -53,13 +63,27 @@ public final class EngineHost: @unchecked Sendable, TransportEvents {
     private let defaults = UserDefaults.standard
 
     public init(displayName: String, hue: Int) throws {
-        let seed = defaults.data(forKey: "identity_seed").map { [UInt8]($0) } ?? []
+        let seed = defaults.data(forKey: "identity_seed") ?? Data()
         engine = try TitiEngine(seed: seed, displayName: displayName, avatarHue: UInt16(hue), rngSeed: UInt64.random(in: 0...UInt64.max))
-        if seed.isEmpty { defaults.set(Data(engine.identitySeed()), forKey: "identity_seed") }
+        if seed.isEmpty { defaults.set(engine.identitySeed(), forKey: "identity_seed") }
         nodeId = engine.nodeId().hex
-        if let g = defaults.data(forKey: "groups_blob") { try? engine.restoreGroups(data: [UInt8](g), nowMs: now()) }
-        audio.onPcm = { [weak self] pcm, t in self?.post { self?.apply(self!.engine.onAudioIn(pcmLe: pcm.leBytes, nowMs: t)) } }
+        openChatStore()
+        if let g = defaults.data(forKey: "groups_blob") { try? engine.restoreGroups(data: g, nowMs: now()) }
+        audio.onPcm = { [weak self] pcm, t in self?.post { self?.apply(self!.engine.onAudioIn(pcmLe: Data(pcm.leBytes), nowMs: t)) } }
         refreshGroups()
+    }
+
+    /// Durable chat history (SQLite + FTS5) in Application Support; must run
+    /// before any transport starts so no message lands in the memory store.
+    private func openChatStore() {
+        let fm = FileManager.default
+        guard let dir = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return }
+        do {
+            try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+            try engine.openChatStore(path: dir.appendingPathComponent("chat.db").path(percentEncoded: false))
+        } catch {
+            print("chat store open failed: \(error)")
+        }
     }
 
     private func now() -> UInt64 { UInt64(Date().timeIntervalSince1970 * 1000) }
@@ -97,19 +121,19 @@ public final class EngineHost: @unchecked Sendable, TransportEvents {
     public func linkDown(_ t: any Transport) { post { self.apply(self.engine.onLinkDown(link: t.linkId, nowMs: self.now())) } }
     public func peerSeen(_ t: any Transport, token: String) { post { self.apply(self.engine.onPeerSeen(link: t.linkId, token: token, nowMs: self.now())) } }
     public func peerLost(_ t: any Transport, token: String) { post { self.apply(self.engine.onPeerLost(link: t.linkId, token: token, nowMs: self.now())) } }
-    public func frame(_ t: any Transport, token: String, bytes: [UInt8]) { post { self.apply(self.engine.onFrame(link: t.linkId, token: token, bytes: bytes, nowMs: self.now())) } }
+    public func frame(_ t: any Transport, token: String, bytes: [UInt8]) { post { self.apply(self.engine.onFrame(link: t.linkId, token: token, bytes: Data(bytes), nowMs: self.now())) } }
 
     // MARK: intents
     public func pttDown(_ prio: FfiPriority = .normal) { post { self.apply(self.engine.pttDown(prio: prio, nowMs: self.now())) } }
     public func pttUp() { post { self.apply(self.engine.pttUp(nowMs: self.now())) } }
     public func createGroup(_ name: String) { post { self.tryApply { try self.engine.createGroup(name: name, nowMs: self.now()) }; self.refreshGroups(); self.syncRelayRooms() } }
-    public func dissolveGroup(_ id: String) { post { self.tryApply { try self.engine.dissolveGroup(group: [UInt8](hex: id)!, nowMs: self.now()) }; self.refreshGroups(); self.syncRelayRooms() } }
-    public func leaveGroup(_ id: String) { post { self.tryApply { try self.engine.leaveGroup(group: [UInt8](hex: id)!, nowMs: self.now()) }; self.refreshGroups(); self.syncRelayRooms() } }
-    public func setActiveGroup(_ id: String) { post { try? self.engine.setActiveGroup(group: [UInt8](hex: id)!); self.refreshGroups(); self.syncRelayRooms(); self.update(id) { $0.unread = 0 } } }
-    public func setFullDuplex(_ id: String, _ on: Bool) { post { self.tryApply { try self.engine.setFullDuplex(group: [UInt8](hex: id)!, on: on, nowMs: self.now()) }; self.refreshGroups() } }
-    public func invitePeer(_ g: String, _ node: String) { post { self.tryApply { try self.engine.invitePeer(group: [UInt8](hex: g)!, node: [UInt8](hex: node)!, nowMs: self.now()) } } }
-    public func acceptInvite(_ i: Invite) { Task { @MainActor in invites.removeAll { $0.group == i.group } }; post { self.tryApply { try self.engine.acceptInvite(group: [UInt8](hex: i.group)!, host: [UInt8](hex: i.host)!, nowMs: self.now()) } } }
-    public func declineInvite(_ i: Invite) { Task { @MainActor in invites.removeAll { $0.group == i.group } }; post { _ = try? self.engine.declineInvite(group: [UInt8](hex: i.group)!, host: [UInt8](hex: i.host)!, nowMs: self.now()) } }
+    public func dissolveGroup(_ id: String) { post { self.tryApply { try self.engine.dissolveGroup(group: Data(hex: id)!, nowMs: self.now()) }; self.refreshGroups(); self.syncRelayRooms(); self.dropChat(id) } }
+    public func leaveGroup(_ id: String) { post { self.tryApply { try self.engine.leaveGroup(group: Data(hex: id)!, nowMs: self.now()) }; self.refreshGroups(); self.syncRelayRooms(); self.dropChat(id) } }
+    public func setActiveGroup(_ id: String) { post { try? self.engine.setActiveGroup(group: Data(hex: id)!); self.refreshGroups(); self.syncRelayRooms(); Task { @MainActor in self.update(id) { $0.unread = 0 } } } }
+    public func setFullDuplex(_ id: String, _ on: Bool) { post { self.tryApply { try self.engine.setFullDuplex(group: Data(hex: id)!, on: on, nowMs: self.now()) }; self.refreshGroups() } }
+    public func invitePeer(_ g: String, _ node: String) { post { self.tryApply { try self.engine.invitePeer(group: Data(hex: g)!, node: Data(hex: node)!, nowMs: self.now()) } } }
+    public func acceptInvite(_ i: Invite) { Task { @MainActor in invites.removeAll { $0.group == i.group } }; post { self.tryApply { try self.engine.acceptInvite(group: Data(hex: i.group)!, host: Data(hex: i.host)!, nowMs: self.now()) } } }
+    public func declineInvite(_ i: Invite) { Task { @MainActor in invites.removeAll { $0.group == i.group } }; post { _ = try? self.engine.declineInvite(group: Data(hex: i.group)!, host: Data(hex: i.host)!, nowMs: self.now()) } }
     public func joinByLink(_ url: String) { post { self.apply(self.engine.joinByLink(url: url, nowMs: self.now())) } }
     public func joinByCode(_ code: String) {
         post {
@@ -126,10 +150,80 @@ public final class EngineHost: @unchecked Sendable, TransportEvents {
         }
         t.resume()
     }
-    public func sendText(_ g: String, _ text: String) { post { self.tryApply { try self.engine.sendText(group: [UInt8](hex: g)!, text: text, nowMs: self.now()) } } }
-    public func sendSos(_ g: String, lat: Double, lon: Double) { post { self.tryApply { try self.engine.sendSos(group: [UInt8](hex: g)!, lat: lat, lon: lon, note: "", cancelled: false, nowMs: self.now()) }; self.apply(self.engine.pttDown(prio: .emergency, nowMs: self.now())) } }
-    public func currentCode(_ g: String) -> (String, Int)? { guard let s = try? engine.currentCode(group: [UInt8](hex: g)!, nowMs: now()) else { return nil }; let p = s.split(separator: "|"); return (String(p[0]), Int(p.count > 1 ? p[1] : "0") ?? 0) }
-    public func deepLink(_ g: String) -> String? { try? engine.deepLink(group: [UInt8](hex: g)!, nowMs: now(), validMs: 600_000) }
+    public func sendText(_ g: String, _ text: String) { post { self.tryApply { try self.engine.sendText(group: Data(hex: g)!, text: text, nowMs: self.now()) } } }
+    public func sendSos(_ g: String, lat: Double, lon: Double) { post { self.tryApply { try self.engine.sendSos(group: Data(hex: g)!, lat: lat, lon: lon, note: "", cancelled: false, nowMs: self.now()) }; self.apply(self.engine.pttDown(prio: .emergency, nowMs: self.now())) } }
+    public func currentCode(_ g: String) -> (String, Int)? { guard let s = try? engine.currentCode(group: Data(hex: g)!, nowMs: now()) else { return nil }; let p = s.split(separator: "|"); return (String(p[0]), Int(p.count > 1 ? p[1] : "0") ?? 0) }
+    public func deepLink(_ g: String) -> String? { try? engine.deepLink(group: Data(hex: g)!, nowMs: now(), validMs: 600_000) }
+
+    // MARK: chat (message model v2)
+    /// Text with an optional quoted message and mentions (member node ids, hex).
+    public func sendTextV2(_ g: String, _ text: String, replyTo: String? = nil, mentions: [String] = [], mentionAll: Bool = false) {
+        post {
+            self.tryApply {
+                try self.engine.sendTextV2(group: Data(hex: g)!, text: text, replyTo: replyTo.flatMap { Data(hex: $0) },
+                                           mentions: mentions.compactMap { Data(hex: $0) }, mentionAll: mentionAll, nowMs: self.now())
+            }
+        }
+    }
+    /// One reaction per member; an empty `emoji` removes yours.
+    public func react(_ g: String, _ target: String, _ emoji: String) { post { self.tryApply { try self.engine.react(group: Data(hex: g)!, target: Data(hex: target)!, emoji: emoji, nowMs: self.now()) } } }
+    public func editMessage(_ g: String, _ target: String, _ text: String) { post { self.tryApply { try self.engine.editMessage(group: Data(hex: g)!, target: Data(hex: target)!, text: text, nowMs: self.now()) } } }
+    public func deleteMessage(_ g: String, _ target: String) { post { self.tryApply { try self.engine.deleteMessage(group: Data(hex: g)!, target: Data(hex: target)!, nowMs: self.now()) } } }
+    public func forward(from g: String, _ target: String, to dest: String) { post { self.tryApply { try self.engine.forward(fromGroup: Data(hex: g)!, target: Data(hex: target)!, toGroup: Data(hex: dest)!, nowMs: self.now()) } } }
+    public func setDraft(_ g: String, _ text: String) { post { try? self.engine.setDraft(group: Data(hex: g)!, text: text) } }
+    public func draft(_ g: String) -> String? {
+        guard let id = Data(hex: g), let d = try? engine.draft(group: id) else { return nil }
+        return d
+    }
+    /// Diacritic-blind prefix search in one group, newest first.
+    public func searchChat(_ g: String, _ query: String, limit: UInt32 = 50) -> [FfiChatItem] {
+        guard let id = Data(hex: g) else { return [] }
+        return (try? engine.search(group: id, query: query, limit: limit)) ?? []
+    }
+    /// Original text first, then every edit in order.
+    public func editHistory(_ target: String) -> [FfiEditRevision] {
+        guard let id = Data(hex: target) else { return [] }
+        return (try? engine.editHistory(target: id)) ?? []
+    }
+    /// Loads the newest page (`older == false`) or the page before the oldest loaded row.
+    @MainActor public func loadHistory(_ g: String, older: Bool = false, limit: UInt32 = 100) {
+        let before: UInt64? = older ? chats[g]?.first?.sortMs : nil
+        if older && before == nil { return }
+        post {
+            guard let id = Data(hex: g), let items = try? self.engine.history(group: id, beforeMs: before, limit: limit) else { return }
+            Task { @MainActor in
+                self.merge(g, items)
+                self.chatHasMore[g] = items.count >= Int(limit)
+            }
+        }
+    }
+    /// Display name for a node id (hex) as last announced; falls back to the id prefix.
+    @MainActor public func displayName(_ node: String) -> String {
+        if let n = names[node] { return n }
+        for g in groups { if let m = g.members.first(where: { $0.node == node }) { return m.name } }
+        return String(node.prefix(6))
+    }
+
+    @MainActor private func merge(_ g: String, _ items: [FfiChatItem]) {
+        var list = chats[g] ?? []
+        let have = Set(list.map(\.id))
+        // rows already present came from `chatUpdated`, which is never older than a history read
+        list.append(contentsOf: items.filter { !have.contains($0.id) })
+        chats[g] = Self.sorted(list)
+    }
+
+    @MainActor private func upsert(_ item: FfiChatItem) {
+        let g = item.group.hex
+        var list = chats[g] ?? []
+        if let i = list.firstIndex(where: { $0.id == item.id }) { list[i] = item } else { list.append(item) }
+        chats[g] = Self.sorted(list)
+    }
+
+    private static func sorted(_ l: [FfiChatItem]) -> [FfiChatItem] {
+        l.sorted { $0.sortMs != $1.sortMs ? $0.sortMs < $1.sortMs : $0.id < $1.id }
+    }
+
+    private func dropChat(_ g: String) { Task { @MainActor in self.chats[g] = nil; self.chatHasMore[g] = nil } }
 
     // MARK: dispatch
     private func tryApply(_ f: () throws -> [FfiAction]) { do { apply(try f()) } catch { Task { @MainActor in self.toast = "\(error)" } } }
@@ -137,10 +231,10 @@ public final class EngineHost: @unchecked Sendable, TransportEvents {
     private func apply(_ acts: [FfiAction]) {
         for a in acts {
             switch a {
-            case let .send(link, peer, bytes): transports[link]?.send(peer: peer, bytes: bytes)
-            case let .play(pcmLe): audio.play(pcmLe.int16s)
+            case let .send(link, peer, bytes): transports[link]?.send(peer: peer, bytes: [UInt8](bytes))
+            case let .play(pcmLe): audio.play([UInt8](pcmLe).int16s)
             case let .capture(active, _): active ? audio.startCapture() : audio.stopCapture()
-            case let .persist(key, value): if key == "groups" { defaults.set(Data(value), forKey: "groups_blob") }
+            case let .persist(key, value): if key == "groups" { defaults.set(value, forKey: "groups_blob") }
             case .wakeAt: break
             case let .ui(e): onUi(e)
             }
@@ -168,12 +262,12 @@ public final class EngineHost: @unchecked Sendable, TransportEvents {
             case let .joinFailed(reason): toast = "Could not join: \(reason)"
             case let .memberJoined(_, node, name): names[node.hex] = name; refreshGroups()
             case .memberLeft: refreshGroups()
-            case let .groupDissolved(_, name): refreshGroups(); syncRelayRooms(); toast = "“\(name)” was deleted by its creator"
-            case let .message(group, from, uuid, sentMs, body):
-                let m = ChatMessage(id: uuid.hex, group: group.hex, from: from.hex, fromName: names[from.hex] ?? String(from.hex.prefix(6)), sentMs: sentMs, body: body, mine: from.hex == nodeId)
-                messages.append(m); if messages.count > 500 { messages.removeFirst() }
-                if !m.mine && activeGroup != group.hex { update(group.hex) { $0.unread += 1 } }
-            case let .messageAcked(uuid, _): if let i = messages.firstIndex(where: { $0.id == uuid.hex }) { messages[i].acked = true }
+            case let .groupDissolved(group, name): refreshGroups(); syncRelayRooms(); dropChat(group.hex); toast = "“\(name)” was deleted by its creator"
+            case let .message(group, from, _, _, _):
+                // fresh content only: drives unread; the timeline row comes via chatUpdated
+                if from.hex != nodeId && activeGroup != group.hex { update(group.hex) { $0.unread += 1 } }
+            case .messageAcked: break
+            case let .chatUpdated(item): upsert(item)
             case let .handover(group, state, link, _): update(group.hex) { $0.handover = state; $0.link = link }
             case let .suspended(group): update(group.hex) { $0.suspended = true }
             case let .resumed(group): update(group.hex) { $0.suspended = false }
@@ -204,10 +298,10 @@ public final class EngineHost: @unchecked Sendable, TransportEvents {
         guard let relay = transports[LinkIds.internet] as? RelayTransport else { return }
         var rooms: [(hash: [UInt8], rendezvous: Bool)] = []
         for g in engine.groups() {
-            if let h = try? groupHash(group: g.id) { rooms.append((h, false)) }
-            for h in (try? engine.rendezvousForGroup(group: g.id, nowMs: now())) ?? [] { rooms.append((h, true)) }
+            if let h = try? groupHash(group: g.id) { rooms.append(([UInt8](h), false)) }
+            for h in (try? engine.rendezvousForGroup(group: g.id, nowMs: now())) ?? [] { rooms.append(([UInt8](h), true)) }
         }
-        if let (c, _) = pendingCode { for h in rendezvousForCode(code: c, nowMs: now()) { rooms.append((h, true)) } }
+        if let (c, _) = pendingCode { for h in rendezvousForCode(code: c, nowMs: now()) { rooms.append(([UInt8](h), true)) } }
         relay.setRooms(rooms)
     }
 

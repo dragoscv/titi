@@ -5,6 +5,11 @@ all-features = true
 [advisories]
 version = 2
 yanked = "deny"
+ignore = [
+  # basic-toml: unmaintained (archived 2025-03), build-time only via uniffi_bindgen → askama;
+  # parses our own uniffi.toml, never untrusted input. No upgrade upstream yet (2026-10-30).
+  { id = "RUSTSEC-2026-0374", reason = "build-time only via uniffi_bindgen/askama; no fix available" },
+]
 
 [licenses]
 version = 2

@@ -6,10 +6,14 @@ options:
     iOS: "17.0"
   xcodeVersion: "26.0"
   createIntermediateGroups: true
+  developmentLanguage: en
 settings:
   base:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
+    # Titi/Resources/Localizable.xcstrings (en + ro) ships via the Titi source glob.
+    SWIFT_EMIT_LOC_STRINGS: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
     DEVELOPMENT_TEAM: ${DEVELOPMENT_TEAM}
@@ -31,6 +35,8 @@ targets:
       path: Titi/Info.plist
       properties:
         CFBundleDisplayName: Titi
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, ro]
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIBackgroundModes: [audio, bluetooth-central, bluetooth-peripheral, push-to-talk]

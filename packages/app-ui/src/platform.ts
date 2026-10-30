@@ -2,6 +2,7 @@
 // WSS), desktop (Tauri → native Rust engine) and TV hosts implement it; screens
 // only ever call `host.*`.
 import type { Settings } from "./store";
+import type { ChatItem, EditVersion } from "./types";
 
 export type PlatformKind = "web" | "desktop" | "tv";
 
@@ -21,6 +22,15 @@ export interface Capabilities {
 }
 
 export interface AudioDevice { id: string; name: string; isDefault: boolean }
+
+export interface SendTextOpts {
+  /** msg_uuid (hex) of the quoted message */
+  replyTo?: string;
+  /** node ids (hex) */
+  mentions?: string[];
+  /** "@all" — creator only */
+  mentionAll?: boolean;
+}
 
 export interface TitiHost {
   readonly kind: PlatformKind;
@@ -44,6 +54,20 @@ export interface TitiHost {
   joinByCode(code: string): void;
   joinByLink(url: string): void;
   sendText(group: string, text: string): void;
+  // ---- chat (message model v2); ids are hex ------------------------------
+  sendTextV2(group: string, text: string, opts?: SendTextOpts): void;
+  /** Empty emoji removes my reaction. */
+  react(group: string, target: string, emoji: string): void;
+  editMessage(group: string, target: string, text: string): void;
+  deleteMessage(group: string, target: string): void;
+  forward(fromGroup: string, target: string, toGroup: string): void;
+  setDraft(group: string, text: string): void;
+  draft(group: string): Promise<string | null>;
+  /** Oldest first; `beforeMs` omitted = newest page. */
+  history(group: string, beforeMs?: number): Promise<ChatItem[]>;
+  /** Newest first; `group` null = every group. */
+  search(group: string | null, q: string): Promise<ChatItem[]>;
+  editHistory(target: string): Promise<EditVersion[]>;
   sendSos(group: string, cancelled: boolean): void;
   /** [code, seconds until it rotates] */
   currentCode(group: string): Promise<[string, number] | null>;

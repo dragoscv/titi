@@ -12,7 +12,7 @@ type Hooks = { cue: Mock<ReducerHooks["cue"]>; refreshGroups: Mock<() => void>; 
 let hooks: Hooks;
 
 beforeEach(() => {
-  useStore.setState({ nodeId: ME, groups: [], activeGroup: null, peers: {}, invites: [], messages: [], settings: defaultSettings, toast: null });
+  useStore.setState({ nodeId: ME, groups: [], activeGroup: null, peers: {}, invites: [], chat: {}, settings: defaultSettings, toast: null });
   hooks = { cue: vi.fn<ReducerHooks["cue"]>(), refreshGroups: vi.fn<() => void>(), syncRooms: vi.fn<() => void>(), notify: vi.fn<(title: string, body: string, tag: string) => void>() };
   setGroups([group([{ node: ME, name: "Me" }, { node: BOB, name: "Bob" }])]);
 });
@@ -43,10 +43,10 @@ describe("floor events", () => {
 describe("messages", () => {
   const text = (id: string, from = BOB) => ({ type: "message" as const, group: G, from, msg_uuid: id, sent_ms: 1, body: { kind: "text" as const, text: "hi" } });
 
-  it("de-duplicates a message delivered twice (LAN + relay)", () => {
+  it("the message event alone never adds a timeline row (rows come from chatUpdated)", () => {
     applyUi(text("m1"), hooks);
     applyUi(text("m1"), hooks);
-    expect(useStore.getState().messages).toHaveLength(1);
+    expect(useStore.getState().chat).toEqual({});
   });
 
   it("counts unread only for groups that are not active and never for own messages", () => {

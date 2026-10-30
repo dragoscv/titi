@@ -9,4 +9,23 @@
     <string name="join_failed_generic">Nu am putut intra — verifică codul și încearcă din nou</string>
     <string name="error_mic">Microfonul nu e disponibil — poate îl folosește altă aplicație</string>
     <string name="error_generic">Ceva n‑a mers</string>
+
+    <!-- Chat v2 (comun pentru telefon, ceas și TV) -->
+    <string name="chat_you">Tu</string>
+    <string name="chat_deleted">Acest mesaj a fost șters</string>
+    <string name="chat_edited">editat</string>
+    <string name="chat_forwarded">Redirecționat</string>
+    <string name="chat_forwarded_many">Redirecționat de multe ori</string>
+    <string name="chat_reply_deleted">Mesajul original a fost șters</string>
+    <string name="chat_reply_missing">Mesajul nu există pe acest dispozitiv</string>
+    <string name="chat_quote_voice">Mesaj vocal</string>
+    <string name="chat_quote_location">Locație</string>
+    <string name="chat_quote_sos">SOS</string>
+    <string name="chat_mentions_you">Te menționează</string>
+    <string name="chat_action_reply">Răspunde</string>
+    <string name="chat_action_react">Reacționează</string>
+    <string name="cd_reaction">%1$s %2$d</string>
+    <string name="cd_reaction_mine">%1$s %2$d, inclusiv tu</string>
+    <string name="cd_react_with">Reacționează cu %1$s</string>
+    <string name="cd_reply_quote">Răspuns pentru %1$s: %2$s</string>
 </resources>

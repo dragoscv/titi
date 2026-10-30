@@ -80,4 +80,6 @@
     <string name="action_group">Group</string>
     <string name="sos_title">SOS from %1$s</string>
     <string name="sos_ack">I have seen it</string>
+    <string name="messages_hint">↑ select a message · OK to react</string>
+    <string name="cd_message_react">Message from %1$s. Press OK to react.</string>
 </resources>

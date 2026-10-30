@@ -81,4 +81,6 @@
     <string name="action_group">Grup</string>
     <string name="sos_title">SOS de la %1$s</string>
     <string name="sos_ack">Am văzut</string>
+    <string name="messages_hint">↑ alege un mesaj · OK pentru reacție</string>
+    <string name="cd_message_react">Mesaj de la %1$s. Apasă OK pentru a reacționa.</string>
 </resources>

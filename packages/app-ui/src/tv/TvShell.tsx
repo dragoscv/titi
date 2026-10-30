@@ -5,15 +5,19 @@
 // needed (join by code shown on-screen; phone scans the QR).
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { AudioLines, Mic, Radio, Users, MessageSquare, Plus, QrCode, Settings as SettingsIcon, Power, LayoutGrid, LogIn, MoreHorizontal, LogOut, Trash2, UserPlus, Siren, Globe } from "lucide-react";
+import { AudioLines, Mic, Radio, Users, MessageSquare, Plus, QrCode, Settings as SettingsIcon, Power, LayoutGrid, LogIn, MoreHorizontal, LogOut, Trash2, UserPlus, Siren, Globe, SmilePlus, CornerUpLeft } from "lucide-react";
 import { Dashboard } from "../Dashboard";
 import { dashboardColumns } from "../dashboard-layout";
 import QRCode from "qrcode";
 import { host } from "../platform";
 import { toWebLink } from "../links";
-import { useStore, type GroupState } from "../store";
+import { chatOf, useStore, type GroupState } from "../store";
+import { mergeChatItems, nameOf } from "../reducer";
+import { forwardedLabel, previewOf, QUICK_REACTIONS, quoteText, reactionLabel } from "../chat";
+import { t } from "../i18n";
+import type { ChatItem } from "../types";
 import { Avatar } from "../Avatar";
-import { hueColor } from "../cn";
+import { cn, hueColor } from "../cn";
 
 const KEY = { LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40, OK: 13, BACK: 10009, ESC: 27, PLAY_PAUSE: 10252, RED: 403 } as const;
 /** Some remotes stop repeating without a keyup; release after this gap. */
@@ -43,7 +47,7 @@ export function TvShell() {
   const [action, setAction] = useState(0);
   /** focused tile while the all-groups wall is open */
   const [tile, setTile] = useState(0);
-  const [sheet, setSheet] = useState<"none" | "invite" | "join" | "settings" | "group">("none");
+  const [sheet, setSheet] = useState<"none" | "invite" | "join" | "settings" | "group" | "react">("none");
   const sos = useStore((s) => s.sos);
   const talking = useRef(false);
   const lastRepeat = useRef(0);
@@ -65,6 +69,14 @@ export function TvShell() {
 
   const sel = pane === "wall" ? groups[Math.min(tile, Math.max(0, groups.length - 1))] : groups[Math.min(focus, Math.max(0, groups.length - 1))];
   useEffect(() => { if (sel && sel.id !== activeId) host.setActiveGroup(sel.id); }, [sel, activeId]);
+  // newest history page of the selected group (rows also stream in live via chatUpdated)
+  const selId = sel?.id;
+  useEffect(() => {
+    if (!selId) return undefined;
+    let live = true;
+    void host.history(selId).then((items) => { if (live) mergeChatItems(items); });
+    return () => { live = false; };
+  }, [selId]);
 
   const down = useCallback(() => { if (talking.current) return; talking.current = true; talkStart.current = Date.now(); host.pttDown(); }, []);
   const up = useCallback(() => { if (!talking.current) return; talking.current = false; host.pttUp(); }, []);
@@ -83,6 +95,7 @@ export function TvShell() {
     { id: "talk", label: sel.fullDuplex ? "Open mic" : "Hold OK to talk", icon: <Mic size={34} /> },
     { id: "invite", label: "Invite", icon: <QrCode size={34} /> },
     { id: "mode", label: sel.fullDuplex ? "Push to talk" : "Open mic", icon: <Radio size={34} /> },
+    { id: "react", label: t("tv.react"), icon: <SmilePlus size={34} /> },
     { id: "group", label: "Group", icon: <MoreHorizontal size={34} /> },
   ] : [];
 
@@ -142,6 +155,7 @@ export function TvShell() {
             const id = actions[action]?.id;
             if (id === "invite") setSheet("invite");
             if (id === "mode") host.setFullDuplex(sel.id, !sel.fullDuplex);
+            if (id === "react") setSheet("react");
             if (id === "group") setSheet("group");
           }
           break;
@@ -205,6 +219,7 @@ export function TvShell() {
               {sheet === "join" && <JoinPanel />}
               {sheet === "settings" && <SettingsPanel />}
               {sheet === "group" && sel && <GroupPanel g={sel} onDone={() => setSheet("none")} />}
+              {sheet === "react" && sel && <ReactPanel gid={sel.id} />}
               <div className="mt-10 text-center text-xl text-muted">Press Back to close</div>
             </motion.div>
           </motion.div>
@@ -260,8 +275,8 @@ function Stage({ g, pane, action, actions }: { g: GroupState; pane: Pane; action
   const nodeId = useStore((s) => s.nodeId);
   const level = useStore((s) => s.levelDbfs);
   const muted = useStore((s) => s.muted);
-  const msgs = useStore((s) => s.messages);
-  const recent = msgs.filter((m) => m.group === g.id).slice(-4);
+  const rows = useStore(chatOf(g.id));
+  const recent = rows.slice(-4);
   const talker = g.members.find((m) => m.node === g.talkerNode);
   const me = g.floor === "talking";
   const lv = Math.min(1, Math.max(0, (level + 50) / 50));
@@ -294,9 +309,7 @@ function Stage({ g, pane, action, actions }: { g: GroupState; pane: Pane; action
         </AnimatePresence>
         {recent.length > 0 && (
           <div className="absolute bottom-8 left-8 flex max-w-[640px] flex-col gap-3">
-            {recent.map((m) => (
-              <div key={m.id} className="flex items-center gap-3 rounded-[22px] bg-elevated px-5 py-3 text-2xl"><MessageSquare size={24} className="text-muted" /><b>{m.fromName}</b><span className="truncate">{m.body.kind === "text" ? m.body.text : m.body.kind === "sos" ? "SOS" : m.body.kind}</span></div>
-            ))}
+            {recent.map((m) => <TvMessage key={m.msg_uuid} m={m} me={nodeId} />)}
           </div>
         )}
       </div>
@@ -318,6 +331,89 @@ function Empty() {
       <Radio size={96} className="text-amber" />
       <h1 className="mt-8 text-[56px] font-extrabold">Turn this screen into a room radio</h1>
       <p className="mt-4 max-w-[900px] text-3xl text-muted">On your phone open Titi → a group → Invite, then choose “Join a group” here and type the code, or invite this TV from the nearby list.</p>
+    </div>
+  );
+}
+
+/** One chat row at 10-foot size: quote, deleted tombstone, edited/forwarded marks, reactions. */
+function TvMessage({ m, me, focused = false }: { m: ChatItem; me: string; focused?: boolean }) {
+  const name = m.from === me ? t("chat.you") : nameOf(m.from);
+  const fwd = forwardedLabel(m.forwarded);
+  return (
+    <div className={cn("flex flex-col gap-1 rounded-[22px] bg-elevated px-5 py-3 text-2xl", m.mentions_me && !m.deleted && "ring-4 ring-amber/60", focused && "ring-4 ring-amber")}>
+      {m.reply && !m.deleted && (
+        <div className="flex items-center gap-2 truncate border-l-4 border-amber pl-3 text-xl text-muted"><CornerUpLeft size={20} className="shrink-0" />{m.reply.state === "present" && <b className="shrink-0">{nameOf(m.reply.sender)}</b>}<span className="truncate">{quoteText(m.reply)}</span></div>
+      )}
+      <div className="flex items-center gap-3">
+        <MessageSquare size={24} className="shrink-0 text-muted" /><b className="shrink-0">{name}</b>
+        <span className={cn("truncate", m.deleted && "italic text-muted")}>{previewOf(m, name)}</span>
+      </div>
+      {(fwd || (m.edited > 0 && !m.deleted) || m.reactions.length > 0) && (
+        <div className="flex flex-wrap items-center gap-2 text-xl text-muted">
+          {fwd && !m.deleted && <span className="italic">{fwd}</span>}
+          {m.edited > 0 && !m.deleted && <span>{t("chat.edited")}</span>}
+          {m.reactions.map((r) => (
+            <span key={r.emoji} aria-label={reactionLabel(r)} className={cn("rounded-full border-2 px-3 py-0.5 text-ink", r.mine ? "border-amber bg-amber/20" : "border-outline")}>{r.emoji} {r.count}</span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** TV chat action = React only: ↑/↓ pick a message, OK → ←/→ through the quick 6, OK reacts (again removes), Back returns. */
+function ReactPanel({ gid }: { gid: string }) {
+  const me = useStore((s) => s.nodeId);
+  const rows = useStore(chatOf(gid));
+  const items = rows.filter((r) => !r.deleted && r.body).slice(-6);
+  const [target, setTarget] = useState<string | null>(null);
+  const first = useRef<HTMLButtonElement>(null);
+  const lastPick = useRef<string | null>(null);
+  useEffect(() => {
+    // focus the newest message (or the one just reacted to), or the first emoji
+    if (target) { first.current?.focus(); return; }
+    const want = lastPick.current ? document.getElementById(`tv-react-${lastPick.current}`) : null;
+    (want ?? first.current)?.focus();
+  }, [target]);
+  const picked = items.find((r) => r.msg_uuid === target);
+  if (items.length === 0) return <div><h2 className="text-[44px] font-bold">{t("tv.react")}</h2><p className="mt-3 text-2xl text-muted">{t("tv.reactNone")}</p></div>;
+  if (picked) {
+    const mine = picked.reactions.find((r) => r.mine)?.emoji;
+    const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.keyCode === KEY.BACK || e.keyCode === KEY.ESC) { e.preventDefault(); e.stopPropagation(); setTarget(null); return; }
+      if (e.keyCode !== KEY.LEFT && e.keyCode !== KEY.RIGHT) return;
+      e.preventDefault();
+      const btns = Array.from(e.currentTarget.querySelectorAll("button"));
+      const i = btns.findIndex((b) => b === document.activeElement);
+      btns[Math.max(0, Math.min(btns.length - 1, i + (e.keyCode === KEY.RIGHT ? 1 : -1)))]?.focus();
+    };
+    return (
+      <div>
+        <h2 className="text-[44px] font-bold">{t("tv.react")}</h2>
+        <div className="mt-6"><TvMessage m={picked} me={me} /></div>
+        <div role="menu" tabIndex={-1} aria-label={t("chat.react")} className="mt-8 flex justify-between" onKeyDown={onKey}>
+          {QUICK_REACTIONS.map((e, i) => (
+            <button key={e} ref={i === 0 ? first : undefined} type="button" role="menuitemradio" aria-label={t("chat.reactWith", { emoji: e })} aria-checked={mine === e}
+              className={cn("grid h-[110px] w-[110px] place-items-center rounded-[28px] text-[60px] outline-none transition-transform focus:scale-110 focus:ring-4 focus:ring-amber", mine === e ? "bg-amber/30" : "bg-elevated")}
+              onClick={() => { host.react(gid, picked.msg_uuid, mine === e ? "" : e); lastPick.current = picked.msg_uuid; setTarget(null); }}>
+              {e}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div role="menu" tabIndex={-1} onKeyDown={menuNav}>
+      <h2 className="text-[44px] font-bold">{t("tv.react")}</h2>
+      <p className="mt-2 text-2xl text-muted">{t("tv.reactPick")}</p>
+      <div className="mt-6 flex max-h-[600px] flex-col gap-3 overflow-y-auto p-1">
+        {items.map((m, i) => (
+          <button key={m.msg_uuid} id={`tv-react-${m.msg_uuid}`} ref={i === items.length - 1 ? first : undefined} type="button" role="menuitem" className="block w-full rounded-[24px] text-left outline-none focus:ring-4 focus:ring-amber" onClick={() => setTarget(m.msg_uuid)}>
+            <TvMessage m={m} me={me} />
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

@@ -9,6 +9,37 @@ export type MsgBody =
   | { kind: "location"; lat_e7: number; lon_e7: number; accuracy_m: number; breadcrumb: boolean }
   | { kind: "sos"; lat_e7: number; lon_e7: number; note: string; cancelled: boolean };
 
+export interface ChatReply {
+  msg_uuid: string;
+  sender: string;
+  preview: string;
+  kind: "text" | "voice" | "location" | "sos";
+  state: "present" | "deleted" | "missing";
+}
+export interface ChatReaction { emoji: string; count: number; mine: boolean }
+/** One timeline row (message model v2). `body === null` = deleted for everyone. */
+export interface ChatItem {
+  group: string;
+  msg_uuid: string;
+  from: string;
+  sent_ms: number;
+  sort_ms: number;
+  body: MsgBody | null;
+  deleted: boolean;
+  /** number of edits */
+  edited: number;
+  reply: ChatReply | null;
+  mentions: string[];
+  mention_all: boolean;
+  mentions_me: boolean;
+  /** forward count (>= 5 = "forwarded many times") */
+  forwarded: number;
+  reactions: ChatReaction[];
+  /** acks received (0 = not yet delivered) */
+  acked: number;
+}
+export interface EditVersion { text: string; sent_ms: number }
+
 export type UiEvent =
   | { type: "peerDiscovered"; node: string; name: string; hue: number; link: LinkClass; in_group: boolean }
   | { type: "peerLost"; node: string }
@@ -26,6 +57,7 @@ export type UiEvent =
   | { type: "memberLeft"; group: string; node: string }
   | { type: "groupDissolved"; group: string; name: string }
   | { type: "message"; group: string; from: string; msg_uuid: string; sent_ms: number; body: MsgBody }
+  | { type: "chatUpdated"; item: ChatItem }
   | { type: "messageAcked"; msg_uuid: string; by: string }
   | { type: "handover"; group: string; state: string; link: LinkClass | null; profile: Profile }
   | { type: "suspended"; group: string }

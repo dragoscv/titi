@@ -1,7 +1,9 @@
 // Applies engine UiEvents to the store. Shared by every host so web, desktop
 // and TV render the exact same state for the same event stream.
-import { useStore, type GroupState, type Msg } from "./store";
-import type { GroupJson, UiEvent } from "./types";
+import { useStore, type GroupState } from "./store";
+import { mergeChat } from "./chat";
+import { t } from "./i18n";
+import type { ChatItem, GroupJson, UiEvent } from "./types";
 
 export type CueKind = "granted" | "released" | "denied" | "incoming" | "warning" | "sos";
 
@@ -15,6 +17,8 @@ export interface ReducerHooks {
 
 const names = new Map<string, string>();
 export const nameOf = (node: string) => names.get(node) ?? node.slice(0, 6);
+/** Ids of content that just arrived (`message` fires right before its `chatUpdated`). */
+const fresh = new Set<string>();
 
 const FRESH: Omit<GroupState, keyof GroupJson> = { floor: "idle", talkerName: null, talkerNode: null, handover: "stable", link: null, profile: "std", suspended: false, unread: 0 };
 
@@ -24,7 +28,25 @@ export function setGroups(gs: GroupJson[]) {
     for (const m of g.members) names.set(m.node, m.name);
     return { ...(prev.get(g.id) ?? FRESH), ...g };
   });
-  useStore.getState().set({ groups, activeGroup: gs.find((g) => g.isActive)?.id ?? null });
+  useStore.getState().set((s) => {
+    // a left / dissolved group's history is wiped by the engine: drop it here too
+    const keep = new Set(gs.map((g) => g.id));
+    const stale = Object.keys(s.chat).filter((k) => !keep.has(k));
+    const chat = stale.length ? Object.fromEntries(Object.entries(s.chat).filter(([k]) => keep.has(k))) : s.chat;
+    return { groups, chat, activeGroup: gs.find((g) => g.isActive)?.id ?? null };
+  });
+}
+
+/** Merge rows (history page, search hit, live update) into the per-group timeline. */
+export function mergeChatItems(items: readonly ChatItem[]) {
+  if (items.length === 0) return;
+  const byGroup = new Map<string, ChatItem[]>();
+  for (const i of items) byGroup.set(i.group, [...(byGroup.get(i.group) ?? []), i]);
+  useStore.getState().set((s) => {
+    const chat = { ...s.chat };
+    for (const [g, rows] of byGroup) chat[g] = mergeChat(chat[g] ?? [], rows);
+    return { chat };
+  });
 }
 
 function updActive(f: (g: GroupState) => GroupState) {
@@ -78,22 +100,42 @@ export function applyUi(e: UiEvent, h: ReducerHooks) {
     case "memberLeft": h.refreshGroups(); break;
     case "groupDissolved": st.set({ toast: `“${e.name}” was deleted by its creator` }); h.refreshGroups(); h.syncRooms(); break;
     case "message": {
-      const m: Msg = { id: e.msg_uuid, group: e.group, from: e.from, fromName: nameOf(e.from), sentMs: e.sent_ms, body: e.body, mine: e.from === me, acked: false };
-      st.set((s) => ({ messages: [...s.messages.filter((x) => x.id !== m.id), m].slice(-500) }));
-      if (!m.mine && st.activeGroup !== e.group) st.updateGroup(e.group, (g) => ({ ...g, unread: g.unread + 1 }));
-      if (!m.mine) {
-        if (e.body.kind === "sos") {
-          const b = e.body;
-          const groupName = st.groups.find((g) => g.id === e.group)?.name ?? "";
-          st.set((s) => ({ sos: b.cancelled ? (s.sos?.group === e.group ? null : s.sos) : { group: e.group, groupName, fromName: m.fromName, latE7: b.lat_e7, lonE7: b.lon_e7, note: b.note } }));
-          h.cue("sos");
-          h.notify?.(b.cancelled ? `${m.fromName} is safe` : `SOS from ${m.fromName}`, b.note || "Emergency", `sos-${e.group}`);
-        }
-        else if (e.body.kind === "text") h.notify?.(m.fromName, e.body.text, `msg-${e.group}`);
+      // the timeline comes from `chatUpdated`; this event only drives unread, SOS and notifications
+      if (e.from === me) break;
+      const fromName = nameOf(e.from);
+      fresh.add(e.msg_uuid);
+      if (fresh.size > 64) fresh.delete(fresh.values().next().value!);
+      if (st.activeGroup !== e.group) st.updateGroup(e.group, (g) => ({ ...g, unread: g.unread + 1 }));
+      if (e.body.kind === "sos") {
+        const b = e.body;
+        const groupName = st.groups.find((g) => g.id === e.group)?.name ?? "";
+        st.set((s) => ({ sos: b.cancelled ? (s.sos?.group === e.group ? null : s.sos) : { group: e.group, groupName, fromName, latE7: b.lat_e7, lonE7: b.lon_e7, note: b.note } }));
+        h.cue("sos");
+        h.notify?.(b.cancelled ? `${fromName} is safe` : `SOS from ${fromName}`, b.note || "Emergency", `sos-${e.group}`);
+      }
+      else if (e.body.kind === "text") h.notify?.(fromName, e.body.text, `msg-${e.group}`);
+      break;
+    }
+    case "chatUpdated": {
+      const it = e.item;
+      mergeChatItems([it]);
+      // a fresh message that @mentions me notifies even when its group is in the background
+      // (same tag as the plain text notification, so it replaces it instead of stacking)
+      if (fresh.delete(it.msg_uuid) && it.mentions_me && it.from !== me && it.body?.kind === "text") {
+        h.notify?.(t("chat.mentionedYou", { name: nameOf(it.from) }), it.body.text, `msg-${it.group}`);
       }
       break;
     }
-    case "messageAcked": st.set((s) => ({ messages: s.messages.map((m) => (m.id === e.msg_uuid ? { ...m, acked: true } : m)) })); break;
+    case "messageAcked":
+      // the engine also sends `chatUpdated` for the ack; this keeps the tick right if it arrives first
+      st.set((s) => {
+        for (const [g, rows] of Object.entries(s.chat)) {
+          const i = rows.findIndex((r) => r.msg_uuid === e.msg_uuid);
+          if (i >= 0) return rows[i]!.acked > 0 ? {} : { chat: { ...s.chat, [g]: rows.map((r, j) => (j === i ? { ...r, acked: 1 } : r)) } };
+        }
+        return {};
+      });
+      break;
     case "handover": st.updateGroup(e.group, (g) => ({ ...g, handover: e.state, link: e.link, profile: e.profile })); break;
     case "suspended": st.updateGroup(e.group, (g) => ({ ...g, suspended: true })); break;
     case "resumed": st.updateGroup(e.group, (g) => ({ ...g, suspended: false })); break;

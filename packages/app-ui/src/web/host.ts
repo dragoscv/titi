@@ -2,10 +2,11 @@
 // relay transport, WebCodecs audio and the shared reducer.
 import { RelayTransport } from "./relay";
 import { Capture, Playout, webCodecsSupported } from "./audio";
+import { Kv } from "./kv";
 import { DEFAULT_RELAY, defaultSettings, useStore, type Settings } from "../store";
 import { applyUi, setGroups, type CueKind } from "../reducer";
-import { LinkClassCode, LinkIds, type Action, type GroupJson } from "../types";
-import type { Capabilities, TitiHost } from "../platform";
+import { LinkClassCode, LinkIds, type Action, type ChatItem, type EditVersion, type GroupJson } from "../types";
+import type { Capabilities, SendTextOpts, TitiHost } from "../platform";
 
 type Wasm = typeof import("@titi/core-wasm");
 
@@ -15,6 +16,9 @@ const bytesToHex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padSta
 const now = () => Date.now();
 
 const LS = { seed: "titi.seed", groups: "titi.groups", settings: "titi.settings" } as const;
+const CHAT_PREFIX = "chat/";
+const HISTORY_PAGE = 200;
+const SEARCH_LIMIT = 50;
 
 export class WebHost implements TitiHost {
   readonly kind: "web" | "tv";
@@ -28,6 +32,7 @@ export class WebHost implements TitiHost {
   private started = false;
   private pendingCode: { code: string; until: number } | null = null;
   private pendingLinkRoom: { hash: Uint8Array; until: number } | null = null;
+  private readonly kv = new Kv();
   readonly dbg = { rx: 0, tx: 0, play: 0, ui: [] as string[] };
   private hooks = {
     cue: (k: CueKind) => this.playout.cue(k),
@@ -64,6 +69,7 @@ export class WebHost implements TitiHost {
     if (!seedHex) localStorage.setItem(LS.seed, bytesToHex(this.eng.identity_seed()));
     const gb = localStorage.getItem(LS.groups);
     if (gb) this.eng.restore_groups(hexToBytes(gb), now());
+    await this.restoreChat();
     this.capture = new Capture((pkt) => this.apply(this.eng.on_opus_in(pkt, now())));
     this.capture.onLevel = (db) => useStore.getState().set({ levelDbfs: db });
     this.playout.volume = s.volume;
@@ -173,6 +179,29 @@ export class WebHost implements TitiHost {
     }, 3000);
   }
   sendText(g: string, text: string) { this.guard(() => this.apply(this.eng.send_text(hexToBytes(g), text, now()))); }
+
+  // ---- chat v2 -----------------------------------------------------------
+  sendTextV2(g: string, text: string, o: SendTextOpts = {}) {
+    const mentions = new Uint8Array((o.mentions ?? []).flatMap((m) => Array.from(hexToBytes(m))));
+    this.guard(() => this.apply(this.eng.send_text_v2(hexToBytes(g), text, o.replyTo ? hexToBytes(o.replyTo) : new Uint8Array(), mentions, !!o.mentionAll, now())));
+  }
+  react(g: string, target: string, emoji: string) { this.guard(() => this.apply(this.eng.react(hexToBytes(g), hexToBytes(target), emoji, now()))); }
+  editMessage(g: string, target: string, text: string) { this.guard(() => this.apply(this.eng.edit_message(hexToBytes(g), hexToBytes(target), text, now()))); }
+  deleteMessage(g: string, target: string) { this.guard(() => this.apply(this.eng.delete_message(hexToBytes(g), hexToBytes(target), now()))); }
+  forward(from: string, target: string, to: string) { this.guard(() => this.apply(this.eng.forward(hexToBytes(from), hexToBytes(target), hexToBytes(to), now()))); }
+  setDraft(g: string, text: string) { this.guard(() => this.apply(this.eng.set_draft(hexToBytes(g), text))); }
+  async draft(g: string) { try { return this.eng.draft(hexToBytes(g)) ?? null; } catch { return null; } }
+  async history(g: string, beforeMs?: number): Promise<ChatItem[]> { return parseArr<ChatItem>(() => this.eng.history_json(hexToBytes(g), beforeMs ?? -1, HISTORY_PAGE)); }
+  async search(g: string | null, q: string): Promise<ChatItem[]> { return parseArr<ChatItem>(() => this.eng.search_json(g ? hexToBytes(g) : new Uint8Array(), q, SEARCH_LIMIT)); }
+  async editHistory(target: string): Promise<EditVersion[]> { return parseArr<EditVersion>(() => this.eng.edit_history_json(hexToBytes(target))); }
+
+  /** Replay every durable chat row into the engine (before traffic and before history is shown). */
+  private async restoreChat() {
+    let rows: [string, Uint8Array][] = [];
+    try { rows = await this.kv.entries(CHAT_PREFIX); } catch (e) { console.warn("titi: chat store unavailable", e); return; }
+    for (const [k, v] of rows) { try { this.eng.restore_chat_row(k, v); } catch { /* skip a corrupt row */ } }
+  }
+
   sendSos(g: string, cancelled: boolean) {
     const fire = (lat: number, lon: number) => this.guard(() => this.apply(this.eng.send_sos(hexToBytes(g), lat, lon, "", cancelled, now())));
     if (cancelled || !navigator.geolocation) { fire(0, 0); return; }
@@ -191,7 +220,10 @@ export class WebHost implements TitiHost {
         case "send": if (a.link === LinkIds.INTERNET) { this.dbg.tx++; this.relay.send(Uint8Array.from(a.bytes)); } break;
         case "playPacket": this.dbg.play++; this.playout.play(a.talker, Uint8Array.from(a.packet), a.frames); break;
         case "capture": if (a.active) this.capture.start(a.profile).catch((e: unknown) => this.onMicError(e)); else void this.capture.stop(); break;
-        case "persist": if (a.key === "groups") localStorage.setItem(LS.groups, bytesToHex(Uint8Array.from(a.value))); break;
+        case "persist":
+          if (a.key === "groups") localStorage.setItem(LS.groups, bytesToHex(Uint8Array.from(a.value)));
+          else if (a.key.startsWith(CHAT_PREFIX)) this.kv.persist(a.key, Uint8Array.from(a.value)).catch((e: unknown) => console.warn("titi: chat persist failed", a.key, e));
+          break;
         case "ui": if (a.event.type !== "level" && a.event.type !== "peerLink") this.dbg.ui.push(a.event.type); applyUi(a.event, this.hooks); break;
         case "wakeAt": break;
       }
@@ -223,6 +255,7 @@ export class WebHost implements TitiHost {
 }
 
 function dropInvite(g: string) { useStore.getState().set((s) => ({ invites: s.invites.filter((i) => i.group !== g) })); }
+function parseArr<T>(f: () => string): T[] { try { const v: unknown = JSON.parse(f()); return Array.isArray(v) ? (v as T[]) : []; } catch { return []; } }
 function chunk4(b: Uint8Array): Uint8Array[] { const out: Uint8Array[] = []; for (let i = 0; i + 4 <= b.length; i += 4) out.push(b.slice(i, i + 4)); return out; }
 
 function loadSettings(): Settings {

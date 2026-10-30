@@ -98,6 +98,28 @@
     <string name="chat_sos_cancelled">%1$s cancelled the SOS</string>
     <string name="chat_delivered">Delivered</string>
     <string name="chat_pending">Waiting for a path…</string>
+    <string name="chat_search">Search messages</string>
+    <string name="chat_search_hint">Search in this chat</string>
+    <string name="chat_search_close">Close search</string>
+    <string name="chat_search_empty">No messages found</string>
+    <string name="chat_editing">Editing message</string>
+    <string name="chat_replying_to">Replying to %1$s</string>
+    <string name="chat_cancel_compose">Cancel</string>
+    <string name="chat_save_edit">Save edit</string>
+    <string name="chat_mention_all_token">all</string>
+    <string name="chat_mention_all_desc">Notify everyone in the group</string>
+    <string name="chat_react_more">More…</string>
+    <string name="chat_react_more_title">React with any emoji</string>
+    <string name="chat_react_more_hint">Type an emoji</string>
+    <string name="chat_action_edit">Edit</string>
+    <string name="chat_action_delete">Delete for everyone</string>
+    <string name="chat_action_forward">Forward</string>
+    <string name="chat_delete_title">Delete for everyone?</string>
+    <string name="chat_delete_body">The message will be replaced with “This message was deleted” on every device in the group.</string>
+    <string name="chat_forward_title">Forward to…</string>
+    <string name="chat_edit_history_title">Edit history</string>
+    <string name="cd_message_actions">Message actions</string>
+    <string name="cd_edit_history">Edited — show edit history</string>
 
     <!-- Links -->
     <string name="link_lan">Wi‑Fi</string>

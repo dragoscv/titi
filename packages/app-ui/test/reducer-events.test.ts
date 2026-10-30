@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
-import { applyUi, nameOf, setGroups, type ReducerHooks } from "../src/reducer";
+import { applyUi, mergeChatItems, nameOf, setGroups, type ReducerHooks } from "../src/reducer";
 import { defaultSettings, useStore } from "../src/store";
-import type { GroupJson, MsgBody } from "../src/types";
+import { setLocale } from "../src/i18n";
+import type { ChatItem, GroupJson, MsgBody } from "../src/types";
 
 const ME = "aa".repeat(8);
 const BOB = "bb".repeat(8);
@@ -25,7 +26,8 @@ const g1 = () => st().groups.find((g) => g.id === G)!;
 const g2 = () => st().groups.find((g) => g.id === G2)!;
 
 beforeEach(() => {
-  useStore.setState({ nodeId: ME, groups: [], activeGroup: null, peers: {}, invites: [], messages: [], settings: defaultSettings, toast: null, levelDbfs: -60 });
+  useStore.setState({ nodeId: ME, groups: [], activeGroup: null, peers: {}, invites: [], chat: {}, settings: defaultSettings, toast: null, levelDbfs: -60 });
+  setLocale("en");
   hooks = { cue: vi.fn<ReducerHooks["cue"]>(), refreshGroups: vi.fn<() => void>(), syncRooms: vi.fn<() => void>(), notify: vi.fn<(title: string, body: string, tag: string) => void>() };
   setGroups([group(G, true), group(G2, false)]);
 });
@@ -165,9 +167,9 @@ describe("invites and membership", () => {
 describe("messages", () => {
   const msg = (id: string, body: MsgBody, from = BOB, grp = G) => ({ type: "message" as const, group: grp, from, msg_uuid: id, sent_ms: 1234, body });
 
-  it("stores a text message with sender name, mine=false, acked=false and notifies", () => {
+  it("notifies a text message with the sender name and does not touch the timeline", () => {
     applyUi(msg("m1", { kind: "text", text: "salut" }), hooks);
-    expect(st().messages).toEqual([{ id: "m1", group: G, from: BOB, fromName: "Bob", sentMs: 1234, body: { kind: "text", text: "salut" }, mine: false, acked: false }]);
+    expect(st().chat).toEqual({});
     expect(hooks.notify).toHaveBeenCalledWith("Bob", "salut", `msg-${G}`);
     expect(g1().unread).toBe(0);
   });
@@ -178,11 +180,12 @@ describe("messages", () => {
     expect(g2().unread).toBe(2);
   });
 
-  it("own messages are marked mine and never notify or cue", () => {
+  it("own messages never notify, cue or count unread", () => {
+    useStore.setState({ activeGroup: null });
     applyUi(msg("m1", { kind: "sos", lat_e7: 0, lon_e7: 0, note: "", cancelled: false }, ME), hooks);
-    expect(st().messages[0]!.mine).toBe(true);
     expect(hooks.notify).not.toHaveBeenCalled();
     expect(hooks.cue).not.toHaveBeenCalled();
+    expect(g1().unread).toBe(0);
   });
 
   it("a cancelled SOS notifies that the sender is safe, with the note as body", () => {
@@ -199,22 +202,83 @@ describe("messages", () => {
   it("voice notes and locations are stored without a notification", () => {
     applyUi(msg("v1", { kind: "voiceNote", profile: "std", duration_ms: 900, opus_packets: [] }), hooks);
     applyUi(msg("l1", { kind: "location", lat_e7: 1, lon_e7: 2, accuracy_m: 5, breadcrumb: false }), hooks);
-    expect(st().messages.map((m) => m.id)).toEqual(["v1", "l1"]);
+    expect(hooks.notify).not.toHaveBeenCalled();
+  });
+});
+
+describe("chatUpdated (message model v2)", () => {
+  const item = (id: string, sort: number, p: Partial<ChatItem> = {}): ChatItem => ({
+    group: G, msg_uuid: id, from: BOB, sent_ms: sort, sort_ms: sort, body: { kind: "text", text: id }, deleted: false, edited: 0,
+    reply: null, mentions: [], mention_all: false, mentions_me: false, forwarded: 0, reactions: [], acked: 0, ...p,
+  });
+  const up = (i: ChatItem) => applyUi({ type: "chatUpdated", item: i }, hooks);
+  const msg = (id: string, body: MsgBody, from: string, grp: string) => ({ type: "message" as const, group: grp, from, msg_uuid: id, sent_ms: 50, body });
+  const ids = (g = G) => (st().chat[g] ?? []).map((r) => r.msg_uuid);
+
+  it("inserts rows sorted by sort_ms whatever the arrival order, per group", () => {
+    up(item("c", 30));
+    up(item("a", 10));
+    up(item("b", 20));
+    up(item("x", 5, { group: G2 }));
+    expect(ids()).toEqual(["a", "b", "c"]);
+    expect(ids(G2)).toEqual(["x"]);
+  });
+
+  it("upserts by msg_uuid: an edit, reaction or delete replaces the row in place", () => {
+    up(item("a", 10));
+    up(item("b", 20));
+    up(item("a", 10, { body: { kind: "text", text: "fixed" }, edited: 1, reactions: [{ emoji: "👍", count: 2, mine: true }] }));
+    expect(ids()).toEqual(["a", "b"]);
+    expect(st().chat[G]![0]).toMatchObject({ edited: 1, body: { kind: "text", text: "fixed" }, reactions: [{ emoji: "👍", count: 2, mine: true }] });
+    up(item("b", 20, { body: null, deleted: true }));
+    expect(st().chat[G]![1]).toMatchObject({ body: null, deleted: true });
+  });
+
+  it("breaks sort_ms ties by msg_uuid so every device shows the same order", () => {
+    up(item("b", 10));
+    up(item("a", 10));
+    expect(ids()).toEqual(["a", "b"]);
+  });
+
+  it("keeps only the newest 500 rows per group", () => {
+    mergeChatItems(Array.from({ length: 502 }, (_, i) => item(`m${String(i).padStart(3, "0")}`, i)));
+    expect(st().chat[G]).toHaveLength(500);
+    expect(ids()[0]).toBe("m002");
+    expect(ids()[499]).toBe("m501");
+  });
+
+  it("does not notify for plain updates (reactions, history pages)", () => {
+    up(item("a", 10, { mentions_me: true }));
     expect(hooks.notify).not.toHaveBeenCalled();
   });
 
-  it("keeps only the newest 500 messages", () => {
-    for (let i = 0; i < 502; i++) applyUi(msg(`m${i}`, { kind: "location", lat_e7: 0, lon_e7: 0, accuracy_m: 1, breadcrumb: true }), hooks);
-    expect(st().messages).toHaveLength(500);
-    expect(st().messages[0]!.id).toBe("m2");
-    expect(st().messages[499]!.id).toBe("m501");
+  it("a fresh message that mentions me notifies even when its group is in the background", () => {
+    applyUi(msg("m9", { kind: "text", text: "@Me look" }, BOB, G2), hooks);
+    up(item("m9", 50, { group: G2, mentions_me: true, mentions: [ME], body: { kind: "text", text: "@Me look" } }));
+    expect(hooks.notify).toHaveBeenLastCalledWith("Bob mentioned you", "@Me look", `msg-${G2}`);
+    expect(g2().unread).toBe(1);
+    // a later update of the same row (e.g. a reaction) does not notify again
+    hooks.notify.mockClear();
+    up(item("m9", 50, { group: G2, mentions_me: true, reactions: [{ emoji: "❤️", count: 1, mine: false }] }));
+    expect(hooks.notify).not.toHaveBeenCalled();
   });
 
-  it("messageAcked flips acked only on the matching message", () => {
-    applyUi(msg("m1", { kind: "text", text: "a" }, ME), hooks);
-    applyUi(msg("m2", { kind: "text", text: "b" }, ME), hooks);
-    applyUi({ type: "messageAcked", msg_uuid: "m2", by: BOB }, hooks);
-    expect(st().messages.map((m) => m.acked)).toEqual([false, true]);
+  it("messageAcked marks the matching row delivered and leaves the rest", () => {
+    up(item("a", 10, { from: ME }));
+    up(item("b", 20, { from: ME }));
+    applyUi({ type: "messageAcked", msg_uuid: "b", by: BOB }, hooks);
+    applyUi({ type: "messageAcked", msg_uuid: "zz", by: BOB }, hooks);
+    expect(st().chat[G]!.map((r) => r.acked)).toEqual([0, 1]);
+    const before = st().chat;
+    applyUi({ type: "messageAcked", msg_uuid: "b", by: CAT }, hooks);
+    expect(st().chat).toBe(before);
+  });
+
+  it("drops the timeline of a group that is no longer listed (left / dissolved)", () => {
+    up(item("a", 10));
+    up(item("x", 5, { group: G2 }));
+    setGroups([group(G, true)]);
+    expect(Object.keys(st().chat)).toEqual([G]);
   });
 });
 

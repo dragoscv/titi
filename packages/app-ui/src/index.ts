@@ -1,7 +1,9 @@
 export { Shell, type Route } from "./Shell";
-export { host, installHost, type TitiHost, type Capabilities, type PlatformKind, type AudioDevice } from "./platform";
-export { useStore, activeGroup, defaultSettings, DEFAULT_RELAY, type Settings, type GroupState, type Peer, type Msg, type Invite, type FloorState } from "./store";
-export { applyUi, setGroups, nameOf, type CueKind, type ReducerHooks } from "./reducer";
+export { host, installHost, type TitiHost, type Capabilities, type PlatformKind, type AudioDevice, type SendTextOpts } from "./platform";
+export { useStore, activeGroup, chatOf, defaultSettings, DEFAULT_RELAY, type Settings, type GroupState, type Peer, type Invite, type FloorState } from "./store";
+export { applyUi, setGroups, mergeChatItems, nameOf, type CueKind, type ReducerHooks } from "./reducer";
+export { t, setLocale, locale, detectLocale, dictionaries, type I18nKey, type Locale } from "./i18n";
+export { mergeChat, canEdit, canDelete, CHAT_CAP, EDIT_WINDOW_MS, MAX_EDITS, FORWARDED_MANY, QUICK_REACTIONS } from "./chat";
 export { TalkButton } from "./TalkButton";
 export { Avatar, SignalBars } from "./Avatar";
 export { cn, hueColor, initials } from "./cn";

@@ -10,7 +10,8 @@ $budgets = @(
   # (abiFilters, icons-extended -> vendored icons, no ui-tooling)
   @{ Name = 'phone debug apk';   Path = 'android/app/build/outputs/apk/gms/debug/app-gms-debug.apk';        MB = 50 }
   @{ Name = 'watch debug apk';   Path = 'android/wear/build/outputs/apk/debug/wear-debug.apk';              MB = 56 }
-  @{ Name = 'tv debug apk';      Path = 'android/tv/build/outputs/apk/debug/tv-debug.apk';                  MB = 20 }
+  # 2026-10-30: tv debug 23.9 MB (bundled SQLite+FTS5 for the chat store ~0.8 MB/ABI; debug .so are unstripped) -> 26
+  @{ Name = 'tv debug apk';      Path = 'android/tv/build/outputs/apk/debug/tv-debug.apk';                  MB = 26 }
   # shipped (R8) sizes; release builds only run from a clean worktree
   @{ Name = 'phone release apk'; Path = 'android/app/build/outputs/apk/gms/release/app-gms-release.apk';    MB = 30 }
   @{ Name = 'watch release apk'; Path = 'android/wear/build/outputs/apk/release/wear-release*.apk';         MB = 12 }

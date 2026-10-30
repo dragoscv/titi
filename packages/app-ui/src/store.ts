@@ -1,12 +1,11 @@
 import { create } from "zustand";
-import type { GroupJson, LinkClass, MsgBody, Profile } from "./types";
+import type { ChatItem, GroupJson, LinkClass, Profile } from "./types";
 import type { PlatformKind } from "./platform";
 
 export type FloorState = "idle" | "pending" | "talking" | "busy" | "queued";
 
 export interface Peer { node: string; name: string; hue: number; link: LinkClass; inGroup: boolean; bars: number; hops: number }
 export interface Invite { group: string; name: string; host: string; hostName: string; members: number }
-export interface Msg { id: string; group: string; from: string; fromName: string; sentMs: number; body: MsgBody; mine: boolean; acked: boolean }
 export interface GroupState extends GroupJson {
   floor: FloorState;
   talkerName: string | null;
@@ -72,7 +71,8 @@ interface State {
   activeGroup: string | null;
   peers: Record<string, Peer>;
   invites: Invite[];
-  messages: Msg[];
+  /** Timeline rows per group id, sorted by sort_ms, newest CHAT_CAP kept. */
+  chat: Record<string, ChatItem[]>;
   levelDbfs: number;
   muted: boolean;
   /** Global hotkey held (desktop) — mirrors the Talk button visually */
@@ -100,7 +100,7 @@ export const useStore = create<State>((set) => ({
   activeGroup: null,
   peers: {},
   invites: [],
-  messages: [],
+  chat: {},
   levelDbfs: -60,
   muted: false,
   pttKeyDown: false,
@@ -114,3 +114,7 @@ export const useStore = create<State>((set) => ({
 }));
 
 export const activeGroup = (s: State) => s.groups.find((g) => g.id === s.activeGroup) ?? null;
+
+const NONE: ChatItem[] = [];
+/** Stable selector for one group's rows. */
+export const chatOf = (gid: string) => (s: State) => s.chat[gid] ?? NONE;

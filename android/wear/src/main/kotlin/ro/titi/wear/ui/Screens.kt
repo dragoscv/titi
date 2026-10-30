@@ -10,6 +10,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontStyle
+import androidx.wear.compose.material3.IconButton
+import androidx.wear.compose.material3.IconButtonDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Emergency
@@ -65,6 +72,8 @@ import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
 import kotlinx.coroutines.launch
 import ro.titi.app.core.ChatMessage
+import ro.titi.app.core.ChatRules
+import ro.titi.app.core.ChatText
 import ro.titi.app.core.EngineHost
 import ro.titi.app.core.FloorState
 import ro.titi.app.core.RadioState
@@ -176,13 +185,15 @@ fun JoinScreen(engine: EngineHost, onDone: () -> Unit) {
 
 private const val KEY_CODE = "code"
 
-// ---- Chat (page 2): read, quick replies, voice notes ------------------------------
+// ---- Chat (page 2): read, quick replies, voice notes, react / reply to one message --
 
 @Composable
 fun ChatScreen(engine: EngineHost, state: RadioState, onRecord: () -> Unit) {
     val g = state.active ?: return
     val all by engine.messages.collectAsState()
     val msgs = remember(all, g.id) { all.filter { it.group == g.id }.takeLast(30).reversed() }
+    var selected by remember(g.id) { mutableStateOf<String?>(null) }
+    val sel = msgs.firstOrNull { it.id == selected && !it.deleted }
     val list = rememberTransformingLazyColumnState()
     val spec = rememberTransformationSpec()
     val replies = listOf(R.string.reply_ok, R.string.reply_on_my_way, R.string.reply_wait, R.string.reply_where)
@@ -196,7 +207,7 @@ fun ChatScreen(engine: EngineHost, state: RadioState, onRecord: () -> Unit) {
     ) { pad ->
         TransformingLazyColumn(state = list, contentPadding = pad) {
             item { ListHeader(Modifier.transformedHeight(this, spec)) { Text(stringResource(R.string.chat)) } }
-            items(replies) { r ->
+            if (sel == null) items(replies) { r ->
                 FilledTonalButton(
                     onClick = { engine.sendText(g.id, res.getString(r)); haptics.performHapticFeedback(HapticFeedbackType.Confirm) },
                     modifier = Modifier.fillMaxWidth().transformedHeight(this, spec).minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding),
@@ -205,29 +216,96 @@ fun ChatScreen(engine: EngineHost, state: RadioState, onRecord: () -> Unit) {
                 )
             }
             if (msgs.isEmpty()) item { Text(stringResource(R.string.chat_empty), Modifier.padding(8.dp).transformedHeight(this, spec), style = MaterialTheme.typography.bodySmall) }
-            items(msgs, key = { it.id }) { m -> Bubble(m, Modifier.transformedHeight(this, spec), SurfaceTransformation(spec)) }
+            msgs.forEach { m ->
+                item(key = m.id) {
+                    Bubble(m, m.id == selected, Modifier.transformedHeight(this, spec), SurfaceTransformation(spec)) {
+                        val b = m.body
+                        if (b is FfiMessageBody.VoiceNote) ro.titi.app.audio.VoiceNotePlayer.play(b.opusPackets, b.profile)
+                        if (!m.deleted) selected = if (selected == m.id) null else m.id
+                    }
+                }
+                if (sel != null && m.id == sel.id) {
+                    item(key = "react-" + m.id) {
+                        // 6 quick reactions in two rows of three: fits the round screen
+                        Column(Modifier.fillMaxWidth().transformedHeight(this, spec), horizontalAlignment = Alignment.CenterHorizontally) {
+                            ChatRules.quickReactions.chunked(3).forEach { row ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 3.dp)) {
+                                    row.forEach { e ->
+                                        val mine = sel.reactions.any { it.mine && it.emoji == e }
+                                        val cd = stringResource(ro.titi.client.R.string.cd_react_with, e)
+                                            IconButton(
+                                            onClick = { engine.toggleReaction(sel, e); haptics.performHapticFeedback(HapticFeedbackType.Confirm); selected = null },
+                                            modifier = Modifier.size(44.dp).semantics { contentDescription = cd },
+                                                colors = if (mine) IconButtonDefaults.filledIconButtonColors() else IconButtonDefaults.filledTonalIconButtonColors(),
+                                            ) { Text(e) }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    item(key = "reply-hdr-" + m.id) { ListHeader(Modifier.transformedHeight(this, spec)) { Text(stringResource(ro.titi.client.R.string.chat_action_reply)) } }
+                    replies.forEach { r ->
+                        item(key = "reply-$r-" + m.id) {
+                            FilledTonalButton(
+                                onClick = { engine.sendText(g.id, res.getString(r), replyTo = sel.id); haptics.performHapticFeedback(HapticFeedbackType.Confirm); selected = null },
+                                modifier = Modifier.fillMaxWidth().transformedHeight(this, spec).minimumVerticalContentPadding(ButtonDefaults.minimumVerticalListContentPadding),
+                                transformation = SurfaceTransformation(spec),
+                                label = { Text(stringResource(r), maxLines = 1) },
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun TransformingLazyColumnItemScope.Bubble(m: ChatMessage, modifier: Modifier, transformation: SurfaceTransformation) {
+private fun TransformingLazyColumnItemScope.Bubble(m: ChatMessage, selected: Boolean, modifier: Modifier, transformation: SurfaceTransformation, onTap: () -> Unit) {
     val body = m.body
+    val res = androidx.compose.ui.platform.LocalResources.current
     val text = when (body) {
+        null -> stringResource(ro.titi.client.R.string.chat_deleted)
         is FfiMessageBody.Text -> body.text
         is FfiMessageBody.VoiceNote -> stringResource(R.string.chat_voice_note, body.durationMs.toInt() / 1000)
         is FfiMessageBody.Location -> stringResource(R.string.chat_location)
         is FfiMessageBody.Sos -> if (body.cancelled) stringResource(R.string.sos_cancelled, m.fromName) else stringResource(R.string.sos_from, m.fromName)
     }
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val actionsLabel = stringResource(R.string.cd_message_actions)
     Card(
-        onClick = { if (body is FfiMessageBody.VoiceNote) ro.titi.app.audio.VoiceNotePlayer.play(body.opusPackets, body.profile) },
-        modifier = modifier.fillMaxWidth().minimumVerticalContentPadding(CardDefaults.minimumVerticalListContentPadding),
+        onClick = onTap,
+        modifier = modifier.fillMaxWidth().minimumVerticalContentPadding(CardDefaults.minimumVerticalListContentPadding)
+            .then(if ((m.mentionsMe && !m.deleted) || selected) Modifier.border(2.dp, Titi.Amber, androidx.compose.foundation.shape.RoundedCornerShape(26.dp)) else Modifier)
+            .semantics { onClick(label = actionsLabel) { onTap(); true } },
         transformation = transformation,
         colors = if (body is FfiMessageBody.Sos && !body.cancelled) CardDefaults.cardColors(containerColor = Titi.Emergency.copy(alpha = 0.3f)) else if (m.mine) CardDefaults.cardColors(containerColor = Titi.Amber.copy(alpha = 0.18f)) else CardDefaults.cardColors(),
     ) {
         Column {
             if (!m.mine) Text(m.fromName, style = MaterialTheme.typography.labelSmall, color = Titi.Teal)
-            Text(text, style = MaterialTheme.typography.bodyMedium)
+            if (!m.deleted) ChatText.forwarded(res, m.forwarded)?.let { Text(it, style = MaterialTheme.typography.labelSmall, fontStyle = FontStyle.Italic, color = muted) }
+            m.reply?.takeIf { !m.deleted }?.let { r ->
+                Text(
+                    "↩ " + ChatText.replySender(res, r) + ": " + ChatText.replyPreview(res, r),
+                    style = MaterialTheme.typography.labelSmall, color = muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    fontStyle = if (r.state == uniffi.titi_ffi.FfiReplyState.PRESENT) FontStyle.Normal else FontStyle.Italic,
+                )
+            }
+            Text(text, style = MaterialTheme.typography.bodyMedium, fontStyle = if (m.deleted) FontStyle.Italic else FontStyle.Normal, color = if (m.deleted) muted else MaterialTheme.colorScheme.onSurface)
+            if (!m.deleted && (m.edited > 0 || m.reactions.isNotEmpty())) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    m.reactions.take(4).forEach { r ->
+                        val cd = ChatText.reaction(res, r)
+                        Text(
+                            if (r.count > 1) "${r.emoji}${r.count}" else r.emoji,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (r.mine) Titi.Amber else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.semantics { contentDescription = cd },
+                        )
+                    }
+                    if (m.edited > 0) Text(stringResource(ro.titi.client.R.string.chat_edited), style = MaterialTheme.typography.labelSmall, fontStyle = FontStyle.Italic, color = muted)
+                }
+            }
         }
     }
 }

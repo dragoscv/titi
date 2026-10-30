@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, MessageSquare, UserPlus, MoreVertical, Send, Share2 } from "lucide-react";
+import { ArrowLeft, MessageSquare, UserPlus, MoreVertical, Share2 } from "lucide-react";
 import QRCode from "qrcode";
 import { host } from "../platform";
 import { toWebLink } from "../links";
@@ -10,23 +10,27 @@ import { Avatar, SignalBars } from "../Avatar";
 import { TalkButton } from "../TalkButton";
 import { Sheet } from "../Sheet";
 import { linkIcon } from "./Home";
+import { ChatPanel } from "./Chat";
+import { mergeChatItems } from "../reducer";
+import { t } from "../i18n";
 import type { Route } from "../Shell";
 
 export function Group({ id, go }: { id: string; go: (r: Route) => void }) {
   const g = useStore((s) => s.groups.find((x) => x.id === id));
-  const { peers, nodeId, levelDbfs, muted, messages } = useStore();
+  const { peers, nodeId, levelDbfs, muted } = useStore();
   const [invite, setInvite] = useState(false);
   const [chat, setChat] = useState(false);
   const [menu, setMenu] = useState(false);
 
   useEffect(() => { if (!g) go({ name: "home" }); }, [g, go]);
   useEffect(() => { void host.start(); host.setActiveGroup(id); }, [id]);
+  // load the newest history page as soon as the group screen opens
+  useEffect(() => { let live = true; void host.history(id).then((items) => { if (live) mergeChatItems(items); }); return () => { live = false; }; }, [id]);
   if (!g) return null;
 
   const inGroupPeers = Object.values(peers).filter((p) => p.inGroup);
   const bars = Math.max(0, ...inGroupPeers.map((p) => p.bars));
   const hops = Math.max(0, ...inGroupPeers.map((p) => p.hops));
-  const msgs = messages.filter((m) => m.group === id);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -41,7 +45,7 @@ export function Group({ id, go }: { id: string; go: (r: Route) => void }) {
             </span>
           </div>
         </motion.div>
-        <button className="relative p-3 text-muted hover:text-ink" onClick={() => setChat(true)} aria-label="Chat">
+        <button className="relative p-3 text-muted hover:text-ink" onClick={() => setChat(true)} aria-label={t("chat.title")}>
           <MessageSquare />
           {g.unread > 0 && <span className="absolute right-1.5 top-1.5 rounded-full bg-amber px-1.5 text-[10px] font-bold text-graphite">{g.unread}</span>}
         </button>
@@ -100,7 +104,7 @@ export function Group({ id, go }: { id: string; go: (r: Route) => void }) {
       <InviteSheet open={invite} onClose={() => setInvite(false)} gid={g.id} gname={g.name} />
 
       <Sheet open={chat} onClose={() => setChat(false)} title={g.name}>
-        <ChatPanel gid={g.id} msgs={msgs} />
+        <ChatPanel g={g} />
       </Sheet>
     </div>
   );
@@ -162,33 +166,6 @@ function InviteBody({ gid, gname }: { gid: string; gname: string }) {
             <button className="mt-3 inline-flex items-center gap-2 rounded-xl border border-outline px-4 py-2.5 text-sm" onClick={share}><Share2 size={16} /> Share link</button>
           </>
         )}
-    </div>
-  );
-}
-
-function ChatPanel({ gid, msgs }: { gid: string; msgs: ReturnType<typeof useStore.getState>["messages"] }) {
-  const [text, setText] = useState("");
-  const peers = useStore((s) => s.peers);
-  const send = () => { if (text.trim()) { host.sendText(gid, text.trim()); setText(""); } };
-  return (
-    <div className="flex max-h-[60dvh] flex-col">
-      <div className="flex flex-1 flex-col gap-2 overflow-y-auto pb-3">
-        {msgs.length === 0 && <div className="py-8 text-center text-sm text-muted">No messages yet. Texts are stored and forwarded when a path exists.</div>}
-        {msgs.map((m) => (
-          <div key={m.id} className={`flex items-end gap-2 ${m.mine ? "justify-end" : ""}`}>
-            {!m.mine && <Avatar name={m.fromName} hue={peers[m.from]?.hue ?? 200} size={28} />}
-            <div className={`max-w-[75%] rounded-[18px] px-3.5 py-2.5 ${m.mine ? "bg-amber/20" : "bg-elevated"}`}>
-              {!m.mine && <div className="text-[11px] text-muted">{m.fromName}</div>}
-              <div className="text-[15px]">{m.body.kind === "text" ? m.body.text : m.body.kind === "location" ? `${m.fromName} shared a location` : m.body.kind === "sos" ? (m.body.cancelled ? `${m.fromName} cancelled the SOS` : `SOS from ${m.fromName}`) : "Voice note"}</div>
-              <div className="mt-0.5 font-mono text-[10px] text-muted">{new Date(m.sentMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}{m.mine && (m.acked ? " ✓✓" : " ✓")}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="flex items-center gap-2 pt-2">
-        <input className="flex-1 rounded-full border border-outline bg-graphite px-4 py-3 outline-none focus:border-amber" placeholder="Message" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} />
-        <button className="grid h-12 w-12 place-items-center rounded-2xl bg-amber text-graphite disabled:opacity-40" disabled={!text.trim()} onClick={send} aria-label="Send"><Send size={20} /></button>
-      </div>
     </div>
   );
 }

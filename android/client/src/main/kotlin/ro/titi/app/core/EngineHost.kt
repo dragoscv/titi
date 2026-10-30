@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import ro.titi.app.audio.AudioEngine
 import ro.titi.client.R
 import ro.titi.app.audio.Cues
@@ -26,15 +27,19 @@ import ro.titi.app.transport.LinkStats
 import ro.titi.app.transport.Transport
 import ro.titi.app.transport.TransportEvents
 import uniffi.titi_ffi.FfiAction
+import uniffi.titi_ffi.FfiChatItem
 import uniffi.titi_ffi.FfiLinkClass
 import uniffi.titi_ffi.FfiMessageBody
 import uniffi.titi_ffi.FfiPriority
 import uniffi.titi_ffi.FfiProfile
+import uniffi.titi_ffi.FfiQuoteKind
+import uniffi.titi_ffi.FfiReplyState
 import uniffi.titi_ffi.FfiUiEvent
 import uniffi.titi_ffi.GroupSummary
 import uniffi.titi_ffi.MemberSummary
 import uniffi.titi_ffi.TitiEngine
 import uniffi.titi_ffi.groupHash
+import java.io.File
 import java.util.concurrent.Executors
 import kotlin.random.Random
 
@@ -44,7 +49,47 @@ data class Peer(val node: String, val name: String, val hue: Int, val link: FfiL
 
 enum class FloorState { Idle, Pending, Talking, Busy, Queued }
 
-data class ChatMessage(val id: String, val group: String, val from: String, val fromName: String, val sentMs: Long, val body: FfiMessageBody, val mine: Boolean, val acked: Boolean = false)
+/** Quote shown above a reply. [state] tells whether the original still exists here. */
+data class ChatReply(val id: String, val sender: String, val senderName: String, val mine: Boolean, val preview: String, val kind: FfiQuoteKind, val state: FfiReplyState)
+
+data class ChatReaction(val emoji: String, val count: Int, val mine: Boolean)
+
+/** One timeline row (message model v2). [body] null = deleted for everyone (tombstone). */
+data class ChatMessage(
+    val id: String,
+    val group: String,
+    val from: String,
+    val fromName: String,
+    val sentMs: Long,
+    val sortMs: Long,
+    val body: FfiMessageBody?,
+    val mine: Boolean,
+    val ackCount: Int = 0,
+    val edited: Int = 0,
+    val reply: ChatReply? = null,
+    val reactions: List<ChatReaction> = emptyList(),
+    val mentions: List<String> = emptyList(),
+    val mentionAll: Boolean = false,
+    val mentionsMe: Boolean = false,
+    val forwarded: Int = 0,
+) {
+    val deleted: Boolean get() = body == null
+    val acked: Boolean get() = ackCount > 0
+    val text: String? get() = (body as? FfiMessageBody.Text)?.text
+    /** Author-only, text-only, inside the core's edit window and edit budget. */
+    fun canEdit(nowMs: Long = System.currentTimeMillis()): Boolean = mine && body is FfiMessageBody.Text && nowMs - sentMs < ChatRules.editWindowMs && edited < ChatRules.MAX_EDITS
+    fun canDelete(): Boolean = mine && !deleted
+}
+
+data class EditRevision(val text: String, val sentMs: Long)
+
+object ChatRules {
+    const val MAX_EDITS = 10
+    /** Messages forwarded this many times show "Forwarded many times". */
+    const val FORWARDED_MANY = 5
+    val editWindowMs: Long by lazy { runCatching { uniffi.titi_ffi.editWindowMs().toLong() }.getOrDefault(24 * 3600_000L) }
+    val quickReactions: List<String> by lazy { runCatching { uniffi.titi_ffi.quickReactions() }.getOrDefault(listOf("👍", "❤️", "😂", "😮", "😢", "🙏")) }
+}
 
 data class Invite(val group: String, val name: String, val host: String, val hostName: String, val members: Int)
 
@@ -136,6 +181,7 @@ class EngineHost(private val ctx: Context, private val prefs: Prefs) : Transport
 
     init {
         if (prefs.identitySeed() == null) prefs.saveIdentitySeed(engine.identitySeed())
+        runCatching { engine.openChatStore(File(ctx.filesDir, "chat.db").path) }.onFailure { Log.w(TAG, "chat store unavailable, messages stay in memory", it) }
         prefs.groupsBlob()?.let { runCatching { engine.restoreGroups(it, now()) }.onFailure { e -> Log.w(TAG, "restore", e) } }
         refreshGroups()
         scope.launch {
@@ -256,8 +302,42 @@ class EngineHost(private val ctx: Context, private val prefs: Prefs) : Transport
         }
     }
     fun joinByLink(url: String) = post { apply(engine.joinByLink(url, now())) }
-    fun sendText(group: String, text: String) = post {
-        runCatching { apply(engine.sendText(group.hexToBytes(), text, now())) }.onFailure { err(it) }
+    /** Text with an optional quote ([replyTo] message id) and mentions (node ids). */
+    fun sendText(group: String, text: String, replyTo: String? = null, mentions: List<String> = emptyList(), mentionAll: Boolean = false) = post {
+        runCatching { apply(engine.sendTextV2(group.hexToBytes(), text, replyTo?.hexToBytes(), mentions.map { it.hexToBytes() }, mentionAll, now())) }.onFailure { err(it) }
+    }
+    /** One reaction per member; empty [emoji] removes ours. */
+    fun react(group: String, target: String, emoji: String) = post {
+        runCatching { apply(engine.react(group.hexToBytes(), target.hexToBytes(), emoji, now())) }.onFailure { err(it) }
+    }
+    /** Tap on a reaction chip: same emoji as ours removes it, otherwise sets it. */
+    fun toggleReaction(m: ChatMessage, emoji: String) = react(m.group, m.id, if (m.reactions.any { it.mine && it.emoji == emoji }) "" else emoji)
+    fun editMessage(group: String, target: String, text: String) = post {
+        runCatching { apply(engine.editMessage(group.hexToBytes(), target.hexToBytes(), text, now())) }.onFailure { err(it) }
+    }
+    fun deleteMessage(group: String, target: String) = post {
+        runCatching { apply(engine.deleteMessage(group.hexToBytes(), target.hexToBytes(), now())) }.onFailure { err(it) }
+    }
+    fun forward(fromGroup: String, target: String, toGroup: String) = post {
+        runCatching { apply(engine.forward(fromGroup.hexToBytes(), target.hexToBytes(), toGroup.hexToBytes(), now())) }.onFailure { err(it) }
+    }
+    fun setDraft(group: String, text: String) = post { runCatching { engine.setDraft(group.hexToBytes(), text) }.onFailure { Log.w(TAG, "setDraft", it) } }
+    suspend fun draft(group: String): String? = withContext(dispatcher) { runCatching { engine.draft(group.hexToBytes()) }.getOrNull() }
+    /** Diacritic-blind prefix search, newest first; [group] null = all groups. */
+    suspend fun search(group: String?, query: String, limit: Int = 50): List<ChatMessage> = withContext(dispatcher) {
+        runCatching { engine.search(group?.hexToBytes(), query, limit.toUInt()).map { it.toMessage() } }.onFailure { Log.w(TAG, "search", it) }.getOrDefault(emptyList())
+    }
+    suspend fun editHistory(target: String): List<EditRevision> = withContext(dispatcher) {
+        runCatching { engine.editHistory(target.hexToBytes()).map { EditRevision(it.text, it.sentMs.toLong()) } }.onFailure { Log.w(TAG, "editHistory", it) }.getOrDefault(emptyList())
+    }
+    /** Loads the page before the oldest loaded row; returns how many new rows arrived. */
+    suspend fun loadOlder(group: String, limit: Int = 200): Int = withContext(dispatcher) {
+        val oldest = _messages.value.filter { it.group == group }.minOfOrNull { it.sortMs } ?: return@withContext 0
+        val page = runCatching { engine.history(group.hexToBytes(), oldest.toULong(), limit.toUInt()) }.onFailure { Log.w(TAG, "history", it) }.getOrDefault(emptyList())
+        val known = _messages.value.mapTo(HashSet()) { it.id }
+        val fresh = page.map { it.toMessage() }.filter { it.id !in known }
+        if (fresh.isNotEmpty()) upsert(fresh)
+        fresh.size
     }
     fun sendLocation(group: String, lat: Double, lon: Double, acc: Float, breadcrumb: Boolean) = post {
         runCatching { apply(engine.sendLocation(group.hexToBytes(), lat, lon, acc, breadcrumb, now())) }.onFailure { err(it) }
@@ -341,19 +421,20 @@ class EngineHost(private val ctx: Context, private val prefs: Prefs) : Transport
             is FfiUiEvent.MemberJoined -> { names[e.node.toHex()] = e.name; refreshGroups() }
             is FfiUiEvent.MemberLeft -> refreshGroups()
             is FfiUiEvent.GroupDissolved -> { refreshGroups(); syncRelayRoom(); toast(Toast.Text(R.string.group_dissolved, e.name)) }
+            // the timeline row itself arrives as ChatUpdated; Message only drives unread + alerts
             is FfiUiEvent.Message -> {
                 val gid = e.group.toHex(); val from = e.from.toHex()
-                val msg = ChatMessage(e.msgUuid.toHex(), gid, from, names[from] ?: from.take(6), e.sentMs.toLong(), e.body, mine = from == nodeIdHex)
-                _messages.update { (it + msg).takeLast(500) }
-                if (!msg.mine && _state.value.activeGroup != gid) updateGroup(gid) { it.copy(unread = it.unread + 1) }
+                val mine = from == nodeIdHex
+                if (!mine && _state.value.activeGroup != gid) updateGroup(gid) { it.copy(unread = it.unread + 1) }
                 val body = e.body
-                if (body is FfiMessageBody.Sos && !msg.mine) {
+                if (body is FfiMessageBody.Sos && !mine) {
                     if (!body.cancelled) cue(Cue.Sos)
                     val gName = _state.value.groups.firstOrNull { it.id == gid }?.name ?: ""
-                    _alerts.tryEmit(Alert.Sos(gid, gName, msg.fromName, body.latE7, body.lonE7, body.cancelled))
+                    _alerts.tryEmit(Alert.Sos(gid, gName, names[from] ?: from.take(6), body.latE7, body.lonE7, body.cancelled))
                 }
             }
-            is FfiUiEvent.MessageAcked -> { val id = e.msgUuid.toHex(); _messages.update { l -> l.map { if (it.id == id) it.copy(acked = true) else it } } }
+            is FfiUiEvent.MessageAcked -> { val id = e.msgUuid.toHex(); _messages.update { l -> l.map { if (it.id == id && it.ackCount == 0) it.copy(ackCount = 1) else it } } }
+            is FfiUiEvent.ChatUpdated -> upsert(listOf(e.item.toMessage()))
             is FfiUiEvent.Handover -> updateGroup(e.group.toHex()) { it.copy(handover = e.state, link = e.link, profile = e.profile) }
             is FfiUiEvent.Suspended -> updateGroup(e.group.toHex()) { it.copy(suspended = true) }
             is FfiUiEvent.Resumed -> updateGroup(e.group.toHex()) { it.copy(suspended = false) }
@@ -373,6 +454,56 @@ class EngineHost(private val ctx: Context, private val prefs: Prefs) : Transport
             (prev[id] ?: GroupState(id, g.name, g.fullDuplex, g.isCreator, members)).copy(name = g.name, fullDuplex = g.fullDuplex, isCreator = g.isCreator, members = members)
         }
         _state.update { it.copy(groups = list, activeGroup = gs.firstOrNull { g -> g.isActive }?.id?.toHex()) }
+        syncHistory(list.map { it.id }.toSet())
+    }
+
+    // ---- chat timeline ----------------------------------------------------
+
+    private val loadedGroups = HashSet<String>()
+
+    /** Loads the newest page for groups seen for the first time; drops rows of groups we left. */
+    private fun syncHistory(ids: Set<String>) {
+        loadedGroups.retainAll(ids)
+        if (_messages.value.any { it.group !in ids }) _messages.update { l -> l.filter { it.group in ids } }
+        for (id in ids) {
+            if (!loadedGroups.add(id)) continue
+            val page = runCatching { engine.history(id.hexToBytes(), null, HISTORY_PAGE.toUInt()) }.onFailure { Log.w(TAG, "history", it) }.getOrDefault(emptyList())
+            if (page.isNotEmpty()) upsert(page.map { it.toMessage() })
+        }
+    }
+
+    /** Replace rows by id (or add them), keeping the list sorted by sortMs. */
+    private fun upsert(rows: List<ChatMessage>) {
+        _messages.update { l ->
+            val byId = LinkedHashMap<String, ChatMessage>(l.size + rows.size)
+            l.forEach { byId[it.id] = it }
+            rows.forEach { byId[it.id] = it }
+            byId.values.sortedWith(compareBy<ChatMessage> { it.sortMs }.thenBy { it.id })
+        }
+    }
+
+    private fun nameOf(node: String): String = if (node == nodeIdHex) settings0.name.ifBlank { "Titi" } else names[node] ?: node.take(6)
+
+    private fun FfiChatItem.toMessage(): ChatMessage {
+        val sender = this.from.toHex()
+        return ChatMessage(
+            id = msgUuid.toHex(),
+            group = group.toHex(),
+            from = sender,
+            fromName = nameOf(sender),
+            sentMs = sentMs.toLong(),
+            sortMs = sortMs.toLong(),
+            body = if (deleted) null else this.body,
+            mine = sender == nodeIdHex,
+            ackCount = acked.toInt(),
+            edited = edited.toInt(),
+            reply = reply?.let { r -> val s = r.sender.toHex(); ChatReply(r.msgUuid.toHex(), s, nameOf(s), s == nodeIdHex, r.preview, r.kind, r.state) },
+            reactions = reactions.map { ChatReaction(it.emoji, it.count.toInt(), it.mine) },
+            mentions = mentions.map { it.toHex() },
+            mentionAll = mentionAll,
+            mentionsMe = mentionsMe,
+            forwarded = forwarded.toInt(),
+        )
     }
 
     /** Relay rooms: every group (voice) + their rendezvous rooms + a pending code's rooms. */
@@ -394,7 +525,7 @@ class EngineHost(private val ctx: Context, private val prefs: Prefs) : Transport
     private fun cue(c: Cue) { _cues.tryEmit(c) }
     private fun err(t: Throwable) { Log.w(TAG, "engine", t); toast(Toast.Text(R.string.error_generic)) }
 
-    companion object { private const val TAG = "EngineHost" }
+    companion object { private const val TAG = "EngineHost"; private const val HISTORY_PAGE = 200 }
 }
 
 // ---- byte helpers -------------------------------------------------------------

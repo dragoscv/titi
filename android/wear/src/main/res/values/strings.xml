@@ -43,6 +43,7 @@
     <string name="reply_on_my_way">On my way</string>
     <string name="reply_wait">Wait for me</string>
     <string name="reply_where">Where are you?</string>
+    <string name="cd_message_actions">React or reply</string>
 
     <string name="sos">SOS</string>
     <string name="sos_hold">Hold for SOS</string>
