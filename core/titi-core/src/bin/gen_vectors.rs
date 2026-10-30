@@ -232,7 +232,97 @@ fn main() {
         )],
     );
 
+    // 7. message model v2: deterministic signed plaintexts (Ed25519 is
+    // deterministic, so every platform can reproduce the exact bytes).
+    write(&out, "message_v2.json", &message_v2_vectors());
+
     println!("vectors written to {}", out.display());
+}
+
+fn message_v2_vectors() -> Vec<KV> {
+    use prost::Message;
+    use titi_core::engine::{chat_sig_input, chat_sig_trailer, verify_chat_signature};
+    use titi_core::proto::{self, chat_message::Body};
+    let alice = Identity::from_seed(&[1u8; 32]);
+    let base = |id: u8, body: Body| proto::ChatMessage {
+        msg_uuid: vec![id; 16].into(),
+        group_uuid: vec![5u8; 16].into(),
+        sender_id: alice.node_id().to_vec().into(),
+        sent_ms: 1_790_000_000_000 + id as u64,
+        ttl_ms: 86_400_000,
+        sender_pub: alice.ed25519_public().to_vec().into(),
+        body: Some(body),
+        ..Default::default()
+    };
+    let mut reply = base(2, Body::Text("Vin și eu".into()));
+    reply.reply_to = Some(proto::ReplyRef {
+        msg_uuid: vec![1u8; 16].into(),
+        sender_id: vec![0x22; 8].into(),
+        preview: "Plecăm la 8".into(),
+        kind: proto::ReplyKind::Text as i32,
+    });
+    reply.mentions = vec![vec![0x22; 8].into()];
+    let mut fwd = base(6, Body::Text("notă".into()));
+    fwd.forwarded = 5;
+    let cases = [
+        ("text", base(1, Body::Text("Plecăm la 8".into()))),
+        ("reply_mention", reply),
+        (
+            "reaction",
+            base(
+                3,
+                Body::Reaction(proto::Reaction {
+                    target: vec![1u8; 16].into(),
+                    emoji: "👍".into(),
+                }),
+            ),
+        ),
+        (
+            "edit",
+            base(
+                4,
+                Body::Edit(proto::Edit {
+                    target: vec![1u8; 16].into(),
+                    text: "Plecăm la 9".into(),
+                }),
+            ),
+        ),
+        (
+            "delete",
+            base(
+                5,
+                Body::Delete(proto::Delete {
+                    target: vec![1u8; 16].into(),
+                }),
+            ),
+        ),
+        ("forwarded_many", fwd),
+    ];
+    cases
+        .into_iter()
+        .map(|(name, cm)| {
+            let unsigned = cm.encode_to_vec();
+            let sig = alice.sign(&chat_sig_input(&unsigned));
+            let mut plain = unsigned.clone();
+            plain.extend_from_slice(&chat_sig_trailer(&sig));
+            let decoded = proto::ChatMessage::decode(plain.as_slice()).unwrap();
+            assert!(verify_chat_signature(&decoded, &plain));
+            kv(
+                &format!("message_v2_{name}"),
+                &[
+                    ("signer_seed_hex", hex::encode([1u8; 32])),
+                    ("unsigned_hex", hex::encode(&unsigned)),
+                    ("signature_hex", hex::encode(sig)),
+                    ("plaintext_hex", hex::encode(&plain)),
+                    (
+                        "notes",
+                        "plaintext = unsigned ‖ aa 01 40 ‖ sig; sig = Ed25519(\"titi/v1/msg\" ‖ unsigned)"
+                            .into(),
+                    ),
+                ],
+            )
+        })
+        .collect()
 }
 
 fn write<T: Serialize>(dir: &PathBuf, name: &str, v: &[T]) {

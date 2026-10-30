@@ -10,6 +10,10 @@ pre-commit:
       run: gitleaks git --staged --no-banner --redact --exit-code 1
     - name: oxlint
       glob: "*.{ts,tsx,js,mjs}"
+      # generated wasm-bindgen output is ignored by .oxlintrc; if it is the only JS staged,
+      # oxlint exits 1 with "No files found to lint"
+      exclude:
+        - "packages/core-wasm/pkg/**"
       run: pnpm exec oxlint -c .oxlintrc.json {staged_files}
     - name: rustfmt
       glob: "*.rs"

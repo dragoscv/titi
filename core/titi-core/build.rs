@@ -11,6 +11,7 @@ fn main() {
         "titi/v1/floor.proto",
         "titi/v1/message.proto",
         "titi/v1/signal.proto",
+        "titi/v1/store.proto",
     ];
     for f in &files {
         println!("cargo:rerun-if-changed={}", proto_root.join(f).display());

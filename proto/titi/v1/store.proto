@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package titi.v1;
+
+import "titi/v1/message.proto";
+
+// Local conversation store rows (CH-A2). Never sent on the wire: the Rust core
+// writes them to SQLite (native) or hands them to the host as opaque values
+// (IndexedDB on web/Tizen). Owned by `titi-core::chat`.
+message StoredMessage {
+  // The message as received, signature stripped. When deleted the body,
+  // reply quote and mentions are cleared; id, sender and time stay.
+  ChatMessage msg = 1;
+  uint64 received_ms = 2;
+  repeated Revision edits = 3;
+  repeated StoredReaction reactions = 4;
+  bool deleted = 5;
+  uint64 deleted_ms = 6;
+  repeated bytes acked_by = 7;
+  // A delete for everyone arrived before the message itself.
+  bool placeholder = 8;
+}
+
+message Revision {
+  string text = 1;
+  uint64 sent_ms = 2;
+  bytes event_id = 3;
+}
+
+message StoredReaction {
+  bytes node = 1;
+  string emoji = 2;
+  uint64 sent_ms = 3;
+  bytes event_id = 4;
+}
+
+// An edit / reaction / delete whose target has not arrived yet.
+message PendingEvent {
+  ChatMessage msg = 1;
+  uint64 received_ms = 2;
+}

@@ -2,6 +2,7 @@
 
 use std::sync::Mutex;
 
+use titi_core::chat::{ChatItem, Compose, QuoteKind, ReplyState};
 use titi_core::engine::{Action, Config, Engine, MessageBody, UiEvent};
 use titi_core::floor::Priority;
 use titi_core::frame::Profile;
@@ -237,6 +238,10 @@ pub enum FfiUiEvent {
         msg_uuid: Vec<u8>,
         by: Vec<u8>,
     },
+    /// A timeline row was added or changed; replace the row with this id.
+    ChatUpdated {
+        item: FfiChatItem,
+    },
     Handover {
         group: Vec<u8>,
         state: String,
@@ -362,6 +367,7 @@ impl From<UiEvent> for FfiUiEvent {
                 msg_uuid: msg_uuid.to_vec(),
                 by: by.to_vec(),
             },
+            UiEvent::ChatUpdated { item } => F::ChatUpdated { item: item.into() },
             UiEvent::Handover {
                 group,
                 state,
@@ -392,6 +398,8 @@ impl From<UiEvent> for FfiUiEvent {
     }
 }
 
+// Values cross the FFI by copy anyway; uniffi enums cannot box a record.
+#[allow(clippy::large_enum_variant)]
 #[derive(uniffi::Enum, Debug, Clone)]
 pub enum FfiAction {
     Send {
@@ -466,6 +474,117 @@ fn to8(v: &[u8]) -> Result<[u8; 8], TitiError> {
     v.try_into().map_err(|_| TitiError::Failed {
         msg: "node id must be 8 bytes".into(),
     })
+}
+
+#[derive(uniffi::Enum, Debug, Clone, PartialEq, Eq)]
+pub enum FfiQuoteKind {
+    Text,
+    Voice,
+    Location,
+    Sos,
+}
+
+#[derive(uniffi::Enum, Debug, Clone, PartialEq, Eq)]
+pub enum FfiReplyState {
+    Present,
+    Deleted,
+    Missing,
+}
+
+#[derive(uniffi::Record, Debug, Clone)]
+pub struct FfiReply {
+    pub msg_uuid: Vec<u8>,
+    pub sender: Vec<u8>,
+    pub preview: String,
+    pub kind: FfiQuoteKind,
+    pub state: FfiReplyState,
+}
+
+#[derive(uniffi::Record, Debug, Clone)]
+pub struct FfiReaction {
+    pub emoji: String,
+    pub count: u32,
+    pub mine: bool,
+}
+
+/// One timeline row (message model v2).
+#[derive(uniffi::Record, Debug, Clone)]
+pub struct FfiChatItem {
+    pub group: Vec<u8>,
+    pub msg_uuid: Vec<u8>,
+    pub from: Vec<u8>,
+    pub sent_ms: u64,
+    pub sort_ms: u64,
+    /// None = deleted for everyone.
+    pub body: Option<FfiMessageBody>,
+    pub deleted: bool,
+    pub edited: u32,
+    pub reply: Option<FfiReply>,
+    pub mentions: Vec<Vec<u8>>,
+    pub mention_all: bool,
+    pub mentions_me: bool,
+    pub forwarded: u32,
+    pub reactions: Vec<FfiReaction>,
+    pub acked: u32,
+}
+
+impl From<ChatItem> for FfiChatItem {
+    fn from(i: ChatItem) -> Self {
+        FfiChatItem {
+            group: i.group.to_vec(),
+            msg_uuid: i.msg_uuid.to_vec(),
+            from: i.from.to_vec(),
+            sent_ms: i.sent_ms,
+            sort_ms: i.sort_ms,
+            body: i.body.map(Into::into),
+            deleted: i.deleted,
+            edited: i.edited,
+            reply: i.reply.map(|r| FfiReply {
+                msg_uuid: r.msg_uuid.to_vec(),
+                sender: r.sender.to_vec(),
+                preview: r.preview,
+                kind: match r.kind {
+                    QuoteKind::Text => FfiQuoteKind::Text,
+                    QuoteKind::Voice => FfiQuoteKind::Voice,
+                    QuoteKind::Location => FfiQuoteKind::Location,
+                    QuoteKind::Sos => FfiQuoteKind::Sos,
+                },
+                state: match r.state {
+                    ReplyState::Present => FfiReplyState::Present,
+                    ReplyState::Deleted => FfiReplyState::Deleted,
+                    ReplyState::Missing => FfiReplyState::Missing,
+                },
+            }),
+            mentions: i.mentions.iter().map(|m| m.to_vec()).collect(),
+            mention_all: i.mention_all,
+            mentions_me: i.mentions_me,
+            forwarded: i.forwarded,
+            reactions: i
+                .reactions
+                .into_iter()
+                .map(|r| FfiReaction {
+                    emoji: r.emoji,
+                    count: r.count,
+                    mine: r.mine,
+                })
+                .collect(),
+            acked: i.acked,
+        }
+    }
+}
+
+#[derive(uniffi::Record, Debug, Clone)]
+pub struct FfiEditRevision {
+    pub text: String,
+    pub sent_ms: u64,
+}
+
+fn items(v: Vec<ChatItem>) -> Vec<FfiChatItem> {
+    v.into_iter().map(Into::into).collect()
+}
+
+fn to_ids(v: &[Vec<u8>]) -> Result<Vec<[u8; 8]>, TitiError> {
+    v.iter().map(|b| to8(b)).collect()
 }
 
 #[derive(uniffi::Record, Debug, Clone)]
@@ -735,6 +854,114 @@ impl TitiEngine {
         self.try_sh(|e| Ok(e.send_sos(to16(&group)?, lat, lon, &note, cancelled, now_ms)))
     }
 
+    /// Open the durable chat store (SQLite + FTS5) at `path`; call once at
+    /// start, before traffic. Without it messages live in memory only.
+    pub fn open_chat_store(&self, path: String) -> Result<(), TitiError> {
+        let b = titi_core::chat::sqlite::SqliteBackend::open(&path)
+            .map_err(|e| TitiError::Failed { msg: e.to_string() })?;
+        self.inner.lock().unwrap().set_chat_backend(Box::new(b));
+        Ok(())
+    }
+    /// Text with an optional quote (`reply_to`) and mentions.
+    pub fn send_text_v2(
+        &self,
+        group: Vec<u8>,
+        text: String,
+        reply_to: Option<Vec<u8>>,
+        mentions: Vec<Vec<u8>>,
+        mention_all: bool,
+        now_ms: u64,
+    ) -> Result<Vec<FfiAction>, TitiError> {
+        let c = Compose {
+            reply_to: reply_to.map(|r| to16(&r)).transpose()?,
+            mentions: to_ids(&mentions)?,
+            mention_all,
+        };
+        self.try_sh(|e| Ok(e.send_text_v2(to16(&group)?, &text, c, now_ms)))
+    }
+    /// One reaction per member; empty `emoji` removes yours.
+    pub fn react(
+        &self,
+        group: Vec<u8>,
+        target: Vec<u8>,
+        emoji: String,
+        now_ms: u64,
+    ) -> Result<Vec<FfiAction>, TitiError> {
+        self.try_sh(|e| Ok(e.react(to16(&group)?, to16(&target)?, &emoji, now_ms)?))
+    }
+    pub fn edit_message(
+        &self,
+        group: Vec<u8>,
+        target: Vec<u8>,
+        text: String,
+        now_ms: u64,
+    ) -> Result<Vec<FfiAction>, TitiError> {
+        self.try_sh(|e| Ok(e.edit_message(to16(&group)?, to16(&target)?, &text, now_ms)?))
+    }
+    pub fn delete_message(
+        &self,
+        group: Vec<u8>,
+        target: Vec<u8>,
+        now_ms: u64,
+    ) -> Result<Vec<FfiAction>, TitiError> {
+        self.try_sh(|e| Ok(e.delete_message(to16(&group)?, to16(&target)?, now_ms)?))
+    }
+    pub fn forward(
+        &self,
+        from_group: Vec<u8>,
+        target: Vec<u8>,
+        to_group: Vec<u8>,
+        now_ms: u64,
+    ) -> Result<Vec<FfiAction>, TitiError> {
+        self.try_sh(|e| {
+            Ok(e.forward(to16(&from_group)?, to16(&target)?, to16(&to_group)?, now_ms)?)
+        })
+    }
+    pub fn set_draft(&self, group: Vec<u8>, text: String) -> Result<(), TitiError> {
+        self.inner.lock().unwrap().set_draft(to16(&group)?, &text);
+        Ok(())
+    }
+    pub fn draft(&self, group: Vec<u8>) -> Result<Option<String>, TitiError> {
+        Ok(self.inner.lock().unwrap().draft(&to16(&group)?))
+    }
+    /// Timeline page, oldest first; `before_ms` None = newest.
+    pub fn history(
+        &self,
+        group: Vec<u8>,
+        before_ms: Option<u64>,
+        limit: u32,
+    ) -> Result<Vec<FfiChatItem>, TitiError> {
+        Ok(items(self.inner.lock().unwrap().history(
+            &to16(&group)?,
+            before_ms,
+            limit as usize,
+        )))
+    }
+    /// Diacritic-blind prefix search, newest first; `group` None = all.
+    pub fn search(
+        &self,
+        group: Option<Vec<u8>>,
+        query: String,
+        limit: u32,
+    ) -> Result<Vec<FfiChatItem>, TitiError> {
+        let g = group.map(|g| to16(&g)).transpose()?;
+        Ok(items(self.inner.lock().unwrap().search(
+            g.as_ref(),
+            &query,
+            limit as usize,
+        )))
+    }
+    pub fn edit_history(&self, target: Vec<u8>) -> Result<Vec<FfiEditRevision>, TitiError> {
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .edit_history(&to16(&target)?)
+            .into_iter()
+            .map(|(text, sent_ms)| FfiEditRevision { text, sent_ms })
+            .collect())
+    }
+
     pub fn restore_groups(&self, data: Vec<u8>, now_ms: u64) -> Result<(), TitiError> {
         Ok(self.inner.lock().unwrap().restore_groups(&data, now_ms)?)
     }
@@ -849,6 +1076,21 @@ pub fn decode_voice_note(packets: Vec<u8>, profile: FfiProfile) -> Result<Vec<u8
         i += len;
     }
     Ok(pcm_to_le(&out))
+}
+
+/// Quick reactions offered on every screen (watch and TV pick from these).
+#[uniffi::export]
+pub fn quick_reactions() -> Vec<String> {
+    titi_core::chat::QUICK_REACTIONS
+        .iter()
+        .map(|s| s.to_string())
+        .collect()
+}
+
+/// Edit window in ms (24 h); hosts hide "Edit" after it.
+#[uniffi::export]
+pub fn edit_window_ms() -> u64 {
+    titi_core::chat::EDIT_WINDOW_MS
 }
 
 #[uniffi::export]

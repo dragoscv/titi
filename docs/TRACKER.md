@@ -232,12 +232,28 @@ Legend of surfaces: **C** core (Rust) · **B** backend · **A** Android ·
 
 | ID | Item | Status | Evidence |
 |---|---|---|---|
-| CH-A2 | Durable per-conversation store + FTS search + drafts (SQLite/FTS5 native, IndexedDB web) | todo | |
-| CH-A1 | Message model v2: reply, react, edit, delete for everyone, forward, mention | todo | needs CH-A2 |
+| CH-A2 | Durable per-conversation store + FTS search + drafts (SQLite/FTS5 native, IndexedDB web) | wip (core + FFI + wasm + desktop done; Android/iOS/web hosts open) | core `chat/` module: `SqliteBackend` (rusqlite 0.41 bundled, contentless-delete FTS5, `unicode61 remove_diacritics 2`, secure-delete, `detail=column`, `prefix='2 3'`) + `MemBackend` mirrored as `chat/m|p|d/…` Persist rows for IndexedDB; schema in `proto/titi/v1/store.proto`; leave/dissolve wipe the conversation. Tests: `chat::tests` 12/12 on mem, mirror and SQLite (RO diacritics incl. cedilla ş/ţ, history paging, drafts, restart restore); `tests/chat_v2.rs` `mirrored_store_survives_restart`, `sqlite_store_survives_restart`, `drafts_clear_on_send_and_leave_wipes_history`. Desktop opens `%APPDATA%…/chat.db`; wasm 653 → 793 KB (budget 0.8 MB) |
+| CH-A1 | Message model v2: reply, react, edit, delete for everyone, forward, mention | wip (core + FFI + wasm + JSON done; client UIs open) | `message.proto` v2 (ReplyRef, Reaction, Edit, Delete, mentions, mention_all, forwarded, sender_pub, signature trailer = last 67 B of the AEAD plaintext); rules decided 2026-10-30: edit 24 h (+5 min skew, ≤ 10, history visible), delete = tombstone with no time limit that beats any order, 1 reaction/member (quick 6 + any emoji), @all creator only, reply quote ≤ 80 chars embedded (present / deleted / missing), events before their target wait 7 days. Tests: `tests/chat_v2.rs` 7/7 (two/three engines: reply+mention+react+edit+delete, edit window, forward count, @all creator-only, forged key rejected); mutant (author check off) → 2 failures; vectors `testvectors/message_v2.json` (6 signed plaintexts) |
 | CH-A4 | Encrypted attachments: STREAM chunks, content-addressed resume over LAN/BLE/relay, relay blob TTL | todo | |
 | CH-A6 | Multi-device identity on HIDE `hide-identity` (enrol, revoke, recovery key) | todo | measure HIDE size on armv7 + wasm first |
 | CH-A5 | 1:1 PQ ratchet (PQXDH + SPQR from spec) | todo | |
 | CH-B1 | Voice-first timeline + on-device transcription + voice search + catch-up | todo | |
+
+Ideas from the 2026-10-30 research round (decided with the user: all go on the list, after CH-A1):
+
+| ID | Item | Status | Evidence |
+|---|---|---|---|
+| CH-I01 | Reply by voice to any message (voice note with the quote embedded) | todo | S; on CH-A1 `reply_to` |
+| CH-I02 | Voice "Roger" reaction (1 s clip or canned cue) | todo | S; watch-first |
+| CH-I03 | "Heard by" receipts for voice notes | todo | S |
+| CH-I04 | Priority tags (urgent overrides mute / DND) | todo | S |
+| CH-I05 | Pins with expiry (24 h / 7 d / 30 d) as signed events | todo | S |
+| CH-I06 | Mesh delivery map (who carried a message, hop count) | todo | S |
+| CH-I07 | Catch-up digest read aloud (phone / watch / TV) | todo | M; overlaps CH-B1 |
+| CH-I08 | Shift mode: wipe history at shift end, keep group keys | todo | S |
+| CH-I09 | TV radio-room wall with live transcript | todo | M; overlaps CH-B1 |
+| CH-I10 | Desktop dispatcher console (several groups, per-group volume / pan) | todo | L |
+| CH-I11 | Battery-aware mesh duty cycle shown in the UI | todo | M; Android / Wear |
 
 ## 6. iOS (`ios/`) — skeleton now, CI after Apple enrolment
 

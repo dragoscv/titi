@@ -14,9 +14,11 @@
 //! - [`handover`] — link handover state machine
 //! - [`audio`]    — Opus profiles, jitter buffer, mixer
 //! - [`store`]    — store-and-forward message queue
+//! - [`chat`]     — durable conversation store, search, drafts, message model v2
 //! - [`engine`]   — façade wiring everything together
 
 pub mod audio;
+pub mod chat;
 pub mod crypto;
 pub mod engine;
 pub mod error;

@@ -10,7 +10,7 @@ rust-version.workspace = true
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-titi-core = { workspace = true, default-features = false }
+titi-core = { workspace = true, default-features = false, features = ["json"] }
 wasm-bindgen = { workspace = true }
 js-sys = { workspace = true }
 serde = { workspace = true }

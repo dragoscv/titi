@@ -5,18 +5,70 @@ package titi.v1;
 import "titi/v1/common.proto";
 
 // Store-and-forward payloads; encrypted with the group key end to end.
+//
+// v2 (ADR-0009, CH-A1): a message may quote another (`reply_to`), mention
+// members, carry a forward count, or be an event on an earlier message
+// (reaction / edit / delete). v2 messages are signed by their author: the
+// AEAD plaintext is `encode(msg without signature) ‖ field 21 (64 B)`, the
+// signature covering "titi/v1/msg" ‖ everything before the trailer. The
+// trailer is always the last 67 bytes, so unknown future fields stay covered.
 message ChatMessage {
   bytes msg_uuid = 1;     // 16 bytes
   bytes group_uuid = 2;
   bytes sender_id = 3;
   uint64 sent_ms = 4;
   uint64 ttl_ms = 5;      // relays drop after sent_ms + ttl_ms
+  ReplyRef reply_to = 6;
+  repeated bytes mentions = 7;  // 8-byte node ids
+  bool mention_all = 8;         // honoured only from the group creator
+  uint32 forwarded = 9;         // 0 = original; >= 5 shows "forwarded many times"
   oneof body {
     string text = 10;
     VoiceNote voice = 11;
     Location location = 12;
     Sos sos = 13;
+    Reaction reaction = 14;
+    Edit edit = 15;
+    Delete delete = 16;
   }
+  bytes sender_pub = 20;  // 32-byte Ed25519 key; BLAKE2b(pub)[0..8] == sender_id
+  bytes signature = 21;   // 64 bytes, always encoded last (see above)
+}
+
+// Quote of an earlier message, embedded so it renders even when the original
+// never reached this device. `preview` is at most 80 characters of text.
+message ReplyRef {
+  bytes msg_uuid = 1;
+  bytes sender_id = 2;
+  string preview = 3;
+  ReplyKind kind = 4;
+}
+
+enum ReplyKind {
+  REPLY_KIND_UNSPECIFIED = 0;
+  REPLY_KIND_TEXT = 1;
+  REPLY_KIND_VOICE = 2;
+  REPLY_KIND_LOCATION = 3;
+  REPLY_KIND_SOS = 4;
+}
+
+// One reaction per member per message; last (sent_ms, event id) wins; an empty
+// emoji removes the member's reaction.
+message Reaction {
+  bytes target = 1;
+  string emoji = 2;
+}
+
+// New text for an own text message, valid for 24 h after the original (author
+// clocks, 5 min skew), at most 10 edits; last (sent_ms, event id) wins.
+message Edit {
+  bytes target = 1;
+  string text = 2;
+}
+
+// Delete for everyone (own messages, no time limit): leaves a tombstone.
+message Delete {
+  bytes target = 1;
 }
 
 message VoiceNote {

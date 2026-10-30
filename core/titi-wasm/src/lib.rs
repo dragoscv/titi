@@ -199,6 +199,9 @@ enum JsUi {
         msg_uuid: String,
         by: String,
     },
+    ChatUpdated {
+        item: Box<titi_core::json::JsChatItem>,
+    },
     Handover {
         group: String,
         state: String,
@@ -319,6 +322,9 @@ impl From<UiEvent> for JsUi {
             UiEvent::MessageAcked { msg_uuid, by } => J::MessageAcked {
                 msg_uuid: hex(&msg_uuid),
                 by: hex(&by),
+            },
+            UiEvent::ChatUpdated { item } => J::ChatUpdated {
+                item: Box::new(item.into()),
             },
             UiEvent::Handover {
                 group,
@@ -447,9 +453,126 @@ impl WasmEngine {
             relay_capable: false,
             max_profile: None,
         };
-        WasmEngine {
-            inner: Engine::new(id, cfg, rng_seed),
-        }
+        let mut inner = Engine::new(id, cfg, rng_seed);
+        // the host keeps every `chat/…` Persist row in IndexedDB and replays
+        // them with `restore_chat_row` at start
+        inner.set_chat_backend(Box::new(titi_core::chat::MemBackend::new(true)));
+        WasmEngine { inner }
+    }
+
+    /// Replay one persisted `chat/…` row (start-up, before traffic).
+    pub fn restore_chat_row(&mut self, key: &str, value: &[u8]) -> bool {
+        self.inner.restore_chat_row(key, value)
+    }
+    /// Text with optional quote (16-byte id or empty) and mentions
+    /// (concatenated 8-byte node ids).
+    pub fn send_text_v2(
+        &mut self,
+        group: &[u8],
+        text: String,
+        reply_to: &[u8],
+        mentions: &[u8],
+        mention_all: bool,
+        now_ms: f64,
+    ) -> Result<String, JsValue> {
+        let c = titi_core::chat::Compose {
+            reply_to: if reply_to.is_empty() {
+                None
+            } else {
+                Some(gid(reply_to)?)
+            },
+            mentions: mentions.chunks(8).map(nid).collect::<Result<Vec<_>, _>>()?,
+            mention_all,
+        };
+        self.try_sh(|e| Ok(e.send_text_v2(gid(group)?, &text, c, now_ms as u64)))
+    }
+    pub fn react(
+        &mut self,
+        group: &[u8],
+        target: &[u8],
+        emoji: String,
+        now_ms: f64,
+    ) -> Result<String, JsValue> {
+        self.try_sh(|e| {
+            e.react(gid(group)?, gid(target)?, &emoji, now_ms as u64)
+                .map_err(|e| JsValue::from_str(&e.to_string()))
+        })
+    }
+    pub fn edit_message(
+        &mut self,
+        group: &[u8],
+        target: &[u8],
+        text: String,
+        now_ms: f64,
+    ) -> Result<String, JsValue> {
+        self.try_sh(|e| {
+            e.edit_message(gid(group)?, gid(target)?, &text, now_ms as u64)
+                .map_err(|e| JsValue::from_str(&e.to_string()))
+        })
+    }
+    pub fn delete_message(
+        &mut self,
+        group: &[u8],
+        target: &[u8],
+        now_ms: f64,
+    ) -> Result<String, JsValue> {
+        self.try_sh(|e| {
+            e.delete_message(gid(group)?, gid(target)?, now_ms as u64)
+                .map_err(|e| JsValue::from_str(&e.to_string()))
+        })
+    }
+    pub fn forward(
+        &mut self,
+        from_group: &[u8],
+        target: &[u8],
+        to_group: &[u8],
+        now_ms: f64,
+    ) -> Result<String, JsValue> {
+        self.try_sh(|e| {
+            e.forward(
+                gid(from_group)?,
+                gid(target)?,
+                gid(to_group)?,
+                now_ms as u64,
+            )
+            .map_err(|e| JsValue::from_str(&e.to_string()))
+        })
+    }
+    /// Returns the actions (the draft row to persist).
+    pub fn set_draft(&mut self, group: &[u8], text: String) -> Result<String, JsValue> {
+        self.try_sh(|e| Ok(e.set_draft(gid(group)?, &text)))
+    }
+    pub fn draft(&self, group: &[u8]) -> Option<String> {
+        self.inner.draft(&<[u8; 16]>::try_from(group).ok()?)
+    }
+    /// JSON array of chat items, oldest first; `before_ms` < 0 = newest.
+    pub fn history_json(&self, group: &[u8], before_ms: f64, limit: u32) -> String {
+        let Ok(g) = <[u8; 16]>::try_from(group) else {
+            return "[]".into();
+        };
+        let before = (before_ms >= 0.0).then_some(before_ms as u64);
+        let items = titi_core::json::chat_items(self.inner.history(&g, before, limit as usize));
+        serde_json::to_string(&items).unwrap_or_else(|_| "[]".into())
+    }
+    /// JSON array of chat items, newest first; empty `group` = all groups.
+    pub fn search_json(&self, group: &[u8], query: &str, limit: u32) -> String {
+        let g = <[u8; 16]>::try_from(group).ok();
+        let items =
+            titi_core::json::chat_items(self.inner.search(g.as_ref(), query, limit as usize));
+        serde_json::to_string(&items).unwrap_or_else(|_| "[]".into())
+    }
+    /// JSON array of {text, sent_ms}, oldest first.
+    pub fn edit_history_json(&self, target: &[u8]) -> String {
+        let Ok(t) = <[u8; 16]>::try_from(target) else {
+            return "[]".into();
+        };
+        let v: Vec<serde_json::Value> = self
+            .inner
+            .edit_history(&t)
+            .into_iter()
+            .map(|(text, s)| serde_json::json!({"text": text, "sent_ms": s as f64}))
+            .collect();
+        serde_json::to_string(&v).unwrap_or_else(|_| "[]".into())
     }
 
     pub fn identity_seed(&self) -> Vec<u8> {

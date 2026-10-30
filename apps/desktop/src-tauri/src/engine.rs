@@ -490,6 +490,10 @@ pub fn spawn(dir: PathBuf, sink: Box<dyn Sink>) -> Started {
         ..Default::default()
     };
     let mut eng = Engine::new(id, cfg, rand::random());
+    match titi_core::chat::sqlite::SqliteBackend::open(&dir.join("chat.db").to_string_lossy()) {
+        Ok(b) => eng.set_chat_backend(Box::new(b)),
+        Err(e) => log::warn!("chat store: {e} (messages kept in memory only)"),
+    }
     if let Some(g) = read(&dir, "groups.bin") {
         if let Err(e) = eng.restore_groups(&g, now_ms()) {
             log::warn!("restore groups: {e}")

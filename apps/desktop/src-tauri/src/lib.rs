@@ -448,6 +448,120 @@ fn titi_group_op(
     })?
 }
 
+/// Chat store + message model v2. `op`: reply | react | edit | delete |
+/// forward | draft | history | search | editHistory. Ids are hex.
+#[derive(serde::Deserialize, Default)]
+#[serde(default)]
+struct ChatArgs {
+    group: String,
+    target: String,
+    text: String,
+    to_group: String,
+    mentions: Vec<String>,
+    mention_all: bool,
+    before_ms: Option<f64>,
+    limit: Option<u32>,
+}
+
+#[tauri::command]
+fn titi_chat(st: State<AppState>, op: String, args: ChatArgs) -> Result<serde_json::Value, String> {
+    use titi_core::json::chat_items;
+    call(&st.tx, move |h| -> Result<serde_json::Value, String> {
+        let g = || Host::gid(&args.group);
+        let t = || Host::gid(&args.target);
+        let n = now_ms();
+        let ok = serde_json::Value::Null;
+        let res = match op.as_str() {
+            "reply" => {
+                let c = titi_core::chat::Compose {
+                    reply_to: if args.target.is_empty() {
+                        None
+                    } else {
+                        Some(t()?)
+                    },
+                    mentions: args
+                        .mentions
+                        .iter()
+                        .map(|m| Host::nid(m))
+                        .collect::<Result<_, _>>()?,
+                    mention_all: args.mention_all,
+                };
+                let a = h.eng.send_text_v2(g()?, &args.text, c, n);
+                h.apply_actions(a);
+                ok
+            }
+            "react" => {
+                let a = h
+                    .eng
+                    .react(g()?, t()?, &args.text, n)
+                    .map_err(|e| e.to_string())?;
+                h.apply_actions(a);
+                ok
+            }
+            "edit" => {
+                let a = h
+                    .eng
+                    .edit_message(g()?, t()?, &args.text, n)
+                    .map_err(|e| e.to_string())?;
+                h.apply_actions(a);
+                ok
+            }
+            "delete" => {
+                let a = h
+                    .eng
+                    .delete_message(g()?, t()?, n)
+                    .map_err(|e| e.to_string())?;
+                h.apply_actions(a);
+                ok
+            }
+            "forward" => {
+                let to = Host::gid(&args.to_group)?;
+                let a = h
+                    .eng
+                    .forward(g()?, t()?, to, n)
+                    .map_err(|e| e.to_string())?;
+                h.apply_actions(a);
+                ok
+            }
+            "draft" => {
+                h.eng.set_draft(g()?, &args.text);
+                ok
+            }
+            "getDraft" => serde_json::json!(h.eng.draft(&g()?)),
+            "history" => {
+                let items = h.eng.history(
+                    &g()?,
+                    args.before_ms.map(|b| b as u64),
+                    args.limit.unwrap_or(200) as usize,
+                );
+                serde_json::to_value(chat_items(items)).map_err(|e| e.to_string())?
+            }
+            "search" => {
+                let gg = if args.group.is_empty() {
+                    None
+                } else {
+                    Some(g()?)
+                };
+                let items =
+                    h.eng
+                        .search(gg.as_ref(), &args.text, args.limit.unwrap_or(50) as usize);
+                serde_json::to_value(chat_items(items)).map_err(|e| e.to_string())?
+            }
+            "editHistory" => {
+                let v: Vec<serde_json::Value> = h
+                    .eng
+                    .edit_history(&t()?)
+                    .into_iter()
+                    .map(|(text, s)| serde_json::json!({"text": text, "sent_ms": s as f64}))
+                    .collect();
+                serde_json::Value::Array(v)
+            }
+            _ => return Err(format!("unknown chat op {op}")),
+        };
+        Ok(res)
+    })?
+}
+
 #[tauri::command]
 fn titi_join(
     st: State<AppState>,
@@ -806,6 +920,7 @@ pub fn run() {
             titi_mute,
             titi_create_group,
             titi_group_op,
+            titi_chat,
             titi_join,
             titi_code,
             titi_deep_link,

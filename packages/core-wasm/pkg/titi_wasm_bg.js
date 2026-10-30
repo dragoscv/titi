@@ -156,6 +156,40 @@ export class WasmEngine {
         }
     }
     /**
+     * @param {Uint8Array} group
+     * @param {Uint8Array} target
+     * @param {number} now_ms
+     * @returns {string}
+     */
+    delete_message(group, target, now_ms) {
+        let deferred4_0;
+        let deferred4_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passArray8ToWasm0(group, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            const ptr1 = passArray8ToWasm0(target, wasm.__wbindgen_export2);
+            const len1 = WASM_VECTOR_LEN;
+            wasm.wasmengine_delete_message(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1, now_ms);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            var r3 = getDataViewMemory0().getInt32(retptr + 4 * 3, true);
+            var ptr3 = r0;
+            var len3 = r1;
+            if (r3) {
+                ptr3 = 0; len3 = 0;
+                throw takeObject(r2);
+            }
+            deferred4_0 = ptr3;
+            deferred4_1 = len3;
+            return getStringFromWasm0(ptr3, len3);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export3(deferred4_0, deferred4_1, 1);
+        }
+    }
+    /**
      * Creator only: delete the group for every member.
      * @param {Uint8Array} group
      * @param {number} now_ms
@@ -188,6 +222,125 @@ export class WasmEngine {
         }
     }
     /**
+     * @param {Uint8Array} group
+     * @returns {string | undefined}
+     */
+    draft(group) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passArray8ToWasm0(group, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.wasmengine_draft(retptr, this.__wbg_ptr, ptr0, len0);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v2;
+            if (r0 !== 0) {
+                v2 = getStringFromWasm0(r0, r1);
+                wasm.__wbindgen_export3(r0, r1 * 1, 1);
+            }
+            return v2;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * JSON array of {text, sent_ms}, oldest first.
+     * @param {Uint8Array} target
+     * @returns {string}
+     */
+    edit_history_json(target) {
+        let deferred2_0;
+        let deferred2_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passArray8ToWasm0(target, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.wasmengine_edit_history_json(retptr, this.__wbg_ptr, ptr0, len0);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            deferred2_0 = r0;
+            deferred2_1 = r1;
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export3(deferred2_0, deferred2_1, 1);
+        }
+    }
+    /**
+     * @param {Uint8Array} group
+     * @param {Uint8Array} target
+     * @param {string} text
+     * @param {number} now_ms
+     * @returns {string}
+     */
+    edit_message(group, target, text, now_ms) {
+        let deferred5_0;
+        let deferred5_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passArray8ToWasm0(group, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            const ptr1 = passArray8ToWasm0(target, wasm.__wbindgen_export2);
+            const len1 = WASM_VECTOR_LEN;
+            const ptr2 = passStringToWasm0(text, wasm.__wbindgen_export2, wasm.__wbindgen_export4);
+            const len2 = WASM_VECTOR_LEN;
+            wasm.wasmengine_edit_message(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1, ptr2, len2, now_ms);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            var r3 = getDataViewMemory0().getInt32(retptr + 4 * 3, true);
+            var ptr4 = r0;
+            var len4 = r1;
+            if (r3) {
+                ptr4 = 0; len4 = 0;
+                throw takeObject(r2);
+            }
+            deferred5_0 = ptr4;
+            deferred5_1 = len4;
+            return getStringFromWasm0(ptr4, len4);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export3(deferred5_0, deferred5_1, 1);
+        }
+    }
+    /**
+     * @param {Uint8Array} from_group
+     * @param {Uint8Array} target
+     * @param {Uint8Array} to_group
+     * @param {number} now_ms
+     * @returns {string}
+     */
+    forward(from_group, target, to_group, now_ms) {
+        let deferred5_0;
+        let deferred5_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passArray8ToWasm0(from_group, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            const ptr1 = passArray8ToWasm0(target, wasm.__wbindgen_export2);
+            const len1 = WASM_VECTOR_LEN;
+            const ptr2 = passArray8ToWasm0(to_group, wasm.__wbindgen_export2);
+            const len2 = WASM_VECTOR_LEN;
+            wasm.wasmengine_forward(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1, ptr2, len2, now_ms);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            var r3 = getDataViewMemory0().getInt32(retptr + 4 * 3, true);
+            var ptr4 = r0;
+            var len4 = r1;
+            if (r3) {
+                ptr4 = 0; len4 = 0;
+                throw takeObject(r2);
+            }
+            deferred5_0 = ptr4;
+            deferred5_1 = len4;
+            return getStringFromWasm0(ptr4, len4);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export3(deferred5_0, deferred5_1, 1);
+        }
+    }
+    /**
      * @returns {string}
      */
     groups_json() {
@@ -204,6 +357,31 @@ export class WasmEngine {
         } finally {
             wasm.__wbindgen_add_to_stack_pointer(16);
             wasm.__wbindgen_export3(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * JSON array of chat items, oldest first; `before_ms` < 0 = newest.
+     * @param {Uint8Array} group
+     * @param {number} before_ms
+     * @param {number} limit
+     * @returns {string}
+     */
+    history_json(group, before_ms, limit) {
+        let deferred2_0;
+        let deferred2_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passArray8ToWasm0(group, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.wasmengine_history_json(retptr, this.__wbg_ptr, ptr0, len0, before_ms, limit);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            deferred2_0 = r0;
+            deferred2_1 = r1;
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export3(deferred2_0, deferred2_1, 1);
         }
     }
     /**
@@ -580,6 +758,43 @@ export class WasmEngine {
         }
     }
     /**
+     * @param {Uint8Array} group
+     * @param {Uint8Array} target
+     * @param {string} emoji
+     * @param {number} now_ms
+     * @returns {string}
+     */
+    react(group, target, emoji, now_ms) {
+        let deferred5_0;
+        let deferred5_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passArray8ToWasm0(group, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            const ptr1 = passArray8ToWasm0(target, wasm.__wbindgen_export2);
+            const len1 = WASM_VECTOR_LEN;
+            const ptr2 = passStringToWasm0(emoji, wasm.__wbindgen_export2, wasm.__wbindgen_export4);
+            const len2 = WASM_VECTOR_LEN;
+            wasm.wasmengine_react(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1, ptr2, len2, now_ms);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            var r3 = getDataViewMemory0().getInt32(retptr + 4 * 3, true);
+            var ptr4 = r0;
+            var len4 = r1;
+            if (r3) {
+                ptr4 = 0; len4 = 0;
+                throw takeObject(r2);
+            }
+            deferred5_0 = ptr4;
+            deferred5_1 = len4;
+            return getStringFromWasm0(ptr4, len4);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export3(deferred5_0, deferred5_1, 1);
+        }
+    }
+    /**
      * Concatenated 4-byte relay rendezvous hashes the host should join for `gid`.
      * @param {Uint8Array} group
      * @param {number} now_ms
@@ -601,6 +816,20 @@ export class WasmEngine {
         }
     }
     /**
+     * Replay one persisted `chat/…` row (start-up, before traffic).
+     * @param {string} key
+     * @param {Uint8Array} value
+     * @returns {boolean}
+     */
+    restore_chat_row(key, value) {
+        const ptr0 = passStringToWasm0(key, wasm.__wbindgen_export2, wasm.__wbindgen_export4);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passArray8ToWasm0(value, wasm.__wbindgen_export2);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.wasmengine_restore_chat_row(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+        return ret !== 0;
+    }
+    /**
      * @param {Uint8Array} data
      * @param {number} now_ms
      * @returns {boolean}
@@ -610,6 +839,33 @@ export class WasmEngine {
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.wasmengine_restore_groups(this.__wbg_ptr, ptr0, len0, now_ms);
         return ret !== 0;
+    }
+    /**
+     * JSON array of chat items, newest first; empty `group` = all groups.
+     * @param {Uint8Array} group
+     * @param {string} query
+     * @param {number} limit
+     * @returns {string}
+     */
+    search_json(group, query, limit) {
+        let deferred3_0;
+        let deferred3_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passArray8ToWasm0(group, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            const ptr1 = passStringToWasm0(query, wasm.__wbindgen_export2, wasm.__wbindgen_export4);
+            const len1 = WASM_VECTOR_LEN;
+            wasm.wasmengine_search_json(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1, limit);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            deferred3_0 = r0;
+            deferred3_1 = r1;
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export3(deferred3_0, deferred3_1, 1);
+        }
     }
     /**
      * @param {Uint8Array} group
@@ -718,6 +974,49 @@ export class WasmEngine {
         }
     }
     /**
+     * Text with optional quote (16-byte id or empty) and mentions
+     * (concatenated 8-byte node ids).
+     * @param {Uint8Array} group
+     * @param {string} text
+     * @param {Uint8Array} reply_to
+     * @param {Uint8Array} mentions
+     * @param {boolean} mention_all
+     * @param {number} now_ms
+     * @returns {string}
+     */
+    send_text_v2(group, text, reply_to, mentions, mention_all, now_ms) {
+        let deferred6_0;
+        let deferred6_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passArray8ToWasm0(group, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            const ptr1 = passStringToWasm0(text, wasm.__wbindgen_export2, wasm.__wbindgen_export4);
+            const len1 = WASM_VECTOR_LEN;
+            const ptr2 = passArray8ToWasm0(reply_to, wasm.__wbindgen_export2);
+            const len2 = WASM_VECTOR_LEN;
+            const ptr3 = passArray8ToWasm0(mentions, wasm.__wbindgen_export2);
+            const len3 = WASM_VECTOR_LEN;
+            wasm.wasmengine_send_text_v2(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, mention_all, now_ms);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            var r3 = getDataViewMemory0().getInt32(retptr + 4 * 3, true);
+            var ptr5 = r0;
+            var len5 = r1;
+            if (r3) {
+                ptr5 = 0; len5 = 0;
+                throw takeObject(r2);
+            }
+            deferred6_0 = ptr5;
+            deferred6_1 = len5;
+            return getStringFromWasm0(ptr5, len5);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export3(deferred6_0, deferred6_1, 1);
+        }
+    }
+    /**
      * @param {Uint8Array} group
      */
     set_active_group(group) {
@@ -743,6 +1042,40 @@ export class WasmEngine {
         const ptr0 = passStringToWasm0(name, wasm.__wbindgen_export2, wasm.__wbindgen_export4);
         const len0 = WASM_VECTOR_LEN;
         wasm.wasmengine_set_display_name(this.__wbg_ptr, ptr0, len0, hue);
+    }
+    /**
+     * Returns the actions (the draft row to persist).
+     * @param {Uint8Array} group
+     * @param {string} text
+     * @returns {string}
+     */
+    set_draft(group, text) {
+        let deferred4_0;
+        let deferred4_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passArray8ToWasm0(group, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            const ptr1 = passStringToWasm0(text, wasm.__wbindgen_export2, wasm.__wbindgen_export4);
+            const len1 = WASM_VECTOR_LEN;
+            wasm.wasmengine_set_draft(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            var r3 = getDataViewMemory0().getInt32(retptr + 4 * 3, true);
+            var ptr3 = r0;
+            var len3 = r1;
+            if (r3) {
+                ptr3 = 0; len3 = 0;
+                throw takeObject(r2);
+            }
+            deferred4_0 = ptr3;
+            deferred4_1 = len3;
+            return getStringFromWasm0(ptr3, len3);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export3(deferred4_0, deferred4_1, 1);
+        }
     }
     /**
      * @param {Uint8Array} group

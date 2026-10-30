@@ -13,6 +13,8 @@ crate-type = ["rlib"]
 [features]
 default = ["opus"]
 opus = ["dep:opus"]
+# Durable chat store on SQLite + FTS5 (native hosts; wasm uses the mirrored in-memory store)
+sqlite = ["dep:rusqlite"]
 vectors = ["serde", "serde_json", "hex"]
 # JSON view models for web-UI hosts (wasm, Tauri desktop)
 json = ["serde"]
@@ -34,6 +36,7 @@ lru = { workspace = true }
 prost = { workspace = true }
 thiserror = { workspace = true }
 opus = { workspace = true, optional = true }
+rusqlite = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 hex = { workspace = true, optional = true }

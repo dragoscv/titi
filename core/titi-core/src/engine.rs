@@ -13,6 +13,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use prost::Message;
 
 use crate::audio::{self, JitterBuffer, Packet, Pop};
+use crate::chat::{self, Chat, ChatItem, Compose, MsgId};
 use crate::crypto::{self, GroupCipher, Pattern, ReplayWindow, Session};
 use crate::floor::{Claim, Floor, FloorEvent, Priority};
 use crate::frame::{
@@ -137,6 +138,11 @@ pub enum UiEvent {
     MessageAcked {
         msg_uuid: [u8; 16],
         by: NodeId,
+    },
+    /// A timeline row was added or changed (new message, edit, reaction,
+    /// delete, ack). Hosts replace the row with the same `msg_uuid`.
+    ChatUpdated {
+        item: ChatItem,
     },
     Handover {
         group: GroupId,
@@ -263,6 +269,8 @@ pub struct Engine {
     pub sessions: HashMap<(LinkId, String), PeerSession>,
     pub groups: HashMap<GroupId, Group>,
     pub store: Store,
+    /// Durable conversation store (CH-A2).
+    pub chat: Chat,
     pub rng: Rng,
     pub active_group: Option<GroupId>,
     pub ptt_prio: Priority,
@@ -286,6 +294,7 @@ pub struct Engine {
     frag_credit: HashMap<LinkId, i64>,
     frag_last_ms: Ms,
     reasm: fragment::Reassembler<(LinkId, NodeId)>,
+    last_chat_expire: Ms,
 }
 
 const PTT_BUFFER_MAX: usize = audio::TICK_SAMPLES * 15; // 300 ms
@@ -307,6 +316,7 @@ impl Engine {
             sessions: HashMap::new(),
             groups: HashMap::new(),
             store: Store::default(),
+            chat: Chat::default(),
             rng: Rng::new(seed),
             active_group: None,
             ptt_prio: Priority::Normal,
@@ -328,6 +338,7 @@ impl Engine {
             frag_credit: HashMap::new(),
             frag_last_ms: 0,
             reasm: fragment::Reassembler::default(),
+            last_chat_expire: 0,
         }
     }
 
@@ -341,6 +352,9 @@ impl Engine {
     /// bandwidth, so they never starve voice or trip the relay's rate limit.
     pub fn shape(&mut self, acts: Vec<Action>) -> Vec<Action> {
         let mut out = Vec::with_capacity(acts.len());
+        for (key, value) in std::mem::take(&mut self.chat.mirror_out) {
+            out.push(Action::Persist { key, value });
+        }
         for a in acts {
             let Action::Send { link, peer, bytes } = a else {
                 out.push(a);
@@ -578,6 +592,7 @@ impl Engine {
         d.signature = self.id.sign(&d.encode_to_vec()).to_vec().into();
         let mut acts = self.flood_control(ControlKind::Dissolve, d.encode_to_vec(), gid, now);
         self.groups.remove(&gid);
+        self.chat.wipe_conv(&gid);
         if self.active_group == Some(gid) {
             self.active_group = self.groups.keys().next().copied();
         }
@@ -594,6 +609,7 @@ impl Engine {
             };
             acts.extend(self.flood_control(ControlKind::Leave, leave.encode_to_vec(), gid, now));
             self.groups.remove(&gid);
+            self.chat.wipe_conv(&gid);
         }
         if self.active_group == Some(gid) {
             self.active_group = self.groups.keys().next().copied();
@@ -1260,7 +1276,173 @@ impl Engine {
     // ───────────────────────── messages ─────────────────────────
 
     pub fn send_text(&mut self, gid: GroupId, text: &str, now: Ms) -> Vec<Action> {
-        self.send_message(gid, proto::chat_message::Body::Text(text.to_string()), now)
+        self.send_text_v2(gid, text, Compose::default(), now)
+    }
+
+    /// Text with a quote and/or mentions (`@all` only works for the creator).
+    /// Clears the conversation draft.
+    pub fn send_text_v2(&mut self, gid: GroupId, text: &str, c: Compose, now: Ms) -> Vec<Action> {
+        self.chat.set_draft(&gid, "");
+        let Some(mut cm) = self.new_message(gid, now) else {
+            return vec![];
+        };
+        if let Some(r) = c.reply_to {
+            cm.reply_to = self.chat.get(&r).as_ref().and_then(chat::reply_ref);
+        }
+        cm.mentions = c.mentions.iter().map(|m| m.to_vec().into()).collect();
+        cm.mention_all =
+            c.mention_all && self.groups.get(&gid).map(|g| g.creator) == Some(self.node_id());
+        cm.body = Some(proto::chat_message::Body::Text(text.to_string()));
+        self.seal_and_send(gid, cm, now)
+    }
+
+    /// React to a message (one reaction per member; "" removes it).
+    pub fn react(
+        &mut self,
+        gid: GroupId,
+        target: MsgId,
+        emoji: &str,
+        now: Ms,
+    ) -> Result<Vec<Action>> {
+        let row = self
+            .chat
+            .get(&target)
+            .ok_or(Error::Invalid("unknown message"))?;
+        if row.deleted || emoji.len() > chat::MAX_EMOJI_BYTES {
+            return Err(Error::Invalid("cannot react"));
+        }
+        let body = proto::chat_message::Body::Reaction(proto::Reaction {
+            target: target.to_vec().into(),
+            emoji: emoji.to_string(),
+        });
+        self.send_event(gid, body, now)
+    }
+
+    /// Edit an own text message within 24 h (at most 10 edits).
+    pub fn edit_message(
+        &mut self,
+        gid: GroupId,
+        target: MsgId,
+        text: &str,
+        now: Ms,
+    ) -> Result<Vec<Action>> {
+        let row = self
+            .chat
+            .get(&target)
+            .ok_or(Error::Invalid("unknown message"))?;
+        let m = row.msg.as_ref().ok_or(Error::Invalid("unknown message"))?;
+        if m.sender_id[..] != self.node_id()[..]
+            || row.deleted
+            || !matches!(m.body, Some(proto::chat_message::Body::Text(_)))
+            || now > m.sent_ms + chat::EDIT_WINDOW_MS
+            || row.edits.len() >= chat::MAX_EDITS
+        {
+            return Err(Error::Invalid("cannot edit"));
+        }
+        let body = proto::chat_message::Body::Edit(proto::Edit {
+            target: target.to_vec().into(),
+            text: text.to_string(),
+        });
+        self.send_event(gid, body, now)
+    }
+
+    /// Delete an own message for everyone (tombstone, no time limit).
+    pub fn delete_message(&mut self, gid: GroupId, target: MsgId, now: Ms) -> Result<Vec<Action>> {
+        let row = self
+            .chat
+            .get(&target)
+            .ok_or(Error::Invalid("unknown message"))?;
+        let m = row.msg.as_ref().ok_or(Error::Invalid("unknown message"))?;
+        if m.sender_id[..] != self.node_id()[..] || row.deleted {
+            return Err(Error::Invalid("cannot delete"));
+        }
+        let body = proto::chat_message::Body::Delete(proto::Delete {
+            target: target.to_vec().into(),
+        });
+        self.send_event(gid, body, now)
+    }
+
+    /// Forward a text / voice note / location to another group (re-signed by
+    /// us; the forward count travels so "forwarded many times" is honest).
+    pub fn forward(
+        &mut self,
+        from_gid: GroupId,
+        target: MsgId,
+        to_gid: GroupId,
+        now: Ms,
+    ) -> Result<Vec<Action>> {
+        let row = self
+            .chat
+            .get(&target)
+            .ok_or(Error::Invalid("unknown message"))?;
+        let m = row.msg.as_ref().ok_or(Error::Invalid("unknown message"))?;
+        if m.group_uuid[..] != from_gid[..] || row.deleted {
+            return Err(Error::Invalid("cannot forward"));
+        }
+        let body = match m.body.clone() {
+            Some(proto::chat_message::Body::Text(_)) => {
+                proto::chat_message::Body::Text(chat::current_text(&row).unwrap_or_default())
+            }
+            Some(
+                b @ (proto::chat_message::Body::Voice(_) | proto::chat_message::Body::Location(_)),
+            ) => b,
+            _ => return Err(Error::Invalid("cannot forward")),
+        };
+        let mut cm = self.new_message(to_gid, now).ok_or(Error::UnknownGroup)?;
+        cm.forwarded = m.forwarded.saturating_add(1);
+        cm.body = Some(body);
+        Ok(self.seal_and_send(to_gid, cm, now))
+    }
+
+    pub fn set_draft(&mut self, gid: GroupId, text: &str) -> Vec<Action> {
+        self.chat.set_draft(&gid, text);
+        vec![]
+    }
+
+    pub fn draft(&self, gid: &GroupId) -> Option<String> {
+        self.chat.draft(gid)
+    }
+
+    /// Up to `limit` rows older than `before_ms` (None = newest), oldest first.
+    pub fn history(&self, gid: &GroupId, before_ms: Option<Ms>, limit: usize) -> Vec<ChatItem> {
+        let creator = self.groups.get(gid).map(|g| g.creator);
+        let me = self.node_id();
+        self.chat
+            .backend
+            .history(gid, before_ms, limit)
+            .iter()
+            .filter_map(|r| self.chat.view(r, me, creator))
+            .collect()
+    }
+
+    /// Full-text search (diacritic-blind, prefix), newest first.
+    pub fn search(&self, gid: Option<&GroupId>, query: &str, limit: usize) -> Vec<ChatItem> {
+        let me = self.node_id();
+        self.chat
+            .backend
+            .search(gid, query, limit)
+            .iter()
+            .filter_map(|(g, r)| {
+                let creator = self.groups.get(g).map(|x| x.creator);
+                self.chat.view(r, me, creator)
+            })
+            .collect()
+    }
+
+    /// Previous versions of an edited message, oldest first: (text, sent_ms).
+    pub fn edit_history(&self, target: &MsgId) -> Vec<(String, Ms)> {
+        self.chat.edit_history(target)
+    }
+
+    /// Replace the chat store backend (native hosts open SQLite at start,
+    /// web hosts a mirroring in-memory store) before restoring rows.
+    pub fn set_chat_backend(&mut self, backend: Box<dyn chat::ChatBackend>) {
+        self.chat = Chat::new(backend);
+    }
+
+    /// Web / Tizen start-up: replay one `chat/…` row the host persisted.
+    pub fn restore_chat_row(&mut self, key: &str, value: &[u8]) -> bool {
+        self.chat.restore_row(key, value)
     }
 
     pub fn send_voice_note(
@@ -1276,7 +1458,7 @@ impl Engine {
             duration_ms,
             opus_packets: opus_packets.into(),
         };
-        self.send_message(gid, proto::chat_message::Body::Voice(vn), now)
+        self.send_body(gid, proto::chat_message::Body::Voice(vn), now)
     }
 
     pub fn send_location(
@@ -1295,7 +1477,7 @@ impl Engine {
             breadcrumb,
             ..Default::default()
         };
-        self.send_message(gid, proto::chat_message::Body::Location(loc), now)
+        self.send_body(gid, proto::chat_message::Body::Location(loc), now)
     }
 
     pub fn send_sos(
@@ -1316,32 +1498,59 @@ impl Engine {
             note: note.to_string(),
             cancelled,
         };
-        let mut acts = self.send_message(gid, proto::chat_message::Body::Sos(sos), now);
+        let mut acts = self.send_body(gid, proto::chat_message::Body::Sos(sos), now);
         if !cancelled {
             acts.extend(self.ptt_down(Priority::Emergency, now));
         }
         acts
     }
 
-    fn send_message(
+    fn send_body(&mut self, gid: GroupId, body: proto::chat_message::Body, now: Ms) -> Vec<Action> {
+        let Some(mut cm) = self.new_message(gid, now) else {
+            return vec![];
+        };
+        cm.body = Some(body);
+        self.seal_and_send(gid, cm, now)
+    }
+
+    fn send_event(
         &mut self,
         gid: GroupId,
         body: proto::chat_message::Body,
         now: Ms,
-    ) -> Vec<Action> {
-        let Some(g) = self.groups.get(&gid) else {
-            return vec![];
-        };
+    ) -> Result<Vec<Action>> {
+        let mut cm = self.new_message(gid, now).ok_or(Error::UnknownGroup)?;
+        cm.body = Some(body);
+        Ok(self.seal_and_send(gid, cm, now))
+    }
+
+    fn new_message(&self, gid: GroupId, now: Ms) -> Option<proto::ChatMessage> {
+        self.groups.get(&gid)?;
         let msg_uuid: [u8; 16] = identity::random_bytes();
-        let cm = proto::ChatMessage {
+        Some(proto::ChatMessage {
             msg_uuid: msg_uuid.to_vec().into(),
             group_uuid: gid.to_vec().into(),
             sender_id: self.node_id().to_vec().into(),
             sent_ms: now,
             ttl_ms: crate::store::DEFAULT_TTL_MS,
-            body: Some(body),
+            sender_pub: self.id.ed25519_public().to_vec().into(),
+            ..Default::default()
+        })
+    }
+
+    /// Sign (trailer = field 21, last 67 bytes), seal with the group AEAD,
+    /// queue for store-and-forward, flood, and apply locally.
+    fn seal_and_send(&mut self, gid: GroupId, mut cm: proto::ChatMessage, now: Ms) -> Vec<Action> {
+        let Some(g) = self.groups.get(&gid) else {
+            return vec![];
         };
-        let plain = cm.encode_to_vec();
+        let mut msg_uuid = [0u8; 16];
+        msg_uuid.copy_from_slice(&cm.msg_uuid);
+        cm.signature = Default::default();
+        let unsigned = cm.encode_to_vec();
+        let sig = self.id.sign(&chat_sig_input(&unsigned));
+        let mut plain = unsigned;
+        plain.extend_from_slice(&chat_sig_trailer(&sig));
         let nonce = crypto::random_nonce();
         let aad = [gid.as_slice(), &g.epoch.to_be_bytes()].concat();
         let ct = g.cipher.seal(&nonce, &aad, &plain);
@@ -1366,42 +1575,46 @@ impl Engine {
             forwarded_to: Default::default(),
         });
         let mut acts = self.broadcast_all(FrameType::Message, &p, self.neighbours.ttl(), now);
-        if let Some(b) = self.decode_message_body(&cm) {
-            acts.push(Action::Ui(UiEvent::Message {
-                group: gid,
-                from: self.node_id(),
-                msg_uuid,
-                sent_ms: now,
-                body: b,
-            }));
-        }
+        let me = self.node_id();
+        acts.extend(self.ingest_chat(gid, cm, Some(me), now));
         acts
     }
 
-    fn decode_message_body(&self, cm: &proto::ChatMessage) -> Option<MessageBody> {
-        Some(match cm.body.as_ref()? {
-            proto::chat_message::Body::Text(t) => MessageBody::Text(t.clone()),
-            proto::chat_message::Body::Voice(v) => MessageBody::VoiceNote {
-                profile: Profile::from_u8(v.profile as u8).unwrap_or(Profile::Std),
-                duration_ms: v.duration_ms,
-                opus_packets: v.opus_packets.to_vec(),
-            },
-            proto::chat_message::Body::Location(l) => MessageBody::Location {
-                lat_e7: (l.lat * 1e7) as i64,
-                lon_e7: (l.lon * 1e7) as i64,
-                accuracy_m: l.accuracy_m as u32,
-                breadcrumb: l.breadcrumb,
-            },
-            proto::chat_message::Body::Sos(s) => {
-                let l = s.location.unwrap_or_default();
-                MessageBody::Sos {
-                    lat_e7: (l.lat * 1e7) as i64,
-                    lon_e7: (l.lon * 1e7) as i64,
-                    note: s.note.clone(),
-                    cancelled: s.cancelled,
+    /// Store a decoded message and emit UI: `Message` for a fresh content
+    /// message (hosts notify on it), `ChatUpdated` for every changed row.
+    fn ingest_chat(
+        &mut self,
+        gid: GroupId,
+        cm: proto::ChatMessage,
+        signed_by: Option<NodeId>,
+        now: Ms,
+    ) -> Vec<Action> {
+        let changed = self.chat.ingest(gid, cm, signed_by, now);
+        let me = self.node_id();
+        let creator = self.groups.get(&gid).map(|g| g.creator);
+        let mut acts = vec![];
+        for (id, fresh) in changed {
+            let Some(item) = self
+                .chat
+                .get(&id)
+                .and_then(|r| self.chat.view(&r, me, creator))
+            else {
+                continue;
+            };
+            if fresh {
+                if let Some(body) = item.body.clone() {
+                    acts.push(Action::Ui(UiEvent::Message {
+                        group: gid,
+                        from: item.from,
+                        msg_uuid: id,
+                        sent_ms: item.sent_ms,
+                        body,
+                    }));
                 }
             }
-        })
+            acts.push(Action::Ui(UiEvent::ChatUpdated { item }));
+        }
+        acts
     }
 
     // ───────────────────────── inbound ─────────────────────────
@@ -2279,6 +2492,7 @@ impl Engine {
                 }
                 let name = g.name.clone();
                 self.groups.remove(&gid);
+                self.chat.wipe_conv(&gid);
                 if self.active_group == Some(gid) {
                     self.active_group = self.groups.keys().next().copied();
                 }
@@ -2515,14 +2729,17 @@ impl Engine {
                 let aad = [gid.as_slice(), &epoch.to_be_bytes()].concat();
                 if let Ok(plain) = g.cipher.open(&nonce, &aad, ct) {
                     if let Ok(cm) = proto::ChatMessage::decode(plain.as_slice()) {
-                        if let Some(body) = self.decode_message_body(&cm) {
-                            acts.push(Action::Ui(UiEvent::Message {
-                                group: gid,
-                                from: sender,
-                                msg_uuid: uuid,
-                                sent_ms: sent,
-                                body,
-                            }));
+                        let header_ok =
+                            cm.msg_uuid[..] == uuid[..] && cm.sender_id[..] == sender[..];
+                        let signed_by = verify_chat_signature(&cm, &plain).then_some(sender);
+                        let content = cm
+                            .body
+                            .as_ref()
+                            .is_some_and(|b| chat::body_from_proto(b).is_some());
+                        if header_ok {
+                            acts.extend(self.ingest_chat(gid, cm, signed_by, now));
+                        }
+                        if header_ok && content {
                             // ACK back (flood, small)
                             let ack = proto::Ack {
                                 msg_uuid: uuid.to_vec().into(),
@@ -2562,6 +2779,20 @@ impl Engine {
         let mut acts = self.relay_flood(link, env, now, false);
         if self.store.ack(&u, by) {
             acts.push(Action::Ui(UiEvent::MessageAcked { msg_uuid: u, by }));
+        }
+        if self.chat.ack(&u, by) {
+            let me = self.node_id();
+            if let Some(row) = self.chat.get(&u) {
+                let creator = row
+                    .msg
+                    .as_ref()
+                    .and_then(|m| gid_of(&m.group_uuid))
+                    .and_then(|g| self.groups.get(&g))
+                    .map(|g| g.creator);
+                if let Some(item) = self.chat.view(&row, me, creator) {
+                    acts.push(Action::Ui(UiEvent::ChatUpdated { item }));
+                }
+            }
         }
         acts
     }
@@ -2706,6 +2937,10 @@ impl Engine {
         }
         self.topology.expire(now);
         self.store.expire(now);
+        if now.saturating_sub(self.last_chat_expire) >= 60_000 {
+            self.last_chat_expire = now;
+            self.chat.expire_pending(now);
+        }
         self.pending_invites.retain(|_, (exp, _)| *exp > now);
         self.sessions
             .retain(|_, s| s.session.is_transport() || now.saturating_sub(s.created) < 10_000);
@@ -3525,6 +3760,36 @@ fn gid_of(b: &[u8]) -> Option<GroupId> {
     let mut g = [0u8; 16];
     g.copy_from_slice(b);
     Some(g)
+}
+
+const CHAT_SIG_CTX: &[u8] = b"titi/v1/msg";
+/// Field 21 (signature), length-delimited 64 bytes: tag 0xAA 0x01, len 0x40.
+const CHAT_SIG_TRAILER_HDR: [u8; 3] = [0xAA, 0x01, 0x40];
+pub const CHAT_SIG_TRAILER_LEN: usize = 3 + 64;
+
+pub fn chat_sig_input(unsigned: &[u8]) -> Vec<u8> {
+    [CHAT_SIG_CTX, unsigned].concat()
+}
+
+pub fn chat_sig_trailer(sig: &[u8; 64]) -> Vec<u8> {
+    [&CHAT_SIG_TRAILER_HDR[..], sig].concat()
+}
+
+/// True when `plain` ends with a signature trailer that verifies under the
+/// message's `sender_pub`, and that key hashes to `sender_id`.
+pub fn verify_chat_signature(cm: &proto::ChatMessage, plain: &[u8]) -> bool {
+    if plain.len() < CHAT_SIG_TRAILER_LEN || cm.signature.len() != 64 {
+        return false;
+    }
+    let (body, trailer) = plain.split_at(plain.len() - CHAT_SIG_TRAILER_LEN);
+    if trailer[..3] != CHAT_SIG_TRAILER_HDR || trailer[3..] != cm.signature[..] {
+        return false;
+    }
+    let Ok(pk) = <[u8; 32]>::try_from(cm.sender_pub.as_ref()) else {
+        return false;
+    };
+    identity::node_id_from_pubkey(&pk)[..] == cm.sender_id[..]
+        && identity::verify(&pk, &chat_sig_input(body), &cm.signature).is_ok()
 }
 
 fn bars_for(r: &Route) -> u8 {

@@ -4,6 +4,7 @@
 
 use serde::Serialize;
 
+use crate::chat::{ChatItem, QuoteKind, ReplyState};
 use crate::engine::{Engine, MessageBody, UiEvent};
 use crate::frame::Profile;
 use crate::link::LinkClass;
@@ -196,6 +197,9 @@ pub enum JsUi {
         msg_uuid: String,
         by: String,
     },
+    ChatUpdated {
+        item: JsChatItem,
+    },
     Handover {
         group: String,
         state: String,
@@ -317,6 +321,7 @@ impl From<UiEvent> for JsUi {
                 msg_uuid: hex(&msg_uuid),
                 by: hex(&by),
             },
+            UiEvent::ChatUpdated { item } => J::ChatUpdated { item: item.into() },
             UiEvent::Handover {
                 group,
                 state,
@@ -341,6 +346,93 @@ impl From<UiEvent> for JsUi {
             UiEvent::Error { message } => J::Error { message },
         }
     }
+}
+
+#[derive(Serialize, Debug, Clone, PartialEq)]
+pub struct JsReply {
+    pub msg_uuid: String,
+    pub sender: String,
+    pub preview: String,
+    /// "text" | "voice" | "location" | "sos"
+    pub kind: &'static str,
+    /// "present" | "deleted" | "missing"
+    pub state: &'static str,
+}
+
+#[derive(Serialize, Debug, Clone, PartialEq)]
+pub struct JsReaction {
+    pub emoji: String,
+    pub count: u32,
+    pub mine: bool,
+}
+
+/// Timeline row (snake_case fields like the rest of `JsUi`).
+#[derive(Serialize, Debug, Clone, PartialEq)]
+pub struct JsChatItem {
+    pub group: String,
+    pub msg_uuid: String,
+    pub from: String,
+    pub sent_ms: f64,
+    pub sort_ms: f64,
+    pub body: Option<JsBody>,
+    pub deleted: bool,
+    pub edited: u32,
+    pub reply: Option<JsReply>,
+    pub mentions: Vec<String>,
+    pub mention_all: bool,
+    pub mentions_me: bool,
+    pub forwarded: u32,
+    pub reactions: Vec<JsReaction>,
+    pub acked: u32,
+}
+
+impl From<ChatItem> for JsChatItem {
+    fn from(i: ChatItem) -> Self {
+        JsChatItem {
+            group: hex(&i.group),
+            msg_uuid: hex(&i.msg_uuid),
+            from: hex(&i.from),
+            sent_ms: i.sent_ms as f64,
+            sort_ms: i.sort_ms as f64,
+            body: i.body.map(Into::into),
+            deleted: i.deleted,
+            edited: i.edited,
+            reply: i.reply.map(|r| JsReply {
+                msg_uuid: hex(&r.msg_uuid),
+                sender: hex(&r.sender),
+                preview: r.preview,
+                kind: match r.kind {
+                    QuoteKind::Text => "text",
+                    QuoteKind::Voice => "voice",
+                    QuoteKind::Location => "location",
+                    QuoteKind::Sos => "sos",
+                },
+                state: match r.state {
+                    ReplyState::Present => "present",
+                    ReplyState::Deleted => "deleted",
+                    ReplyState::Missing => "missing",
+                },
+            }),
+            mentions: i.mentions.iter().map(|m| hex(m)).collect(),
+            mention_all: i.mention_all,
+            mentions_me: i.mentions_me,
+            forwarded: i.forwarded,
+            reactions: i
+                .reactions
+                .into_iter()
+                .map(|r| JsReaction {
+                    emoji: r.emoji,
+                    count: r.count,
+                    mine: r.mine,
+                })
+                .collect(),
+            acked: i.acked,
+        }
+    }
+}
+
+pub fn chat_items(items: Vec<ChatItem>) -> Vec<JsChatItem> {
+    items.into_iter().map(Into::into).collect()
 }
 
 #[derive(Serialize, Debug, Clone, PartialEq)]
