@@ -28,9 +28,9 @@ catalog:
   postcss: 8.5.28
   tailwindcss: 4.3.3
   "@tailwindcss/postcss": 4.3.3
-  "@serwist/next": 9.5.12
+  "@serwist/next": 9.5.13
   serwist: 9.5.12
-  next-intl: 4.14.5
+  next-intl: 4.14.9
   "@bufbuild/protobuf": 2.16.0
   zod: 4.6.7
   tsup: 8.5.1
