@@ -64,6 +64,8 @@ pub trait ChatBackend: Send {
         limit: usize,
     ) -> Vec<(GroupId, proto::StoredMessage)>;
     fn wipe_conv(&mut self, conv: &GroupId);
+    /// Ids of rows in `conv` whose reply quote points at `target`.
+    fn replies_to(&self, conv: &GroupId, target: &MsgId) -> Vec<MsgId>;
     fn add_pending(&mut self, target: &MsgId, ev: &proto::PendingEvent);
     fn take_pending(&mut self, target: &MsgId) -> Vec<proto::PendingEvent>;
     /// Drops pending events received before `before_ms`; returns (target, event id).
@@ -844,6 +846,20 @@ impl ChatBackend for MemBackend {
         v.into_iter()
             .take(limit)
             .map(|r| (r.conv, r.row.clone()))
+            .collect()
+    }
+    fn replies_to(&self, conv: &GroupId, target: &MsgId) -> Vec<MsgId> {
+        self.rows
+            .iter()
+            .filter(|(_, r)| {
+                &r.conv == conv
+                    && r.row
+                        .msg
+                        .as_ref()
+                        .and_then(|m| m.reply_to.as_ref())
+                        .is_some_and(|q| q.msg_uuid[..] == target[..])
+            })
+            .map(|(id, _)| *id)
             .collect()
     }
     fn wipe_conv(&mut self, conv: &GroupId) {

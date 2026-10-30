@@ -1589,7 +1589,17 @@ impl Engine {
         signed_by: Option<NodeId>,
         now: Ms,
     ) -> Vec<Action> {
-        let changed = self.chat.ingest(gid, cm, signed_by, now);
+        let mut changed = self.chat.ingest(gid, cm, signed_by, now);
+        // replies quoting a changed row render its new state (edited / deleted / arrived)
+        let mut extra = vec![];
+        for (id, _) in &changed {
+            for r in self.chat.backend.replies_to(&gid, id) {
+                if !changed.iter().any(|(c, _)| *c == r) && !extra.contains(&r) {
+                    extra.push(r);
+                }
+            }
+        }
+        changed.extend(extra.into_iter().map(|r| (r, false)));
         let me = self.node_id();
         let creator = self.groups.get(&gid).map(|g| g.creator);
         let mut acts = vec![];

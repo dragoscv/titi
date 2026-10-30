@@ -15,7 +15,7 @@ use crate::engine::GroupId;
 use crate::proto;
 use crate::time::Ms;
 
-const SCHEMA_VERSION: i32 = 1;
+const SCHEMA_VERSION: i32 = 2;
 
 pub struct SqliteBackend {
     db: Connection,
@@ -57,6 +57,16 @@ impl SqliteBackend {
                  COMMIT;",
             )?;
         }
+        if v < 2 {
+            // v2: reply target so quotes can refresh when their original changes
+            db.execute_batch(
+                "BEGIN;
+                 ALTER TABLE message ADD COLUMN reply_to BLOB;
+                 CREATE INDEX IF NOT EXISTS message_reply ON message(conv, reply_to) WHERE reply_to IS NOT NULL;
+                 COMMIT;",
+            )?;
+            backfill_reply_to(&db)?;
+        }
         db.execute_batch(&format!("PRAGMA user_version={SCHEMA_VERSION}"))?;
         Ok(SqliteBackend { db })
     }
@@ -71,6 +81,36 @@ impl SqliteBackend {
         it.filter_map(|b| proto::StoredMessage::decode(b.ok()?.as_slice()).ok())
             .collect()
     }
+}
+
+fn reply_target(row: &proto::StoredMessage) -> Option<Vec<u8>> {
+    row.msg
+        .as_ref()?
+        .reply_to
+        .as_ref()
+        .map(|q| q.msg_uuid.to_vec())
+}
+
+/// Fills `reply_to` for rows written before schema v2.
+fn backfill_reply_to(db: &Connection) -> rusqlite::Result<()> {
+    let rows: Vec<(i64, Vec<u8>)> = {
+        let mut st = db.prepare("SELECT rid, row FROM message")?;
+        let it = st.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?;
+        it.collect::<rusqlite::Result<_>>()?
+    };
+    for (rid, b) in rows {
+        if let Some(t) = proto::StoredMessage::decode(b.as_slice())
+            .ok()
+            .as_ref()
+            .and_then(reply_target)
+        {
+            db.execute(
+                "UPDATE message SET reply_to=?1 WHERE rid=?2",
+                params![t, rid],
+            )?;
+        }
+    }
+    Ok(())
 }
 
 /// FTS5 query: every folded token as a quoted prefix term, ANDed.
@@ -108,16 +148,17 @@ impl ChatBackend for SqliteBackend {
         };
         let res = (|| -> rusqlite::Result<()> {
             let rid: i64 = tx.query_row(
-                "INSERT INTO message(id, conv, sort_ms, placeholder, row) VALUES(?1,?2,?3,?4,?5)
+                "INSERT INTO message(id, conv, sort_ms, placeholder, row, reply_to) VALUES(?1,?2,?3,?4,?5,?6)
                  ON CONFLICT(id) DO UPDATE SET conv=excluded.conv, sort_ms=excluded.sort_ms,
-                   placeholder=excluded.placeholder, row=excluded.row
+                   placeholder=excluded.placeholder, row=excluded.row, reply_to=excluded.reply_to
                  RETURNING rid",
                 params![
                     &id[..],
                     &conv[..],
                     sort_ms(row) as i64,
                     row.placeholder as i64,
-                    row.encode_to_vec()
+                    row.encode_to_vec(),
+                    reply_target(row)
                 ],
                 |r| r.get(0),
             )?;
@@ -177,6 +218,20 @@ impl ChatBackend for SqliteBackend {
             Some((id16(&c)?, proto::StoredMessage::decode(b.as_slice()).ok()?))
         })
         .collect()
+    }
+
+    fn replies_to(&self, conv: &GroupId, target: &MsgId) -> Vec<MsgId> {
+        let Ok(mut st) = self
+            .db
+            .prepare_cached("SELECT id FROM message WHERE conv=?1 AND reply_to=?2")
+        else {
+            return vec![];
+        };
+        let Ok(it) = st.query_map(params![&conv[..], &target[..]], |r| r.get::<_, Vec<u8>>(0))
+        else {
+            return vec![];
+        };
+        it.filter_map(|b| id16(&b.ok()?)).collect()
     }
 
     fn wipe_conv(&mut self, conv: &GroupId) {

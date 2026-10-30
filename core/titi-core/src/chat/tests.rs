@@ -252,6 +252,51 @@ fn mention_all_only_from_creator() {
 }
 
 #[test]
+fn replies_to_finds_quoting_rows() {
+    for (name, mut c) in backends() {
+        c.ingest(G, text(1, ALICE, 1000, "orig"), Some(ALICE), 1000);
+        let q = reply_ref(&c.get(&[1; 16]).unwrap()).unwrap();
+        let mut r = text(2, BOB, 1100, "re");
+        r.reply_to = Some(q);
+        c.ingest(G, r, Some(BOB), 1100);
+        c.ingest(G, text(3, BOB, 1200, "unrelated"), Some(BOB), 1200);
+        assert_eq!(c.backend.replies_to(&G, &[1; 16]), vec![[2; 16]], "{name}");
+        assert!(
+            c.backend.replies_to(&[9; 16], &[1; 16]).is_empty(),
+            "{name}"
+        );
+    }
+}
+
+#[cfg(feature = "sqlite")]
+#[test]
+fn sqlite_v1_database_is_migrated_and_backfilled() {
+    let dir = std::env::temp_dir().join(format!("titi-mig-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let p = dir.join("chat.db");
+    let _ = std::fs::remove_file(&p);
+    let path = p.to_str().unwrap();
+    {
+        let mut c = Chat::new(Box::new(sqlite::SqliteBackend::open(path).unwrap()));
+        c.ingest(G, text(1, ALICE, 1000, "orig"), Some(ALICE), 1000);
+        let q = reply_ref(&c.get(&[1; 16]).unwrap()).unwrap();
+        let mut r = text(2, BOB, 1100, "re");
+        r.reply_to = Some(q);
+        c.ingest(G, r, Some(BOB), 1100);
+    }
+    // turn it back into a schema-v1 file (what devices hold from 4dc7910)
+    let db = rusqlite::Connection::open(path).unwrap();
+    db.execute_batch(
+        "DROP INDEX message_reply; ALTER TABLE message DROP COLUMN reply_to; PRAGMA user_version=1;",
+    )
+    .unwrap();
+    drop(db);
+    let c = Chat::new(Box::new(sqlite::SqliteBackend::open(path).unwrap()));
+    assert_eq!(c.backend.replies_to(&G, &[1; 16]), vec![[2; 16]]);
+    assert_eq!(c.backend.history(&G, None, 10).len(), 2);
+}
+
+#[test]
 fn search_folds_romanian_diacritics_and_prefixes() {
     for (name, mut c) in backends() {
         c.ingest(

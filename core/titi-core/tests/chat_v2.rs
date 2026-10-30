@@ -198,9 +198,17 @@ fn reply_react_edit_delete_between_engines() {
     }
 
     // A deletes for everyone → tombstone, search empty, quote cleared
+    let before = net.ui[1].len();
     let acts = net.engines[0].delete_message(gid, orig, now).unwrap();
     net.apply(0, acts);
     net.settle(&mut now, 400);
+    // the receiver is told the REPLY changed too (UIs replace rows only on ChatUpdated)
+    assert!(
+        net.ui[1][before..].iter().any(|e| matches!(e,
+            UiEvent::ChatUpdated { item } if item.msg_uuid == reply
+                && item.reply.as_ref().is_some_and(|q| q.state == ReplyState::Deleted))),
+        "B got a refreshed reply row"
+    );
     for i in 0..2 {
         let o = net.item(i, &gid, &orig);
         assert!(o.deleted && o.body.is_none() && o.reactions.is_empty());
