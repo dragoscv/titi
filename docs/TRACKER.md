@@ -271,11 +271,11 @@ Ideas from the 2026-10-30 research round (decided with the user: all go on the l
 | BR-10 | Roll-out to every surface | done | theme.css/Theme.kt ×3/Design.swift read generated tokens (no hand-typed hex); A51 2026-10-30: launcher search shows new icon (3 profiles), Android 12 splash plays intro, app renders; Windows release exe: taskbar + title icon new; JS typecheck/lint/test 9/9, Android compile + resources OK, desktop clippy OK. Google TV off (no ping) and Tizen refused sdb at the time — banner/icon built, device check pending |
 | BR-11 | design-critic score | done | 52/60 "ship it" (`brand/BRAND.md § Design review`) |
 
-## 6. iOS (`ios/`) — skeleton now, CI after Apple enrolment
+## 6. iOS (`ios/`) — store build (decisions 2026-10-31 in `docs/store/ios/`)
 
 | ID | Item | Status | Evidence |
 |---|---|---|---|
-| I-01 | XcodeGen `project.yml`, SwiftUI app target, TitiCore SwiftPM | done (unbuilt on device) | `ios/project.yml`, `ios/TitiCore/Package.swift`; xcframework via `scripts/ios-build-core.sh` |
+| I-01 | XcodeGen `project.yml`, SwiftUI app target, TitiCore SwiftPM | done | first green compile 2026-10-31: ios.yml run 41176438620 (macos-26, Xcode 26.6); bundle `ro.titi.app` (36N8PU899J), arm64 device + simulator |
 | I-02 | Design system Signal Amber, Liquid Glass adoption | partial | `Design.swift` Palette reads generated `BrandTokens.swift`; `Assets.xcassets` AppIcon (default/dark/tinted), LaunchMark/LaunchBackground, AccentColor; fonts bundled; Liquid Glass icon layers in `brand/icons/ios-liquid-glass/`; Liquid Glass UI materials todo (iOS 26 only) |
 | I-03 | Home / group / PTT screens with matchedGeometry morph | done (unbuilt) | `Views/*.swift`, `TalkButton.swift` |
 | I-04 | Audio: AVAudioEngine `.voiceChat`, PushToTalk framework | done (unbuilt) | `AudioEngine.swift`, `PttChannel.swift` |
@@ -285,7 +285,15 @@ Ideas from the 2026-10-30 research round (decided with the user: all go on the l
 | I-08 | Transport WSS relay (multi-room, rendezvous) | done (unbuilt) | `RelayTransport.swift` |
 | I-09 | Join hotspot via NEHotspotConfiguration from QR | todo | |
 | I-10 | Swift non-UI tests against vectors run on Windows | done | `swift test --filter TitiFrameTests` → 4/4 pass on Windows Swift 6.3.3 |
-| I-11 | CI build on macos-26 | configured, unverified | `.github/workflows/ios.yml` (needs GitHub remote push) |
+| I-11 | CI build on macos-26 | done | ios.yml green on dev 11a8d66 + bbfae7f (build + `TitiTests` on simulator). Root cause of every earlier failure: libopus (cmake) built for the SDK default 26.5 while rustc linked for iOS 10 → `___chkstk_darwin`; `IPHONEOS_DEPLOYMENT_TARGET` + `CFLAGS_aarch64_apple_ios*` = 17.0 (otool: 217 objects minos 17.0) |
+| I-12 | Safety (App Review 1.2): block member, report by mail, word filter, delete identity & all data | done (compiled) | `ios/Titi/Safety.swift`, ChatView/GroupView context menus, SettingsView; `/support` page live with the web deploy |
+| I-13 | Push to Talk background wake: channel follows the active group, ephemeral APNs token → relay `PushRegister`, relay sends `pushtotalk` when a registered iPhone is offline | done (relay tests), device check pending | `apps/backend/src/apns.ts`, `relay.ts wakeSuspended`; `test/push.test.ts` (incl. h2c APNs server); team APNs key TSN243T8W4 |
+| I-14 | App Intents (Talk, Switch group, SOS) + Siri phrases EN/RO; Control Center Talk (iOS 18); SOS Live Activity; time-sensitive SOS alerts; NFC tag invites | done (compiled) | `ios/Titi/Intents/*`, `ios/TitiWidgets/*` (`ro.titi.app.widgets` 7DHZ3LAR46), ios.yml run 41182063216 green |
+| I-15 | Join by link over the internet sits in the group's relay room + retries (iOS **and** Android; web already did) | done | `EngineHost.swift joinByLink/retryJoin`, Android `EngineHost.kt joinByLink`; demo bot e2e test joins by link |
+| I-16 | Signed archive + TestFlight upload from the devcloud Mac | wip | `scripts/ios-release.ps1` + `ios/scripts/build.sh`; traps fixed: cmake missing on vmui-mac (→ ~/.local/bin), codesign errSecInternalComponent (→ shared build keychain) |
+| I-17 | iPhone 17 Pro Max ↔ A51: reply, react, edit, delete | todo | |
+| I-18 | App Clip invite (join without installing) | deferred(0.2) | approved idea; needs a ≤15 MB clip target + AASA `appclips` (already published) |
+| I-19 | LAN multicast on iPhone | blocked(Apple multicast entitlement request, text in `docs/store/ios/multicast-request.md`) | iOS 0.1 = Bluetooth + relay |
 
 ## 7. Publishing & ops
 
@@ -299,6 +307,10 @@ Ideas from the 2026-10-30 research round (decided with the user: all go on the l
 | O-06 | Production rollout | blocked | gated by O-05 (Play new-account rule) |
 | O-07 | Backend Cloud Run live; web live | done | relay https://titi-relay-x3clqgvrdq-ew.a.run.app; web https://titi-dragos-projects-aeb8856e.vercel.app |
 | O-08 | `scripts/gates.ps1`: 2 parallel lanes (turbo typecheck+lint+test ‖ clippy→cargo test→gradle compile+lint), per-gate timing; oxlint type-aware replaces ESLint; turbo inputs/cache; Cargo dev deps opt-level; Gradle configuration cache | done | cold 341 s → warm/cached **36 s** wall, all green (2026-09-28 20:20) |
+| O-09 | App Store Connect app record "Titi – Offline Walkie Talkie" (6829145747, SKU titi-ios), listing EN/RO, privacy "Data Not Collected", age 13+, export compliance (France excluded until ANSSI) | wip | `docs/store/ios/listing.*.json` (`check-listing.mjs` passes), `app-privacy.md`, `anssi-declaration.md` |
+| O-10 | App Review demo bot in the relay (parrots voice, replies/reacts, /edit, /delete) + fixed 2-year invite link | done (tests), deploy pending | `apps/backend/src/demo-bot.ts`, `test/demo-bot.test.ts` (77/77 backend tests, coverage 96.9 % lines / 90 % branches) |
+| O-11 | TestFlight build live | todo | |
+| O-12 | App Store submission | todo | |
 
 ## 8. Reality check (final)
 

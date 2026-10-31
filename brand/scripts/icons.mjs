@@ -1,10 +1,36 @@
 // Every platform icon, generated from mark.mjs. Sizes: brand-system references/platform-icons.md.
 import { Resvg } from "@resvg/resvg-js";
+import { deflateSync } from "node:zlib";
 import { out } from "./io.mjs";
 import { C, tile, markParts, placement, markElements, place, lockup, wordmarkSvg, wordmark } from "./mark.mjs";
 
 const FONT = { fontFiles: ["brand/fonts/Manrope-ExtraBold.ttf", "brand/fonts/Manrope-Bold.ttf", "brand/fonts/Manrope-Medium.ttf", "brand/fonts/GeistMono-Medium.ttf"], loadSystemFonts: false, defaultFontFamily: "Manrope" };
 export const png = (svg, width) => new Resvg(svg, { fitTo: { mode: "width", value: width }, font: FONT }).render().asPng();
+
+// App Store rejects icons with an alpha channel (ITMS 90717): render, then re-encode as 8-bit RGB (colour type 2).
+const CRC = new Int32Array(256).map((_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c; });
+const crc32 = (b) => { let c = -1; for (const x of b) c = CRC[(c ^ x) & 0xff] ^ (c >>> 8); return (c ^ -1) >>> 0; };
+const chunk = (type, data) => {
+  const t = Buffer.from(type, "ascii");
+  const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
+  const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(Buffer.concat([t, data])));
+  return Buffer.concat([len, t, data, crc]);
+};
+export function opaquePng(svg, width) {
+  const img = new Resvg(svg, { fitTo: { mode: "width", value: width }, font: FONT, background: "#000000" }).render();
+  const { width: w, height: h, pixels } = img; // RGBA, already composited on the background
+  const raw = Buffer.alloc((w * 3 + 1) * h);
+  for (let y = 0; y < h; y++) {
+    raw[y * (w * 3 + 1)] = 0;
+    for (let x = 0; x < w; x++) {
+      const s = (y * w + x) * 4, d = y * (w * 3 + 1) + 1 + x * 3;
+      raw[d] = pixels[s]; raw[d + 1] = pixels[s + 1]; raw[d + 2] = pixels[s + 2];
+    }
+  }
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 2;
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", ihdr), chunk("IDAT", deflateSync(raw, { level: 9 })), chunk("IEND", Buffer.alloc(0))]);
+}
 
 // ---------- ICO (PNG-compressed entries, Vista+) ----------
 export function ico(entries) {
@@ -120,9 +146,9 @@ export function writeIcons() {
   // ----- Tizen + iOS + stores -----
   out("apps/tv/tizen/icon.png", png(tile(512, { rx: null }), 512));
   out("ios/Titi/Resources/Assets.xcassets/Contents.json", JSON.stringify({ info: { author: "xcode", version: 1 } }, null, 2) + "\n");
-  out("ios/Titi/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png", png(tile(1024, { rx: null }), 1024));
-  out("ios/Titi/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024-dark.png", png(tile(1024, { rx: null, bg: "#000000" }), 1024));
-  out("ios/Titi/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024-tinted.png", png(tile(1024, { rx: null, bg: "#000000", mono: true, colors: { body: "#FFFFFF", beak: "#FFFFFF", arc: "#B0B0B0" } }), 1024));
+  out("ios/Titi/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png", opaquePng(tile(1024, { rx: null }), 1024));
+  out("ios/Titi/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024-dark.png", opaquePng(tile(1024, { rx: null, bg: "#000000" }), 1024));
+  out("ios/Titi/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024-tinted.png", opaquePng(tile(1024, { rx: null, bg: "#000000", mono: true, colors: { body: "#FFFFFF", beak: "#FFFFFF", arc: "#B0B0B0" } }), 1024));
   out("ios/Titi/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json", JSON.stringify(iosIconContents(), null, 2) + "\n");
   out("ios/Titi/Resources/Assets.xcassets/AccentColor.colorset/Contents.json", JSON.stringify(colorset(C.amber), null, 2) + "\n");
   out("ios/Titi/Resources/Assets.xcassets/LaunchBackground.colorset/Contents.json", JSON.stringify(colorset(C.graphite), null, 2) + "\n");
@@ -132,7 +158,7 @@ export function writeIcons() {
   out("brand/icons/ios-liquid-glass/1-body.svg", layer(markElements({ colors: { arc: "none" } }).replace(/<path[^>]*stroke[^>]*\/>/g, "")));
   out("brand/icons/ios-liquid-glass/2-signal.svg", layer(markParts().filter((p) => p.stroke).map((p) => `<path d="${p.d}" stroke="${p.stroke}" stroke-width="${p.width}" stroke-linecap="round" fill="none"/>`).join("")));
   out("docs/store/play-icon-512.png", png(tile(512, { rx: null }), 512));
-  out("docs/store/app-store-icon-1024.png", png(tile(1024, { rx: null }), 1024));
+  out("docs/store/app-store-icon-1024.png", opaquePng(tile(1024, { rx: null }), 1024));
 }
 
 const layer = (inner) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">${place(inner, 512, 522, 1024 * 0.36)}</svg>`;

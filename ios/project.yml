@@ -57,9 +57,12 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, ro]
-        # Own end-to-end crypto (Noise XX/XXpsk3, ChaCha20-Poly1305, X25519): non-exempt, standard algorithms.
-        ITSAppUsesNonExemptEncryption: true
+        # Encryption (own E2E: Noise, (X)ChaCha20-Poly1305, X25519) is declared per build in App Store Connect as
+        # "standard algorithms, not in France" (docs/store/ios/app-privacy.md). Setting ITSAppUsesNonExemptEncryption
+        # = YES here makes upload validation demand an ITSEncryptionExportComplianceCode (ITMS-90592).
         LSApplicationCategoryType: public.app-category.social-networking
+        # Portrait-only iPhone app: must opt out of multitasking orientations (ITMS-90474).
+        UIRequiresFullScreen: true
         UILaunchScreen:
           UIColorName: LaunchBackground
           UIImageName: LaunchMark
