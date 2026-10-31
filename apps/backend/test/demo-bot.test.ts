@@ -45,9 +45,9 @@ describe("RateLimiter", () => {
   });
 });
 
-describe("Parrot", () => {
-  const pkt = (n: number) => new Uint8Array([n]);
+const pkt = (n: number) => new Uint8Array([n]);
 
+describe("Parrot", () => {
   it("replays a turn 700 ms after the floor goes idle, one packet per step, then releases", () => {
     const p = new Parrot();
     p.floorTaken();
