@@ -12,6 +12,8 @@ export interface ApnsConfig {
   keyId?: string | undefined;
   teamId?: string | undefined;
   topic: string; // <bundle id>.voip-ptt
+  /** Test seam: override the APNs origins (e.g. a local h2c server). */
+  origins?: { production: string; sandbox: string } | undefined;
 }
 
 export interface PushSender {
@@ -38,8 +40,9 @@ export function createApns(cfg: ApnsConfig): PushSender | null {
   const keyId = cfg.keyId, teamId = cfg.teamId;
   let token = "", tokenAt = 0;
   const sessions = new Map<string, ClientHttp2Session>();
+  const origins = cfg.origins ?? { production: "https://api.push.apple.com", sandbox: "https://api.sandbox.push.apple.com" };
   const session = (sandbox: boolean) => {
-    const host = sandbox ? "https://api.sandbox.push.apple.com" : "https://api.push.apple.com";
+    const host = sandbox ? origins.sandbox : origins.production;
     let s = sessions.get(host);
     if (!s || s.closed || s.destroyed) {
       s = connect(host);

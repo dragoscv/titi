@@ -22,6 +22,9 @@ struct TitiApp: App {
 @Observable
 @MainActor
 final class AppModel {
+    /// The running model, for App Intents (they run in-process with `openAppWhenRun`).
+    static weak var shared: AppModel?
+
     var settings = Settings.load()
     private(set) var host: EngineHost?
     var route: Route = .home
@@ -30,6 +33,11 @@ final class AppModel {
     enum Route: Hashable { case home, group(String), join, settings }
 
     init() {
+        Self.shared = self
+        Notifications.install()
+        IntentBridge.toggleTalk = { AppModel.shared?.toggleTalk() }
+        IntentBridge.sosEnded = { SosActivity.endAll() }
+        SosActivity.endExpired()
         if settings.onboarded { boot() }
     }
 
@@ -46,13 +54,57 @@ final class AppModel {
             h.start(ts)
             ptt = PttChannel(host: h)
             ptt?.onPushToken = { [weak h] tok in h?.setPushToken(tok, sandbox: AppModel.isSandboxBuild) }
+            h.onIncomingSos = { gid, gname, from in
+                Notifications.postSos(groupId: gid, groupName: gname, from: from)
+            }
         } catch {
             print("engine boot failed: \(error)")
         }
     }
 
     /// Keeps the system PushToTalk channel on the active group.
-    func activeGroupChanged() { ptt?.joinIfNeeded() }
+    func activeGroupChanged() {
+        ptt?.joinIfNeeded()
+        if host?.activeGroup != nil { Notifications.requestIfNeeded() }
+        TitiShortcuts.updateAppShortcutParameters()
+    }
+
+    // MARK: App Intents
+    /// Talk intent (Action Button, Control Center, Siri): open the mic, or close it when you are already on air / waiting.
+    func toggleTalk() {
+        boot()
+        guard let host, let g = host.active else { route = .home; return }
+        if g.floor == .talking || g.floor == .pending || g.floor == .queued {
+            host.pttUp()
+        } else {
+            host.pttDown()
+        }
+        route = .group(g.id)
+    }
+
+    func openGroup(_ id: String) {
+        boot()
+        host?.setActiveGroup(id)
+        route = .group(id)
+    }
+
+    /// Active group once the engine restored its groups after a cold launch (≤ ~1 s).
+    func waitForActiveGroup() async -> GroupState? {
+        for _ in 0..<10 {
+            if let g = host?.active { return g }
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        return host?.active
+    }
+
+    /// SOS with the current position, plus the Lock Screen Live Activity. Used by GroupView and SendSOSIntent.
+    func sendSos(_ gid: String) {
+        guard let host else { return }
+        Notifications.requestIfNeeded()
+        let name = host.groups.first { $0.id == gid }?.name ?? ""
+        Location.current { lat, lon in host.sendSos(gid, lat: lat, lon: lon) }
+        SosActivity.start(group: name)
+    }
 
     /// Development-signed builds get APNs sandbox tokens; TestFlight/App Store get production ones.
     static let isSandboxBuild: Bool = {
@@ -73,6 +125,7 @@ final class AppModel {
 
     /// Settings › Delete identity & all data: back to a fresh install.
     func wipeAll() {
+        SosActivity.endAll()
         host?.wipeAll()
         host = nil
         ptt = nil

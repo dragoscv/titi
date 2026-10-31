@@ -54,6 +54,8 @@ public final class EngineHost: @unchecked Sendable, TransportEvents {
     /// Members this device blocked (node hex): their messages, voice and invites are dropped here.
     public private(set) var blocked: Set<String> = []
     public var active: GroupState? { groups.first { $0.id == activeGroup } }
+    /// Fresh SOS from another, unblocked member (group id hex, group name, sender name); called on the main actor.
+    @ObservationIgnored public var onIncomingSos: (@MainActor (String, String, String) -> Void)?
 
     public let engine: TitiEngine
     public let audio = AudioEngine()
@@ -357,7 +359,14 @@ public final class EngineHost: @unchecked Sendable, TransportEvents {
                     guard let i = list.firstIndex(where: { $0.msgUuid == msgUuid }) else { continue }
                     list[i].acked += 1; chats[g] = list; break
                 }
-            case let .chatUpdated(item): upsert(item)
+            case let .chatUpdated(item):
+                let g = item.group.hex, from = item.from.hex
+                let isNew = !(chats[g]?.contains { $0.id == item.id } ?? false)
+                upsert(item)
+                if isNew, from != nodeId, !blocked.contains(from), item.sentMs + 900_000 > now(),
+                   case let .sos(_, _, _, cancelled)? = item.body, !cancelled {
+                    onIncomingSos?(g, groups.first { $0.id == g }?.name ?? "", displayName(from))
+                }
             case let .handover(group, state, link, _): update(group.hex) { $0.handover = state; $0.link = link }
             case let .suspended(group): update(group.hex) { $0.suspended = true }
             case let .resumed(group): update(group.hex) { $0.suspended = false }

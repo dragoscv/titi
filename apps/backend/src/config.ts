@@ -15,6 +15,10 @@ const schema = z.object({
   APNS_KEY_ID: z.string().optional(),
   APNS_TEAM_ID: z.string().optional(),
   APNS_TOPIC: z.string().default("ro.titi.app.voip-ptt"),
+  /** App Store review demo bot (demo-bot.ts): identity seed hex; unset = bot off. Secret. */
+  DEMO_BOT_SEED: z.string().optional(),
+  /** Engine "groups" persist blob (hex) the bot restores; unset = bot off. Secret (group keys). */
+  DEMO_BOT_GROUPS: z.string().optional(),
 });
 
 export type Config = z.infer<typeof schema>;

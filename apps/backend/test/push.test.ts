@@ -1,11 +1,13 @@
 import { generateKeyPairSync, verify } from "node:crypto";
+import { createServer, type Http2Server, type IncomingHttpHeaders } from "node:http2";
+import type { AddressInfo } from "node:net";
 import { FrameType } from "@titi/protocol";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createApns, providerToken, pttPayload, type PushSender } from "../src/apns.ts";
 import { loadConfig } from "../src/config.ts";
 import { setLogLevel } from "../src/log.ts";
 import { Relay } from "../src/relay.ts";
-import { envelope, FakeSink, GH, GH2, join, nodeA, nodeB, signal } from "./helpers.ts";
+import { envelope, FakeSink, GH, GH2, join, nodeA, nodeB, nodeC, signal } from "./helpers.ts";
 
 beforeEach(() => setLogLevel("error"));
 
@@ -90,6 +92,37 @@ describe("push to talk wake-ups", () => {
     relay.onMessage(id, register([1]));
     expect(sink.errors()[0]?.message).toBe("join first");
   });
+
+  it("skips the talker's own registration, expired ones, and rendezvous-only overlap; falls back to 'Titi' for a nameless talker", async () => {
+    const { relay, peer, sent, tick } = setup();
+    // talker registered itself: never woken by its own voice
+    const self = peer(nodeA);
+    relay.onMessage(self.id, register([1]));
+    relay.onMessage(self.id, voice(nodeA));
+    expect(sent).toHaveLength(0);
+    // a suspended iPhone whose registration expired (not swept yet) is skipped
+    relay.disconnect(self.id);
+    tick(12 * 60 * 60_000 + 1);
+    const b = peer(nodeB);
+    relay.onMessage(b.id, voice(nodeB));
+    expect(sent).toHaveLength(0);
+    // a talker that only shares a rendezvous room does not wake anyone
+    const c = peer(nodeC);
+    relay.onMessage(c.id, register([2], [GH2]));
+    relay.disconnect(c.id);
+    const sink = new FakeSink();
+    const rid = relay.connect(sink);
+    relay.onMessage(rid, signal({ case: "roomJoin", value: { groupHash: GH2, node: { nodeId: nodeA, displayName: "" }, resumeToken: new Uint8Array(), rendezvous: true } }));
+    relay.onMessage(rid, voice(nodeA));
+    expect(sent).toHaveLength(0);
+    // a real group room, talker without a display name -> "Titi"
+    relay.disconnect(rid);
+    const rid2 = relay.connect(new FakeSink());
+    relay.onMessage(rid2, signal({ case: "roomJoin", value: { groupHash: GH2, node: { nodeId: nodeB, displayName: "" }, resumeToken: new Uint8Array(), rendezvous: false } }));
+    relay.onMessage(rid2, voice(nodeB));
+    await Promise.resolve();
+    expect(sent.at(-1)?.name).toBe("Titi");
+  });
 });
 
 describe("apns helpers", () => {
@@ -106,5 +139,49 @@ describe("apns helpers", () => {
   it("is disabled without a key", () => {
     expect(createApns({ topic: "t" })).toBeNull();
     expect(createApns({ keyP8: "k", topic: "t" })).toBeNull();
+  });
+
+  it("posts a pushtotalk request with the provider token and reports the APNs status", async () => {
+    const { privateKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
+    const seen: { headers: IncomingHttpHeaders; body: string }[] = [];
+    const server: Http2Server = createServer((req, res) => {
+      let body = "";
+      req.on("data", (c: Buffer) => (body += c.toString()));
+      req.on("end", () => {
+        seen.push({ headers: req.headers, body });
+        res.statusCode = req.url.endsWith("/gone") ? 410 : 200;
+        res.end();
+      });
+    });
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+    const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const apns = createApns({
+      keyP8: privateKey.export({ type: "pkcs8", format: "pem" }).toString(),
+      keyId: "KEYID12345",
+      teamId: "TEAM123456",
+      topic: "ro.titi.app.voip-ptt",
+      origins: { production: origin, sandbox: origin },
+    })!;
+    expect(await apns.send("abcd", false, "Ana")).toBe(200);
+    expect(await apns.send("gone", true, "Ana")).toBe(410);
+    server.close();
+    expect(seen[0]!.headers[":path"]).toBe("/3/device/abcd");
+    expect(seen[0]!.headers["apns-push-type"]).toBe("pushtotalk");
+    expect(seen[0]!.headers["apns-topic"]).toBe("ro.titi.app.voip-ptt");
+    expect(seen[0]!.headers["apns-priority"]).toBe("10");
+    expect(seen[0]!.headers.authorization).toMatch(/^bearer [\w-]+\.[\w-]+\.[\w-]+$/);
+    expect(JSON.parse(seen[0]!.body)).toEqual({ aps: {}, activeSpeaker: "Ana" });
+  });
+
+  it("resolves 0 when APNs is unreachable", async () => {
+    const { privateKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
+    const apns = createApns({
+      keyP8: privateKey.export({ type: "pkcs8", format: "pem" }).toString(),
+      keyId: "K",
+      teamId: "T",
+      topic: "t",
+      origins: { production: "http://127.0.0.1:1", sandbox: "http://127.0.0.1:1" },
+    })!;
+    expect(await apns.send("x", false, "n")).toBe(0);
   });
 });

@@ -69,7 +69,7 @@ struct GroupView: View {
                 Button("Delete for everyone", role: .destructive) { host.dissolveGroup(g.id); withAnimation(.titi) { model.route = .home } }
             }
             .confirmationDialog("Send an SOS to everyone in \(g.name) with your location?", isPresented: $confirmSos, titleVisibility: .visible) {
-                Button("SOS", role: .destructive) { Location.current { lat, lon in host.sendSos(g.id, lat: lat, lon: lon) } }
+                Button("SOS", role: .destructive) { model.sendSos(g.id) }
             }
         } else {
             Color.clear.onAppear { withAnimation(.titi) { model.route = .home } }
@@ -115,6 +115,7 @@ struct InviteSheet: View {
     let gid: String
     let gname: String
     @State private var code: (String, Int)?
+    @State private var nfc = NfcInviteWriter()
     private var link: String? { host.deepLink(gid) }
 
     var body: some View {
@@ -132,7 +133,14 @@ struct InviteSheet: View {
             if let link, let img = qr(link.replacingOccurrences(of: "titi://j/", with: "https://titi.dragoscatalin.ro/j/")) {
                 Text("Or scan").font(.subheadline).foregroundStyle(Palette.muted).padding(.top, 12)
                 Image(uiImage: img).interpolation(.none).resizable().frame(width: 200, height: 200).padding(8).background(.white, in: RoundedRectangle(cornerRadius: 16))
-                ShareLink(item: URL(string: link.replacingOccurrences(of: "titi://j/", with: "https://titi.dragoscatalin.ro/j/"))!) { Label("Share link", systemImage: "square.and.arrow.up") }.padding(.top, 12)
+                if let url = URL(string: link.replacingOccurrences(of: "titi://j/", with: "https://titi.dragoscatalin.ro/j/")) {
+                    HStack(spacing: 20) {
+                        ShareLink(item: url) { Label("Share link", systemImage: "square.and.arrow.up") }
+                        if NfcInviteWriter.available {
+                            Button { nfc.write(url) } label: { Label("Write to NFC tag", systemImage: "wave.3.right") }
+                        }
+                    }.padding(.top, 12)
+                }
             }
             Spacer()
         }

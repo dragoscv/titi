@@ -29,6 +29,7 @@ export default function Privacy() {
 
       <Section title="Data that leaves your device">
         <p><b>Nearby mode (no internet):</b> nothing leaves the phones in range. Discovery broadcasts contain your display name, colour and a 4-byte hash of each group, so nearby phones can show you in “Nearby”.</p>
+        <p className="mt-2">On Android, nearby phones connect over Bluetooth, Wi‑Fi and hotspot; on iPhone, over Bluetooth.</p>
         <p className="mt-2"><b>Internet mode (optional):</b> when you are online, the app connects to our relay server (Google Cloud Run, region europe-west1) so members of the same group who are far away can still talk. The relay sees only: your display name and colour, a 4-byte group hash, your IP address (as any server does), and <b>encrypted</b> voice/message frames it cannot read. It stores nothing after you disconnect (a resume token lives at most 5 minutes in memory). No logs of who talked to whom are retained.</p>
         <p className="mt-2"><b>Location:</b> only if you tap SOS or “share location”, your coordinates are sent — encrypted — to your group. We never receive them.</p>
         <p className="mt-2"><b>iPhone wake-up (optional):</b> on iOS, while you are in a Push to Talk channel, the app hands the relay a temporary Apple push token so a locked iPhone can wake when a group member talks. The push carries only the speaker’s display name; the token is held in memory for the life of the channel and never written to disk.</p>
