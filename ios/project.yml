@@ -21,6 +21,8 @@ settings:
     DEVELOPMENT_TEAM: ${DEVELOPMENT_TEAM}
     CODE_SIGN_STYLE: Automatic
     TARGETED_DEVICE_FAMILY: "1"
+    # The Rust xcframework ships arm64 device + arm64 simulator only.
+    "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64
 packages:
   TitiCore:
     path: TitiCore
