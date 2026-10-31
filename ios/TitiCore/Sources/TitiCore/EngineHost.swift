@@ -51,6 +51,8 @@ public final class EngineHost: @unchecked Sendable, TransportEvents {
     public var muted = false { didSet { audio.muted = muted } }
     public var running = false
     public var toast: String?
+    /// Members this device blocked (node hex): their messages, voice and invites are dropped here.
+    public private(set) var blocked: Set<String> = []
     public var active: GroupState? { groups.first { $0.id == activeGroup } }
 
     public let engine: TitiEngine
@@ -60,6 +62,12 @@ public final class EngineHost: @unchecked Sendable, TransportEvents {
     private var tick: DispatchSourceTimer?
     private var names: [String: String] = [:]
     private var pendingCode: (String, Date)?
+    private var pendingLinkRoom: ([UInt8], Date)?
+    private var joinTimer: DispatchSourceTimer?
+    private var tickCount = 0
+    /// Node currently holding the floor per group (engine queue only); voice from a blocked talker is not played.
+    private var talker: [String: String] = [:]
+    private var blockedQ: Set<String> = []
     private let defaults = UserDefaults.standard
 
     public init(displayName: String, hue: Int) throws {
@@ -67,9 +75,14 @@ public final class EngineHost: @unchecked Sendable, TransportEvents {
         engine = try TitiEngine(seed: seed, displayName: displayName, avatarHue: UInt16(hue), rngSeed: UInt64.random(in: 0...UInt64.max))
         if seed.isEmpty { defaults.set(engine.identitySeed(), forKey: "identity_seed") }
         nodeId = engine.nodeId().hex
+        blocked = Set(defaults.stringArray(forKey: "blocked_nodes") ?? [])
+        blockedQ = blocked
         openChatStore()
         if let g = defaults.data(forKey: "groups_blob") { try? engine.restoreGroups(data: g, nowMs: now()) }
-        audio.onPcm = { [weak self] pcm, t in self?.post { self?.apply(self!.engine.onAudioIn(pcmLe: Data(pcm.leBytes), nowMs: t)) } }
+        audio.onPcm = { [weak self] pcm, t in
+            guard let self else { return }
+            self.post { self.apply(self.engine.onAudioIn(pcmLe: Data(pcm.leBytes), nowMs: t)) }
+        }
         refreshGroups()
     }
 
@@ -96,13 +109,12 @@ public final class EngineHost: @unchecked Sendable, TransportEvents {
         try? audio.start()
         for t in ts { transports[t.linkId] = t; t.start(self) }
         let timer = DispatchSource.makeTimerSource(queue: q)
-        var n = 0
         timer.schedule(deadline: .now(), repeating: .milliseconds(20), leeway: .milliseconds(2))
         timer.setEventHandler { [weak self] in
             guard let self else { return }
             self.apply(self.engine.tick(nowMs: self.now()))
-            n += 1
-            if n % 500 == 0 { self.syncRelayRooms() }
+            self.tickCount += 1
+            if self.tickCount % 500 == 0 { self.syncRelayRooms() }
         }
         timer.resume()
         tick = timer
@@ -134,21 +146,81 @@ public final class EngineHost: @unchecked Sendable, TransportEvents {
     public func invitePeer(_ g: String, _ node: String) { post { self.tryApply { try self.engine.invitePeer(group: Data(hex: g)!, node: Data(hex: node)!, nowMs: self.now()) } } }
     public func acceptInvite(_ i: Invite) { Task { @MainActor in invites.removeAll { $0.group == i.group } }; post { self.tryApply { try self.engine.acceptInvite(group: Data(hex: i.group)!, host: Data(hex: i.host)!, nowMs: self.now()) } } }
     public func declineInvite(_ i: Invite) { Task { @MainActor in invites.removeAll { $0.group == i.group } }; post { _ = try? self.engine.declineInvite(group: Data(hex: i.group)!, host: Data(hex: i.host)!, nowMs: self.now()) } }
-    public func joinByLink(_ url: String) { post { self.apply(self.engine.joinByLink(url: url, nowMs: self.now())) } }
+    /// Invite link (`titi://j/…` or `https://…/j/…`): sit in that group's relay room until a member answers, retry every 3 s.
+    public func joinByLink(_ url: String) {
+        post {
+            let before = Set(self.engine.groups().map { $0.id.hex })
+            if let uuid = Self.linkUuid(url), let h = try? groupHash(group: uuid) {
+                self.pendingLinkRoom = ([UInt8](h), Date().addingTimeInterval(120)); self.syncRelayRooms()
+            }
+            self.apply(self.engine.joinByLink(url: url, nowMs: self.now()))
+            self.retryJoin(before: before) { [weak self] in
+                guard let self, self.pendingLinkRoom != nil else { return false }
+                self.apply(self.engine.joinByLink(url: url, nowMs: self.now()))
+                return true
+            }
+        }
+    }
     public func joinByCode(_ code: String) {
         post {
+            let before = Set(self.engine.groups().map { $0.id.hex })
             self.pendingCode = (code, Date().addingTimeInterval(120)); self.syncRelayRooms()
             self.apply(self.engine.joinByCode(code: code, nowMs: self.now()))
+            self.retryJoin(before: before) { [weak self] in
+                guard let self, self.pendingCode != nil else { return false }
+                self.apply(self.engine.joinByCode(code: code, nowMs: self.now()))
+                return true
+            }
         }
-        // retry every 3 s while the rendezvous brings the host in
+    }
+
+    /// One retry timer for any pending join (engine queue). Stops when a new group shows up, the window ends or `again` says so.
+    private func retryJoin(before: Set<String>, again: @escaping () -> Bool) {
+        joinTimer?.cancel()
         let t = DispatchSource.makeTimerSource(queue: q)
         t.schedule(deadline: .now() + 3, repeating: 3)
         t.setEventHandler { [weak self] in
-            guard let self, let (c, until) = self.pendingCode else { t.cancel(); return }
-            if Date() > until || (self.active?.members.count ?? 0) > 1 { self.pendingCode = nil; self.syncRelayRooms(); t.cancel(); return }
-            self.apply(self.engine.joinByCode(code: c, nowMs: self.now()))
+            guard let self else { return }
+            let joined = self.engine.groups().contains { !before.contains($0.id.hex) }
+            let expired = [self.pendingCode?.1, self.pendingLinkRoom?.1].compactMap { $0 }.allSatisfy { Date() > $0 }
+            if joined || expired || !again() {
+                self.pendingCode = nil; self.pendingLinkRoom = nil; self.syncRelayRooms()
+                self.joinTimer?.cancel(); self.joinTimer = nil
+            }
         }
+        joinTimer = t
         t.resume()
+    }
+
+    /// 16-byte group uuid from an invite link (first path segment after `/j/`, base64url).
+    public static func linkUuid(_ url: String) -> Data? {
+        guard let r = url.range(of: "/j/") else { return nil }
+        var s = String(url[r.upperBound...].split(separator: "/").first ?? "")
+        s = s.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        while s.count % 4 != 0 { s += "=" }
+        guard let d = Data(base64Encoded: s), d.count == 16 else { return nil }
+        return d
+    }
+
+    // MARK: safety (App Review 1.2): local block list
+    @MainActor public func setBlocked(_ node: String, _ on: Bool) {
+        if on { blocked.insert(node) } else { blocked.remove(node) }
+        defaults.set(Array(blocked), forKey: "blocked_nodes")
+        let snapshot = blocked
+        post { self.blockedQ = snapshot }
+    }
+    /// Forget every key, group, message and setting on this device.
+    public func wipeAll() {
+        post {
+            for g in self.engine.groups() { _ = try? self.engine.leaveGroup(group: g.id, nowMs: self.now()) }
+            Task { @MainActor in
+                self.stop()
+                for k in ["identity_seed", "groups_blob", "blocked_nodes"] { self.defaults.removeObject(forKey: k) }
+                if let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+                    for f in ["chat.db", "chat.db-wal", "chat.db-shm"] { try? FileManager.default.removeItem(at: dir.appendingPathComponent(f)) }
+                }
+            }
+        }
     }
     public func sendText(_ g: String, _ text: String) { post { self.tryApply { try self.engine.sendText(group: Data(hex: g)!, text: text, nowMs: self.now()) } } }
     public func sendSos(_ g: String, lat: Double, lon: Double) { post { self.tryApply { try self.engine.sendSos(group: Data(hex: g)!, lat: lat, lon: lon, note: "", cancelled: false, nowMs: self.now()) }; self.apply(self.engine.pttDown(prio: .emergency, nowMs: self.now())) } }
@@ -226,17 +298,31 @@ public final class EngineHost: @unchecked Sendable, TransportEvents {
     private func dropChat(_ g: String) { Task { @MainActor in self.chats[g] = nil; self.chatHasMore[g] = nil } }
 
     // MARK: dispatch
-    private func tryApply(_ f: () throws -> [FfiAction]) { do { apply(try f()) } catch { Task { @MainActor in self.toast = "\(error)" } } }
+    private func tryApply(_ f: () throws -> [FfiAction]) { do { apply(try f()) } catch { let m = Self.message(error); Task { @MainActor in self.toast = m } } }
+
+    static func message(_ e: Error) -> String {
+        if let t = e as? TitiError, case let .Failed(msg) = t { return msg }
+        return e.localizedDescription
+    }
 
     private func apply(_ acts: [FfiAction]) {
         for a in acts {
             switch a {
             case let .send(link, peer, bytes): transports[link]?.send(peer: peer, bytes: [UInt8](bytes))
-            case let .play(pcmLe): audio.play([UInt8](pcmLe).int16s)
+            case let .play(pcmLe):
+                if talker.values.contains(where: { blockedQ.contains($0) }) { continue }
+                audio.play([UInt8](pcmLe).int16s)
             case let .capture(active, _): active ? audio.startCapture() : audio.stopCapture()
             case let .persist(key, value): if key == "groups" { defaults.set(value, forKey: "groups_blob") }
             case .wakeAt: break
-            case let .ui(e): onUi(e)
+            case let .ui(e):
+                switch e {
+                case let .floorTaken(group, holder, _, _): talker[group.hex] = holder.hex
+                case let .floorIdle(group): talker[group.hex] = nil
+                case let .inviteOffered(_, _, host, _, _) where blockedQ.contains(host.hex): continue
+                default: break
+                }
+                onUi(e)
             }
         }
     }
@@ -251,7 +337,7 @@ public final class EngineHost: @unchecked Sendable, TransportEvents {
             case let .peerLost(node): peers.removeValue(forKey: node.hex)
             case let .peerLink(node, link, bars, hops): if var p = peers[node.hex] { p.link = link; p.bars = Int(bars); p.hops = Int(hops); peers[node.hex] = p }
             case .floorGranted: updateActive { $0.floor = .talking; $0.talkerNode = nodeId; $0.talkerName = nil }
-            case .floorDenied: updateActive { $0.floor = .busy }
+            case .floorDenied: updateActive { if $0.floor != .busy { $0.floor = .busy } }
             case let .floorTaken(group, holder, name, _): names[holder.hex] = name; update(group.hex) { $0.floor = holder.hex == nodeId ? .talking : .busy; $0.talkerName = name; $0.talkerNode = holder.hex }
             case let .floorIdle(group): update(group.hex) { $0.floor = .idle; $0.talkerName = nil; $0.talkerNode = nil }
             case .talkWarning: toast = "10 seconds left"
@@ -265,8 +351,12 @@ public final class EngineHost: @unchecked Sendable, TransportEvents {
             case let .groupDissolved(group, name): refreshGroups(); syncRelayRooms(); dropChat(group.hex); toast = "“\(name)” was deleted by its creator"
             case let .message(group, from, _, _, _):
                 // fresh content only: drives unread; the timeline row comes via chatUpdated
-                if from.hex != nodeId && activeGroup != group.hex { update(group.hex) { $0.unread += 1 } }
-            case .messageAcked: break
+                if from.hex != nodeId && activeGroup != group.hex && !blocked.contains(from.hex) { update(group.hex) { $0.unread += 1 } }
+            case let .messageAcked(msgUuid, _):
+                for (g, var list) in chats {
+                    guard let i = list.firstIndex(where: { $0.msgUuid == msgUuid }) else { continue }
+                    list[i].acked += 1; chats[g] = list; break
+                }
             case let .chatUpdated(item): upsert(item)
             case let .handover(group, state, link, _): update(group.hex) { $0.handover = state; $0.link = link }
             case let .suspended(group): update(group.hex) { $0.suspended = true }
@@ -302,7 +392,16 @@ public final class EngineHost: @unchecked Sendable, TransportEvents {
             for h in (try? engine.rendezvousForGroup(group: g.id, nowMs: now())) ?? [] { rooms.append(([UInt8](h), true)) }
         }
         if let (c, _) = pendingCode { for h in rendezvousForCode(code: c, nowMs: now()) { rooms.append(([UInt8](h), true)) } }
+        if let (h, _) = pendingLinkRoom { rooms.append((h, true)) }
         relay.setRooms(rooms)
+    }
+
+    /// Hands the Push to Talk channel token to the relay so a suspended iPhone is woken for voice.
+    public func setPushToken(_ hex: String?, sandbox: Bool) {
+        post {
+            guard let relay = self.transports[LinkIds.internet] as? RelayTransport else { return }
+            relay.setPushToken(hex.flatMap { [UInt8](hex: $0) }, sandbox: sandbox)
+        }
     }
 
     @MainActor private func updateActive(_ f: (inout GroupState) -> Void) { if let a = activeGroup { update(a, f) } }

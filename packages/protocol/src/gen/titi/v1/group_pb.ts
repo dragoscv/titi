@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file titi/v1/group.proto.
  */
 export const file_titi_v1_group: GenFile = /*@__PURE__*/
-  fileDesc("ChN0aXRpL3YxL2dyb3VwLnByb3RvEgd0aXRpLnYxIo8BCgtJbnZpdGVPZmZlchISCgpncm91cF91dWlkGAEgASgMEhIKCmdyb3VwX25hbWUYAiABKAkSHgoEaG9zdBgDIAEoCzIQLnRpdGkudjEuTm9kZVJlZhIOCgZrX2pvaW4YBCABKAwSEgoKZXhwaXJlc19tcxgFIAEoBBIUCgxtZW1iZXJfY291bnQYBiABKA0iVgoMSW52aXRlQWNjZXB0EhIKCmdyb3VwX3V1aWQYASABKAwSIAoGbWVtYmVyGAIgASgLMhAudGl0aS52MS5Ob2RlUmVmEhAKCGFjY2VwdGVkGAMgASgIIlcKC0pvaW5SZXF1ZXN0EhIKCmdyb3VwX2hhc2gYASABKAwSIAoGbWVtYmVyGAIgASgLMhAudGl0aS52MS5Ob2RlUmVmEhIKCnNsb3RfZGVsdGEYAyABKAUilQEKDEpvaW5SZXNwb25zZRIKCgJvaxgBIAEoCBISCgpncm91cF91dWlkGAIgASgMEhIKCmdyb3VwX25hbWUYAyABKAkSDwoHa19lcG9jaBgEIAEoDBINCgVlcG9jaBgFIAEoDRIhCgdtZW1iZXJzGAYgAygLMhAudGl0aS52MS5Ob2RlUmVmEg4KBnJlYXNvbhgHIAEoCSIsCgVMZWF2ZRISCgpncm91cF91dWlkGAEgASgMEg8KB25vZGVfaWQYAiABKAwiYQoJS2V5Um90YXRlEhIKCmdyb3VwX3V1aWQYASABKAwSDQoFZXBvY2gYAiABKA0SDwoHa19lcG9jaBgDIAEoDBINCgV0c19tcxgEIAEoBBIRCglzaWduYXR1cmUYBSABKAwiRAoMUmV2b2tlSW52aXRlEhIKCmdyb3VwX3V1aWQYASABKAwSDQoFdHNfbXMYAiABKAQSEQoJc2lnbmF0dXJlGAMgASgMIo4BCglHcm91cEluZm8SEgoKZ3JvdXBfdXVpZBgBIAEoDBISCgpncm91cF9uYW1lGAIgASgJEhIKCmNyZWF0b3JfaWQYAyABKAwSDQoFZXBvY2gYBCABKA0SEwoLZnVsbF9kdXBsZXgYBSABKAgSIQoHbWVtYmVycxgGIAMoCzIQLnRpdGkudjEuTm9kZVJlZmIGcHJvdG8z", [file_titi_v1_common]);
+  fileDesc("ChN0aXRpL3YxL2dyb3VwLnByb3RvEgd0aXRpLnYxIo8BCgtJbnZpdGVPZmZlchISCgpncm91cF91dWlkGAEgASgMEhIKCmdyb3VwX25hbWUYAiABKAkSHgoEaG9zdBgDIAEoCzIQLnRpdGkudjEuTm9kZVJlZhIOCgZrX2pvaW4YBCABKAwSEgoKZXhwaXJlc19tcxgFIAEoBBIUCgxtZW1iZXJfY291bnQYBiABKA0iVgoMSW52aXRlQWNjZXB0EhIKCmdyb3VwX3V1aWQYASABKAwSIAoGbWVtYmVyGAIgASgLMhAudGl0aS52MS5Ob2RlUmVmEhAKCGFjY2VwdGVkGAMgASgIIlcKC0pvaW5SZXF1ZXN0EhIKCmdyb3VwX2hhc2gYASABKAwSIAoGbWVtYmVyGAIgASgLMhAudGl0aS52MS5Ob2RlUmVmEhIKCnNsb3RfZGVsdGEYAyABKAUilQEKDEpvaW5SZXNwb25zZRIKCgJvaxgBIAEoCBISCgpncm91cF91dWlkGAIgASgMEhIKCmdyb3VwX25hbWUYAyABKAkSDwoHa19lcG9jaBgEIAEoDBINCgVlcG9jaBgFIAEoDRIhCgdtZW1iZXJzGAYgAygLMhAudGl0aS52MS5Ob2RlUmVmEg4KBnJlYXNvbhgHIAEoCSIsCgVMZWF2ZRISCgpncm91cF91dWlkGAEgASgMEg8KB25vZGVfaWQYAiABKAwiVQoIRGlzc29sdmUSEgoKZ3JvdXBfdXVpZBgBIAEoDBITCgtjcmVhdG9yX3B1YhgCIAEoDBINCgV0c19tcxgDIAEoBBIRCglzaWduYXR1cmUYBCABKAwiYQoJS2V5Um90YXRlEhIKCmdyb3VwX3V1aWQYASABKAwSDQoFZXBvY2gYAiABKA0SDwoHa19lcG9jaBgDIAEoDBINCgV0c19tcxgEIAEoBBIRCglzaWduYXR1cmUYBSABKAwiRAoMUmV2b2tlSW52aXRlEhIKCmdyb3VwX3V1aWQYASABKAwSDQoFdHNfbXMYAiABKAQSEQoJc2lnbmF0dXJlGAMgASgMIo4BCglHcm91cEluZm8SEgoKZ3JvdXBfdXVpZBgBIAEoDBISCgpncm91cF9uYW1lGAIgASgJEhIKCmNyZWF0b3JfaWQYAyABKAwSDQoFZXBvY2gYBCABKA0SEwoLZnVsbF9kdXBsZXgYBSABKAgSIQoHbWVtYmVycxgGIAMoCzIQLnRpdGkudjEuTm9kZVJlZmIGcHJvdG8z", [file_titi_v1_common]);
 
 /**
  * Host -> discovered device (tap-to-invite). Inside a Noise XX session.
@@ -194,6 +194,44 @@ export const LeaveSchema: GenMessage<Leave> = /*@__PURE__*/
   messageDesc(file_titi_v1_group, 4);
 
 /**
+ * Creator deletes the group for everyone. Self-certifying: node_id(creator_pub)
+ * must equal the group's creator and `signature` (Ed25519 over this message
+ * with signature empty) must verify, so a member cannot dissolve it.
+ *
+ * @generated from message titi.v1.Dissolve
+ */
+export type Dissolve = Message<"titi.v1.Dissolve"> & {
+  /**
+   * @generated from field: bytes group_uuid = 1;
+   */
+  groupUuid: Uint8Array;
+
+  /**
+   * 32 bytes
+   *
+   * @generated from field: bytes creator_pub = 2;
+   */
+  creatorPub: Uint8Array;
+
+  /**
+   * @generated from field: uint64 ts_ms = 3;
+   */
+  tsMs: bigint;
+
+  /**
+   * @generated from field: bytes signature = 4;
+   */
+  signature: Uint8Array;
+};
+
+/**
+ * Describes the message titi.v1.Dissolve.
+ * Use `create(DissolveSchema)` to create a new message.
+ */
+export const DissolveSchema: GenMessage<Dissolve> = /*@__PURE__*/
+  messageDesc(file_titi_v1_group, 5);
+
+/**
  * Signed by the group creator; new key delivered per member inside Noise.
  *
  * @generated from message titi.v1.KeyRotate
@@ -230,7 +268,7 @@ export type KeyRotate = Message<"titi.v1.KeyRotate"> & {
  * Use `create(KeyRotateSchema)` to create a new message.
  */
 export const KeyRotateSchema: GenMessage<KeyRotate> = /*@__PURE__*/
-  messageDesc(file_titi_v1_group, 5);
+  messageDesc(file_titi_v1_group, 6);
 
 /**
  * @generated from message titi.v1.RevokeInvite
@@ -257,7 +295,7 @@ export type RevokeInvite = Message<"titi.v1.RevokeInvite"> & {
  * Use `create(RevokeInviteSchema)` to create a new message.
  */
 export const RevokeInviteSchema: GenMessage<RevokeInvite> = /*@__PURE__*/
-  messageDesc(file_titi_v1_group, 6);
+  messageDesc(file_titi_v1_group, 7);
 
 /**
  * @generated from message titi.v1.GroupInfo
@@ -299,5 +337,5 @@ export type GroupInfo = Message<"titi.v1.GroupInfo"> & {
  * Use `create(GroupInfoSchema)` to create a new message.
  */
 export const GroupInfoSchema: GenMessage<GroupInfo> = /*@__PURE__*/
-  messageDesc(file_titi_v1_group, 7);
+  messageDesc(file_titi_v1_group, 8);
 

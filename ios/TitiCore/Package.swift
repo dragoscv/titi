@@ -1,7 +1,7 @@
 // swift-tools-version: 6.0
 // TitiCore: Swift façade over the Rust core (uniffi Swift bindings + xcframework)
 // plus transports written in Swift. The xcframework is produced on the macOS
-// runner by scripts/ios-build-core.sh; on Windows only TitiTransport compiles
+// runner by scripts/ios-build-core.sh; on Windows only TitiFrame compiles
 // (framing/test-vector logic) so it can be unit-tested with the Swift toolchain.
 import PackageDescription
 import Foundation
@@ -18,7 +18,11 @@ var targets: [Target] = [
 if hasCore {
     products.append(.library(name: "TitiCore", targets: ["TitiCore"]))
     targets += [
-        .target(name: "TitiCore", dependencies: ["TitiFrame", "titi_ffiFFI"], path: "Sources/TitiCore"),
+        // Swift 5 language mode: the uniffi-generated bindings predate Swift 6 strict
+        // concurrency; the engine host serialises every core call on one queue anyway.
+        .target(name: "TitiCore", dependencies: ["TitiFrame", "titi_ffiFFI"], path: "Sources/TitiCore",
+                swiftSettings: [.swiftLanguageMode(.v5)],
+                linkerSettings: [.linkedFramework("Security"), .linkedFramework("SystemConfiguration")]),
         .binaryTarget(name: "titi_ffiFFI", path: "Artifacts/titi_ffiFFI.xcframework"),
     ]
 }

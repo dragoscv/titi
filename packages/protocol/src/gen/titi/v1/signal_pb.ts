@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file titi/v1/signal.proto.
  */
 export const file_titi_v1_signal: GenFile = /*@__PURE__*/
-  fileDesc("ChR0aXRpL3YxL3NpZ25hbC5wcm90bxIHdGl0aS52MSLjAgoGU2lnbmFsEiYKCXJvb21fam9pbhgBIAEoCzIRLnRpdGkudjEuUm9vbUpvaW5IABIqCgtyb29tX2pvaW5lZBgCIAEoCzITLnRpdGkudjEuUm9vbUpvaW5lZEgAEigKCnJvb21fbGVhdmUYAyABKAsyEi50aXRpLnYxLlJvb21MZWF2ZUgAEigKCnBlZXJfZXZlbnQYBCABKAsyEi50aXRpLnYxLlBlZXJFdmVudEgAEiEKBnJlc3VtZRgFIAEoCzIPLnRpdGkudjEuUmVzdW1lSAASHQoEcGluZxgGIAEoCzINLnRpdGkudjEuUGluZ0gAEh0KBHBvbmcYByABKAsyDS50aXRpLnYxLlBvbmdIABInCgZ3ZWJydGMYCCABKAsyFS50aXRpLnYxLldlYlJ0Y1NpZ25hbEgAEh8KBWVycm9yGAkgASgLMg4udGl0aS52MS5FcnJvckgAQgYKBGtpbmQiaAoIUm9vbUpvaW4SEgoKZ3JvdXBfaGFzaBgBIAEoDBIeCgRub2RlGAIgASgLMhAudGl0aS52MS5Ob2RlUmVmEhQKDHJlc3VtZV90b2tlbhgDIAEoDBISCgpyZW5kZXp2b3VzGAQgASgIImkKClJvb21Kb2luZWQSFAoMcmVzdW1lX3Rva2VuGAEgASgMEh8KBXBlZXJzGAIgAygLMhAudGl0aS52MS5Ob2RlUmVmEhEKCXJvb21fc2l6ZRgDIAEoDRIRCglzZXJ2ZXJfbXMYBCABKAQiHwoJUm9vbUxlYXZlEhIKCmdyb3VwX2hhc2gYASABKAwiOwoJUGVlckV2ZW50Eh4KBG5vZGUYASABKAsyEC50aXRpLnYxLk5vZGVSZWYSDgoGam9pbmVkGAIgASgIIh4KBlJlc3VtZRIUCgxyZXN1bWVfdG9rZW4YASABKAwiFQoEUGluZxINCgV0c19tcxgBIAEoBCIoCgRQb25nEg0KBXRzX21zGAEgASgEEhEKCXNlcnZlcl9tcxgCIAEoBCJ3CgxXZWJSdGNTaWduYWwSCgoCdG8YASABKAwSDAoEZnJvbRgCIAEoDBITCglvZmZlcl9zZHAYAyABKAlIABIUCgphbnN3ZXJfc2RwGAQgASgJSAASFwoNaWNlX2NhbmRpZGF0ZRgFIAEoCUgAQgkKB3BheWxvYWQiJgoFRXJyb3ISDAoEY29kZRgBIAEoDRIPCgdtZXNzYWdlGAIgASgJYgZwcm90bzM", [file_titi_v1_common]);
+  fileDesc("ChR0aXRpL3YxL3NpZ25hbC5wcm90bxIHdGl0aS52MSKTAwoGU2lnbmFsEiYKCXJvb21fam9pbhgBIAEoCzIRLnRpdGkudjEuUm9vbUpvaW5IABIqCgtyb29tX2pvaW5lZBgCIAEoCzITLnRpdGkudjEuUm9vbUpvaW5lZEgAEigKCnJvb21fbGVhdmUYAyABKAsyEi50aXRpLnYxLlJvb21MZWF2ZUgAEigKCnBlZXJfZXZlbnQYBCABKAsyEi50aXRpLnYxLlBlZXJFdmVudEgAEiEKBnJlc3VtZRgFIAEoCzIPLnRpdGkudjEuUmVzdW1lSAASHQoEcGluZxgGIAEoCzINLnRpdGkudjEuUGluZ0gAEh0KBHBvbmcYByABKAsyDS50aXRpLnYxLlBvbmdIABInCgZ3ZWJydGMYCCABKAsyFS50aXRpLnYxLldlYlJ0Y1NpZ25hbEgAEh8KBWVycm9yGAkgASgLMg4udGl0aS52MS5FcnJvckgAEi4KDXB1c2hfcmVnaXN0ZXIYCiABKAsyFS50aXRpLnYxLlB1c2hSZWdpc3RlckgAQgYKBGtpbmQiaAoIUm9vbUpvaW4SEgoKZ3JvdXBfaGFzaBgBIAEoDBIeCgRub2RlGAIgASgLMhAudGl0aS52MS5Ob2RlUmVmEhQKDHJlc3VtZV90b2tlbhgDIAEoDBISCgpyZW5kZXp2b3VzGAQgASgIImkKClJvb21Kb2luZWQSFAoMcmVzdW1lX3Rva2VuGAEgASgMEh8KBXBlZXJzGAIgAygLMhAudGl0aS52MS5Ob2RlUmVmEhEKCXJvb21fc2l6ZRgDIAEoDRIRCglzZXJ2ZXJfbXMYBCABKAQiHwoJUm9vbUxlYXZlEhIKCmdyb3VwX2hhc2gYASABKAwiOwoJUGVlckV2ZW50Eh4KBG5vZGUYASABKAsyEC50aXRpLnYxLk5vZGVSZWYSDgoGam9pbmVkGAIgASgIIh4KBlJlc3VtZRIUCgxyZXN1bWVfdG9rZW4YASABKAwiFQoEUGluZxINCgV0c19tcxgBIAEoBCIoCgRQb25nEg0KBXRzX21zGAEgASgEEhEKCXNlcnZlcl9tcxgCIAEoBCJ3CgxXZWJSdGNTaWduYWwSCgoCdG8YASABKAwSDAoEZnJvbRgCIAEoDBITCglvZmZlcl9zZHAYAyABKAlIABIUCgphbnN3ZXJfc2RwGAQgASgJSAASFwoNaWNlX2NhbmRpZGF0ZRgFIAEoCUgAQgkKB3BheWxvYWQiJgoFRXJyb3ISDAoEY29kZRgBIAEoDRIPCgdtZXNzYWdlGAIgASgJIkQKDFB1c2hSZWdpc3RlchINCgV0b2tlbhgBIAEoDBIUCgxncm91cF9oYXNoZXMYAiADKAwSDwoHc2FuZGJveBgDIAEoCGIGcHJvdG8z", [file_titi_v1_common]);
 
 /**
  * @generated from message titi.v1.Signal
@@ -75,6 +75,12 @@ export type Signal = Message<"titi.v1.Signal"> & {
      */
     value: Error;
     case: "error";
+  } | {
+    /**
+     * @generated from field: titi.v1.PushRegister push_register = 10;
+     */
+    value: PushRegister;
+    case: "pushRegister";
   } | { case: undefined; value?: undefined };
 };
 
@@ -320,4 +326,40 @@ export type Error = Message<"titi.v1.Error"> & {
  */
 export const ErrorSchema: GenMessage<Error> = /*@__PURE__*/
   messageDesc(file_titi_v1_signal, 9);
+
+/**
+ * iOS Push to Talk: the ephemeral APNs token of the system PTT channel. While the
+ * iPhone is suspended (socket closed) the relay wakes it with an `apns-push-type:
+ * pushtotalk` push carrying only the talker's display name when voice arrives in one
+ * of `group_hashes`. Empty token = unregister. Held in memory only, never logged.
+ *
+ * @generated from message titi.v1.PushRegister
+ */
+export type PushRegister = Message<"titi.v1.PushRegister"> & {
+  /**
+   * @generated from field: bytes token = 1;
+   */
+  token: Uint8Array;
+
+  /**
+   * 4 bytes each
+   *
+   * @generated from field: repeated bytes group_hashes = 2;
+   */
+  groupHashes: Uint8Array[];
+
+  /**
+   * development-signed build -> api.sandbox.push.apple.com
+   *
+   * @generated from field: bool sandbox = 3;
+   */
+  sandbox: boolean;
+};
+
+/**
+ * Describes the message titi.v1.PushRegister.
+ * Use `create(PushRegisterSchema)` to create a new message.
+ */
+export const PushRegisterSchema: GenMessage<PushRegister> = /*@__PURE__*/
+  messageDesc(file_titi_v1_signal, 10);
 

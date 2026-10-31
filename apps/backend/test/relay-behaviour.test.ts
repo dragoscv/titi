@@ -40,7 +40,7 @@ describe("relay frame validation", () => {
   it("ignores messages for unknown connection ids and empty frames", () => {
     const { relay, peer } = setup();
     expect(() => relay.onMessage(999, join(nodeA))).not.toThrow();
-    expect(relay.stats()).toEqual({ rooms: 0, members: 0, connections: 0, parked: 0 });
+    expect(relay.stats()).toEqual({ rooms: 0, members: 0, connections: 0, parked: 0, push: 0 });
     const a = peer();
     relay.onMessage(a.id, new Uint8Array());
     expect(a.sink.out).toHaveLength(0);
@@ -99,7 +99,7 @@ describe("relay rooms", () => {
     expect(joined.kind.value.roomSize).toBe(2);
     expect(joined.kind.value.peers.map((p) => nodeIdHex(p.nodeId))).toEqual([nodeIdHex(nodeA)]);
     expect(joined.kind.value.serverMs).toBe(1_000_000n);
-    expect(relay.stats()).toEqual({ rooms: 1, members: 2, connections: 2, parked: 0 });
+    expect(relay.stats()).toEqual({ rooms: 1, members: 2, connections: 2, parked: 0, push: 0 });
   });
 
   it("does not re-announce when the same connection joins a room it is already in", () => {
@@ -153,7 +153,7 @@ describe("relay rooms", () => {
     relay.onMessage(a.id, signal({ case: "roomLeave", value: { groupHash: new Uint8Array([7, 7, 7, 7]) } }));
     expect(relay.stats()).toMatchObject({ rooms: 2, members: 2 });
     relay.onMessage(a.id, signal({ case: "roomLeave", value: {} }));
-    expect(relay.stats()).toEqual({ rooms: 0, members: 0, connections: 1, parked: 0 });
+    expect(relay.stats()).toEqual({ rooms: 0, members: 0, connections: 1, parked: 0, push: 0 });
   });
 
   it("disconnect notifies remaining peers, removes the connection and deletes emptied rooms", () => {
@@ -163,9 +163,9 @@ describe("relay rooms", () => {
     relay.disconnect(b.id);
     const ev = a.sink.signals().at(-1)!;
     expect(ev.kind.case === "peerEvent" && ev.kind.value.joined).toBe(false);
-    expect(relay.stats()).toEqual({ rooms: 1, members: 1, connections: 1, parked: 1 });
+    expect(relay.stats()).toEqual({ rooms: 1, members: 1, connections: 1, parked: 1, push: 0 });
     relay.disconnect(a.id);
-    expect(relay.stats()).toEqual({ rooms: 0, members: 0, connections: 0, parked: 2 });
+    expect(relay.stats()).toEqual({ rooms: 0, members: 0, connections: 0, parked: 2, push: 0 });
     relay.disconnect(a.id); // double disconnect is harmless
     expect(relay.stats().connections).toBe(0);
   });
@@ -174,7 +174,7 @@ describe("relay rooms", () => {
     const { relay, peer } = setup();
     const a = peer();
     relay.disconnect(a.id);
-    expect(relay.stats()).toEqual({ rooms: 0, members: 0, connections: 0, parked: 0 });
+    expect(relay.stats()).toEqual({ rooms: 0, members: 0, connections: 0, parked: 0, push: 0 });
   });
 });
 
@@ -228,7 +228,7 @@ describe("relay resume tokens (fake timers)", () => {
     relay.onMessage(a2.id, signal({ case: "resume", value: { resumeToken: token } }));
     expect(a2.sink.kinds().filter((k) => k === "roomJoined")).toHaveLength(2);
     expect(nodeIdHex(a2.sink.resumeToken())).toBe(nodeIdHex(token));
-    expect(relay.stats()).toEqual({ rooms: 2, members: 2, connections: 1, parked: 0 });
+    expect(relay.stats()).toEqual({ rooms: 2, members: 2, connections: 1, parked: 0, push: 0 });
 
     // the restored GH2 room is still rendezvous: voice from a GH2-only peer's view is filtered
     const b = peer(nodeB, { hash: GH2, rendezvous: true });

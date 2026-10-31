@@ -2,8 +2,8 @@
 // @generated from file titi/v1/message.proto (package titi.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
 import type { CodecProfile } from "./common_pb.ts";
 import { file_titi_v1_common } from "./common_pb.ts";
 import type { Message } from "@bufbuild/protobuf";
@@ -12,10 +12,17 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file titi/v1/message.proto.
  */
 export const file_titi_v1_message: GenFile = /*@__PURE__*/
-  fileDesc("ChV0aXRpL3YxL21lc3NhZ2UucHJvdG8SB3RpdGkudjEi6AEKC0NoYXRNZXNzYWdlEhAKCG1zZ191dWlkGAEgASgMEhIKCmdyb3VwX3V1aWQYAiABKAwSEQoJc2VuZGVyX2lkGAMgASgMEg8KB3NlbnRfbXMYBCABKAQSDgoGdHRsX21zGAUgASgEEg4KBHRleHQYCiABKAlIABIjCgV2b2ljZRgLIAEoCzISLnRpdGkudjEuVm9pY2VOb3RlSAASJQoIbG9jYXRpb24YDCABKAsyES50aXRpLnYxLkxvY2F0aW9uSAASGwoDc29zGA0gASgLMgwudGl0aS52MS5Tb3NIAEIGCgRib2R5Il4KCVZvaWNlTm90ZRImCgdwcm9maWxlGAEgASgOMhUudGl0aS52MS5Db2RlY1Byb2ZpbGUSEwoLZHVyYXRpb25fbXMYAiABKA0SFAoMb3B1c19wYWNrZXRzGAMgASgMIogBCghMb2NhdGlvbhILCgNsYXQYASABKAESCwoDbG9uGAIgASgBEhIKCmFjY3VyYWN5X20YAyABKAISEgoKYWx0aXR1ZGVfbRgEIAEoAhITCgtoZWFkaW5nX2RlZxgFIAEoAhIRCglzcGVlZF9tcHMYBiABKAISEgoKYnJlYWRjcnVtYhgHIAEoCCJLCgNTb3MSIwoIbG9jYXRpb24YASABKAsyES50aXRpLnYxLkxvY2F0aW9uEgwKBG5vdGUYAiABKAkSEQoJY2FuY2VsbGVkGAMgASgIIjIKA0FjaxIQCghtc2dfdXVpZBgBIAEoDBIKCgJieRgCIAEoDBINCgV0c19tcxgDIAEoBCIyCglJbnZlbnRvcnkSEgoKZ3JvdXBfdXVpZBgBIAEoDBIRCgltc2dfdXVpZHMYAiADKAxiBnByb3RvMw", [file_titi_v1_common]);
+  fileDesc("ChV0aXRpL3YxL21lc3NhZ2UucHJvdG8SB3RpdGkudjEi1wMKC0NoYXRNZXNzYWdlEhAKCG1zZ191dWlkGAEgASgMEhIKCmdyb3VwX3V1aWQYAiABKAwSEQoJc2VuZGVyX2lkGAMgASgMEg8KB3NlbnRfbXMYBCABKAQSDgoGdHRsX21zGAUgASgEEiMKCHJlcGx5X3RvGAYgASgLMhEudGl0aS52MS5SZXBseVJlZhIQCghtZW50aW9ucxgHIAMoDBITCgttZW50aW9uX2FsbBgIIAEoCBIRCglmb3J3YXJkZWQYCSABKA0SDgoEdGV4dBgKIAEoCUgAEiMKBXZvaWNlGAsgASgLMhIudGl0aS52MS5Wb2ljZU5vdGVIABIlCghsb2NhdGlvbhgMIAEoCzIRLnRpdGkudjEuTG9jYXRpb25IABIbCgNzb3MYDSABKAsyDC50aXRpLnYxLlNvc0gAEiUKCHJlYWN0aW9uGA4gASgLMhEudGl0aS52MS5SZWFjdGlvbkgAEh0KBGVkaXQYDyABKAsyDS50aXRpLnYxLkVkaXRIABIhCgZkZWxldGUYECABKAsyDy50aXRpLnYxLkRlbGV0ZUgAEhIKCnNlbmRlcl9wdWIYFCABKAwSEQoJc2lnbmF0dXJlGBUgASgMQgYKBGJvZHkiYgoIUmVwbHlSZWYSEAoIbXNnX3V1aWQYASABKAwSEQoJc2VuZGVyX2lkGAIgASgMEg8KB3ByZXZpZXcYAyABKAkSIAoEa2luZBgEIAEoDjISLnRpdGkudjEuUmVwbHlLaW5kIikKCFJlYWN0aW9uEg4KBnRhcmdldBgBIAEoDBINCgVlbW9qaRgCIAEoCSIkCgRFZGl0Eg4KBnRhcmdldBgBIAEoDBIMCgR0ZXh0GAIgASgJIhgKBkRlbGV0ZRIOCgZ0YXJnZXQYASABKAwiXgoJVm9pY2VOb3RlEiYKB3Byb2ZpbGUYASABKA4yFS50aXRpLnYxLkNvZGVjUHJvZmlsZRITCgtkdXJhdGlvbl9tcxgCIAEoDRIUCgxvcHVzX3BhY2tldHMYAyABKAwiiAEKCExvY2F0aW9uEgsKA2xhdBgBIAEoARILCgNsb24YAiABKAESEgoKYWNjdXJhY3lfbRgDIAEoAhISCgphbHRpdHVkZV9tGAQgASgCEhMKC2hlYWRpbmdfZGVnGAUgASgCEhEKCXNwZWVkX21wcxgGIAEoAhISCgpicmVhZGNydW1iGAcgASgIIksKA1NvcxIjCghsb2NhdGlvbhgBIAEoCzIRLnRpdGkudjEuTG9jYXRpb24SDAoEbm90ZRgCIAEoCRIRCgljYW5jZWxsZWQYAyABKAgiMgoDQWNrEhAKCG1zZ191dWlkGAEgASgMEgoKAmJ5GAIgASgMEg0KBXRzX21zGAMgASgEIjIKCUludmVudG9yeRISCgpncm91cF91dWlkGAEgASgMEhEKCW1zZ191dWlkcxgCIAMoDCp/CglSZXBseUtpbmQSGgoWUkVQTFlfS0lORF9VTlNQRUNJRklFRBAAEhMKD1JFUExZX0tJTkRfVEVYVBABEhQKEFJFUExZX0tJTkRfVk9JQ0UQAhIXChNSRVBMWV9LSU5EX0xPQ0FUSU9OEAMSEgoOUkVQTFlfS0lORF9TT1MQBGIGcHJvdG8z", [file_titi_v1_common]);
 
 /**
  * Store-and-forward payloads; encrypted with the group key end to end.
+ *
+ * v2 (ADR-0009, CH-A1): a message may quote another (`reply_to`), mention
+ * members, carry a forward count, or be an event on an earlier message
+ * (reaction / edit / delete). v2 messages are signed by their author: the
+ * AEAD plaintext is `encode(msg without signature) ‖ field 21 (64 B)`, the
+ * signature covering "titi/v1/msg" ‖ everything before the trailer. The
+ * trailer is always the last 67 bytes, so unknown future fields stay covered.
  *
  * @generated from message titi.v1.ChatMessage
  */
@@ -50,6 +57,32 @@ export type ChatMessage = Message<"titi.v1.ChatMessage"> & {
   ttlMs: bigint;
 
   /**
+   * @generated from field: titi.v1.ReplyRef reply_to = 6;
+   */
+  replyTo?: ReplyRef | undefined;
+
+  /**
+   * 8-byte node ids
+   *
+   * @generated from field: repeated bytes mentions = 7;
+   */
+  mentions: Uint8Array[];
+
+  /**
+   * honoured only from the group creator
+   *
+   * @generated from field: bool mention_all = 8;
+   */
+  mentionAll: boolean;
+
+  /**
+   * 0 = original; >= 5 shows "forwarded many times"
+   *
+   * @generated from field: uint32 forwarded = 9;
+   */
+  forwarded: number;
+
+  /**
    * @generated from oneof titi.v1.ChatMessage.body
    */
   body: {
@@ -76,7 +109,39 @@ export type ChatMessage = Message<"titi.v1.ChatMessage"> & {
      */
     value: Sos;
     case: "sos";
+  } | {
+    /**
+     * @generated from field: titi.v1.Reaction reaction = 14;
+     */
+    value: Reaction;
+    case: "reaction";
+  } | {
+    /**
+     * @generated from field: titi.v1.Edit edit = 15;
+     */
+    value: Edit;
+    case: "edit";
+  } | {
+    /**
+     * @generated from field: titi.v1.Delete delete = 16;
+     */
+    value: Delete;
+    case: "delete";
   } | { case: undefined; value?: undefined };
+
+  /**
+   * 32-byte Ed25519 key; BLAKE2b(pub)[0..8] == sender_id
+   *
+   * @generated from field: bytes sender_pub = 20;
+   */
+  senderPub: Uint8Array;
+
+  /**
+   * 64 bytes, always encoded last (see above)
+   *
+   * @generated from field: bytes signature = 21;
+   */
+  signature: Uint8Array;
 };
 
 /**
@@ -85,6 +150,110 @@ export type ChatMessage = Message<"titi.v1.ChatMessage"> & {
  */
 export const ChatMessageSchema: GenMessage<ChatMessage> = /*@__PURE__*/
   messageDesc(file_titi_v1_message, 0);
+
+/**
+ * Quote of an earlier message, embedded so it renders even when the original
+ * never reached this device. `preview` is at most 80 characters of text.
+ *
+ * @generated from message titi.v1.ReplyRef
+ */
+export type ReplyRef = Message<"titi.v1.ReplyRef"> & {
+  /**
+   * @generated from field: bytes msg_uuid = 1;
+   */
+  msgUuid: Uint8Array;
+
+  /**
+   * @generated from field: bytes sender_id = 2;
+   */
+  senderId: Uint8Array;
+
+  /**
+   * @generated from field: string preview = 3;
+   */
+  preview: string;
+
+  /**
+   * @generated from field: titi.v1.ReplyKind kind = 4;
+   */
+  kind: ReplyKind;
+};
+
+/**
+ * Describes the message titi.v1.ReplyRef.
+ * Use `create(ReplyRefSchema)` to create a new message.
+ */
+export const ReplyRefSchema: GenMessage<ReplyRef> = /*@__PURE__*/
+  messageDesc(file_titi_v1_message, 1);
+
+/**
+ * One reaction per member per message; last (sent_ms, event id) wins; an empty
+ * emoji removes the member's reaction.
+ *
+ * @generated from message titi.v1.Reaction
+ */
+export type Reaction = Message<"titi.v1.Reaction"> & {
+  /**
+   * @generated from field: bytes target = 1;
+   */
+  target: Uint8Array;
+
+  /**
+   * @generated from field: string emoji = 2;
+   */
+  emoji: string;
+};
+
+/**
+ * Describes the message titi.v1.Reaction.
+ * Use `create(ReactionSchema)` to create a new message.
+ */
+export const ReactionSchema: GenMessage<Reaction> = /*@__PURE__*/
+  messageDesc(file_titi_v1_message, 2);
+
+/**
+ * New text for an own text message, valid for 24 h after the original (author
+ * clocks, 5 min skew), at most 10 edits; last (sent_ms, event id) wins.
+ *
+ * @generated from message titi.v1.Edit
+ */
+export type Edit = Message<"titi.v1.Edit"> & {
+  /**
+   * @generated from field: bytes target = 1;
+   */
+  target: Uint8Array;
+
+  /**
+   * @generated from field: string text = 2;
+   */
+  text: string;
+};
+
+/**
+ * Describes the message titi.v1.Edit.
+ * Use `create(EditSchema)` to create a new message.
+ */
+export const EditSchema: GenMessage<Edit> = /*@__PURE__*/
+  messageDesc(file_titi_v1_message, 3);
+
+/**
+ * Delete for everyone (own messages, no time limit): leaves a tombstone.
+ *
+ * @generated from message titi.v1.Delete
+ */
+export type Delete = Message<"titi.v1.Delete"> & {
+  /**
+   * @generated from field: bytes target = 1;
+   */
+  target: Uint8Array;
+};
+
+/**
+ * Describes the message titi.v1.Delete.
+ * Use `create(DeleteSchema)` to create a new message.
+ */
+export const DeleteSchema: GenMessage<Delete> = /*@__PURE__*/
+  messageDesc(file_titi_v1_message, 4);
 
 /**
  * @generated from message titi.v1.VoiceNote
@@ -113,7 +282,7 @@ export type VoiceNote = Message<"titi.v1.VoiceNote"> & {
  * Use `create(VoiceNoteSchema)` to create a new message.
  */
 export const VoiceNoteSchema: GenMessage<VoiceNote> = /*@__PURE__*/
-  messageDesc(file_titi_v1_message, 1);
+  messageDesc(file_titi_v1_message, 5);
 
 /**
  * @generated from message titi.v1.Location
@@ -160,7 +329,7 @@ export type Location = Message<"titi.v1.Location"> & {
  * Use `create(LocationSchema)` to create a new message.
  */
 export const LocationSchema: GenMessage<Location> = /*@__PURE__*/
-  messageDesc(file_titi_v1_message, 2);
+  messageDesc(file_titi_v1_message, 6);
 
 /**
  * @generated from message titi.v1.Sos
@@ -187,7 +356,7 @@ export type Sos = Message<"titi.v1.Sos"> & {
  * Use `create(SosSchema)` to create a new message.
  */
 export const SosSchema: GenMessage<Sos> = /*@__PURE__*/
-  messageDesc(file_titi_v1_message, 3);
+  messageDesc(file_titi_v1_message, 7);
 
 /**
  * @generated from message titi.v1.Ack
@@ -214,7 +383,7 @@ export type Ack = Message<"titi.v1.Ack"> & {
  * Use `create(AckSchema)` to create a new message.
  */
 export const AckSchema: GenMessage<Ack> = /*@__PURE__*/
-  messageDesc(file_titi_v1_message, 4);
+  messageDesc(file_titi_v1_message, 8);
 
 /**
  * Relay-side inventory exchange for store-and-forward sync.
@@ -238,5 +407,41 @@ export type Inventory = Message<"titi.v1.Inventory"> & {
  * Use `create(InventorySchema)` to create a new message.
  */
 export const InventorySchema: GenMessage<Inventory> = /*@__PURE__*/
-  messageDesc(file_titi_v1_message, 5);
+  messageDesc(file_titi_v1_message, 9);
+
+/**
+ * @generated from enum titi.v1.ReplyKind
+ */
+export enum ReplyKind {
+  /**
+   * @generated from enum value: REPLY_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: REPLY_KIND_TEXT = 1;
+   */
+  TEXT = 1,
+
+  /**
+   * @generated from enum value: REPLY_KIND_VOICE = 2;
+   */
+  VOICE = 2,
+
+  /**
+   * @generated from enum value: REPLY_KIND_LOCATION = 3;
+   */
+  LOCATION = 3,
+
+  /**
+   * @generated from enum value: REPLY_KIND_SOS = 4;
+   */
+  SOS = 4,
+}
+
+/**
+ * Describes the enum titi.v1.ReplyKind.
+ */
+export const ReplyKindSchema: GenEnum<ReplyKind> = /*@__PURE__*/
+  enumDesc(file_titi_v1_message, 0);
 

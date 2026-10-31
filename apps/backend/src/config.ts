@@ -10,6 +10,11 @@ const schema = z.object({
   /** Resume token lifetime after disconnect (ms). */
   RESUME_TTL_MS: z.coerce.number().int().positive().default(5 * 60_000),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  /** APNs auth key (.p8 contents) for iOS Push to Talk wake-ups; unset = feature off. */
+  APNS_KEY_P8: z.string().optional(),
+  APNS_KEY_ID: z.string().optional(),
+  APNS_TEAM_ID: z.string().optional(),
+  APNS_TOPIC: z.string().default("ro.titi.app.voip-ptt"),
 });
 
 export type Config = z.infer<typeof schema>;

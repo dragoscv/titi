@@ -11,6 +11,7 @@ describe("loadConfig", () => {
       MAX_FRAME_BYTES: 4096,
       RESUME_TTL_MS: 300_000,
       LOG_LEVEL: "info",
+      APNS_TOPIC: "ro.titi.app.voip-ptt",
     });
   });
 

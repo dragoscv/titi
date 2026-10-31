@@ -178,6 +178,7 @@ class EngineHost(private val ctx: Context, private val prefs: Prefs) : Transport
     private var codeJob: Job? = null
     private val names = HashMap<String, String>() // node hex → display name
     private var pendingCode: Pair<String, Long>? = null // code, until
+    private var pendingLinkRoom: Pair<ByteArray, Long>? = null // group hash, until
     /** Groups whose newest history page is loaded; declared before `init` (refreshGroups runs there). */
     private val loadedGroups = HashSet<String>()
 
@@ -303,7 +304,30 @@ class EngineHost(private val ctx: Context, private val prefs: Prefs) : Transport
             }
         }
     }
-    fun joinByLink(url: String) = post { apply(engine.joinByLink(url, now())) }
+    /** Invite link: sit in that group's relay room (group_hash(uuid)) and retry every 3 s, like the web host. */
+    fun joinByLink(url: String) = post {
+        val before = _state.value.groups.map { it.id }.toSet()
+        pendingLinkRoom = linkUuid(url)?.let { u -> runCatching { groupHash(u) }.getOrNull() }?.let { it to (System.currentTimeMillis() + 120_000) }
+        syncRelayRoom()
+        apply(engine.joinByLink(url, now()))
+        if (pendingLinkRoom == null) return@post
+        codeJob?.cancel()
+        codeJob = scope.launch {
+            while (isActive) {
+                delay(3000)
+                val p = pendingLinkRoom ?: break
+                if (System.currentTimeMillis() > p.second || _state.value.groups.any { it.id !in before }) { pendingLinkRoom = null; syncRelayRoom(); break }
+                runCatching { apply(engine.joinByLink(url, now())) }.onFailure { Log.w(TAG, "joinByLink", it) }
+            }
+        }
+    }
+
+    private fun linkUuid(url: String): ByteArray? {
+        val seg = url.substringAfter("/j/", "").substringBefore('/')
+        if (seg.isEmpty()) return null
+        val flags = android.util.Base64.URL_SAFE or android.util.Base64.NO_PADDING or android.util.Base64.NO_WRAP
+        return runCatching { android.util.Base64.decode(seg, flags) }.getOrNull()?.takeIf { it.size == 16 }
+    }
     /** Text with an optional quote ([replyTo] message id) and mentions (node ids). */
     fun sendText(group: String, text: String, replyTo: String? = null, mentions: List<String> = emptyList(), mentionAll: Boolean = false) = post {
         runCatching { apply(engine.sendTextV2(group.hexToBytes(), text, replyTo?.hexToBytes(), mentions.map { it.hexToBytes() }, mentionAll, now())) }.onFailure { err(it) }
@@ -516,6 +540,7 @@ class EngineHost(private val ctx: Context, private val prefs: Prefs) : Transport
             runCatching { engine.rendezvousForGroup(gid, now()) }.getOrDefault(emptyList()).forEach { rooms += it to true }
         }
         pendingCode?.let { (code, _) -> uniffi.titi_ffi.rendezvousForCode(code, now()).forEach { rooms += it to true } }
+        pendingLinkRoom?.let { (h, _) -> rooms += h to true }
         relay.setRooms(rooms)
     }
 

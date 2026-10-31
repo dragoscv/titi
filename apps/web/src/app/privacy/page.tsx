@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = { title: "Privacy policy — Titi", description: "What Titi collects (almost nothing) and how voice and messages are protected." };
 
-const UPDATED = "14 September 2026";
+const UPDATED = "31 October 2026";
 
 export default function Privacy() {
   return (
@@ -31,13 +31,15 @@ export default function Privacy() {
         <p><b>Nearby mode (no internet):</b> nothing leaves the phones in range. Discovery broadcasts contain your display name, colour and a 4-byte hash of each group, so nearby phones can show you in “Nearby”.</p>
         <p className="mt-2"><b>Internet mode (optional):</b> when you are online, the app connects to our relay server (Google Cloud Run, region europe-west1) so members of the same group who are far away can still talk. The relay sees only: your display name and colour, a 4-byte group hash, your IP address (as any server does), and <b>encrypted</b> voice/message frames it cannot read. It stores nothing after you disconnect (a resume token lives at most 5 minutes in memory). No logs of who talked to whom are retained.</p>
         <p className="mt-2"><b>Location:</b> only if you tap SOS or “share location”, your coordinates are sent — encrypted — to your group. We never receive them.</p>
+        <p className="mt-2"><b>iPhone wake-up (optional):</b> on iOS, while you are in a Push to Talk channel, the app hands the relay a temporary Apple push token so a locked iPhone can wake when a group member talks. The push carries only the speaker’s display name; the token is held in memory for the life of the channel and never written to disk.</p>
+        <p className="mt-2"><b>Reports:</b> if you report a message, your mail app sends us the text you chose to report and the sender’s device id. We use it only to handle the report and delete it after 90 days.</p>
       </Section>
 
       <Section title="Permissions">
         <ul className="list-disc pl-5">
           <li><b>Microphone</b> — to transmit your voice while you hold the Talk button or have Open mic on.</li>
           <li><b>Nearby devices / Bluetooth / Wi‑Fi</b> — to find and connect to other phones running Titi without internet.</li>
-          <li><b>Location (while in use)</b> — required by Android for Wi‑Fi Direct / Wi‑Fi Aware scanning, and for the optional SOS. Titi does not track your position.</li>
+          <li><b>Location (while in use)</b> — required by Android for Wi‑Fi Direct / Wi‑Fi Aware scanning, and for the optional SOS on every platform. Titi does not track your position.</li>
           <li><b>Camera</b> — only to scan a group QR code.</li>
           <li><b>Notifications / foreground service</b> — to keep the radio on with the screen off.</li>
         </ul>
@@ -48,7 +50,7 @@ export default function Privacy() {
       </Section>
 
       <Section title="Your rights (GDPR)">
-        <p>Because we hold no personal data on our servers, there is nothing for us to export or erase; all data is on your device and under your control. For any question contact <a className="text-amber underline underline-offset-2" href="mailto:privacy@titi.dragoscatalin.ro">privacy@titi.dragoscatalin.ro</a>.</p>
+        <p>Because we hold no personal data on our servers, there is nothing for us to export or erase; all data is on your device and under your control (Settings → Delete identity &amp; all data). For any question contact <a className="text-amber underline underline-offset-2" href="mailto:support@codai.ro">support@codai.ro</a>.</p>
       </Section>
 
       <Section title="Changes">

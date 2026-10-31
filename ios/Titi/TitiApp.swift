@@ -20,6 +20,7 @@ struct TitiApp: App {
 /// alive via `UIBackgroundModes audio` (AVAudioSession active) rather than a
 /// foreground service; PushToTalk framework is wired in PttChannel.
 @Observable
+@MainActor
 final class AppModel {
     var settings = Settings.load()
     private(set) var host: EngineHost?
@@ -39,23 +40,45 @@ final class AppModel {
             host = h
             var ts: [any Transport] = [LanTransport()]
             ts.append(BleTransport(nodeId: { [UInt8](h.engine.nodeId()) }))
-            ts.append(RelayTransport(url: { URL(string: self.settings.relayUrl)! }, nodeId: { [UInt8](h.engine.nodeId()) }, displayName: { self.settings.name }, hue: { self.settings.hue }))
+            let relayUrl = URL(string: settings.relayUrl) ?? URL(string: Settings().relayUrl)!
+            let name = settings.name, hue = settings.hue
+            ts.append(RelayTransport(url: { relayUrl }, nodeId: { [UInt8](h.engine.nodeId()) }, displayName: { name }, hue: { hue }))
             h.start(ts)
             ptt = PttChannel(host: h)
+            ptt?.onPushToken = { [weak h] tok in h?.setPushToken(tok, sandbox: AppModel.isSandboxBuild) }
         } catch {
             print("engine boot failed: \(error)")
         }
     }
 
+    /// Keeps the system PushToTalk channel on the active group.
+    func activeGroupChanged() { ptt?.joinIfNeeded() }
+
+    /// Development-signed builds get APNs sandbox tokens; TestFlight/App Store get production ones.
+    static let isSandboxBuild: Bool = {
+        guard let url = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision"),
+              let s = try? String(contentsOf: url, encoding: .isoLatin1) else { return false }
+        return s.range(of: "<key>aps-environment</key>\\s*<string>development</string>", options: .regularExpression) != nil
+    }()
+
     func save() { settings.save(); host?.engine.setDisplayName(name: settings.name, hue: UInt16(settings.hue)) }
 
     func handle(_ url: URL) {
-        let s = url.absoluteString
-        let link = url.scheme == "titi" ? s : (s.contains("/j/") ? "titi://j/" + s.components(separatedBy: "/j/")[1] : nil)
-        guard let link else { return }
+        // the core parses titi://j/… and https://titi.dragoscatalin.ro/j/… itself
+        guard url.absoluteString.contains("/j/") || url.scheme == "titi" else { return }
         boot()
-        host?.joinByLink(link)
+        host?.joinByLink(url.absoluteString)
         route = .join
+    }
+
+    /// Settings › Delete identity & all data: back to a fresh install.
+    func wipeAll() {
+        host?.wipeAll()
+        host = nil
+        ptt = nil
+        UserDefaults.standard.removeObject(forKey: "settings")
+        settings = Settings()
+        route = .home
     }
 }
 

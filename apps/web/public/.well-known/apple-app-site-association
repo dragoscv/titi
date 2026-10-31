@@ -1,0 +1,13 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["S6D533QSV2.ro.titi.app"],
+        "components": [{ "/": "/j/*", "comment": "group invite links open the app" }]
+      }
+    ]
+  },
+  "appclips": {
+    "apps": ["S6D533QSV2.ro.titi.app.Clip"]
+  }
+}

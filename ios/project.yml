@@ -9,7 +9,9 @@ options:
   developmentLanguage: en
 settings:
   base:
-    SWIFT_VERSION: "6.0"
+    # Swift 5 language mode + complete checking: concurrency findings are warnings while the
+    # first device builds land (uniffi bindings and delegate-heavy Apple APIs); tighten to 6 later.
+    SWIFT_VERSION: "5.0"
     SWIFT_STRICT_CONCURRENCY: complete
     # Titi/Resources/Localizable.xcstrings (en + ro) ships via the Titi source glob.
     SWIFT_EMIT_LOC_STRINGS: YES
@@ -18,29 +20,43 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
     DEVELOPMENT_TEAM: ${DEVELOPMENT_TEAM}
     CODE_SIGN_STYLE: Automatic
+    TARGETED_DEVICE_FAMILY: "1"
+    # The Rust xcframework ships arm64 device + arm64 simulator only.
+    "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64
 packages:
   TitiCore:
     path: TitiCore
+schemes:
+  Titi:
+    build:
+      targets:
+        Titi: all
+    test:
+      targets: [TitiTests]
 targets:
   Titi:
     type: application
     platform: iOS
     sources:
       - path: Titi
-    resources:
-      - path: Titi/Resources
     dependencies:
       - package: TitiCore
     settings:
       base:
+        PRODUCT_BUNDLE_IDENTIFIER: ro.titi.app
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
     info:
       path: Titi/Info.plist
       properties:
         CFBundleDisplayName: Titi
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, ro]
+        # Own end-to-end crypto (Noise XX/XXpsk3, ChaCha20-Poly1305, X25519): non-exempt, standard algorithms.
+        ITSAppUsesNonExemptEncryption: true
+        LSApplicationCategoryType: public.app-category.social-networking
         UILaunchScreen:
           UIColorName: LaunchBackground
           UIImageName: LaunchMark
@@ -50,7 +66,6 @@ targets:
         NSMicrophoneUsageDescription: Titi transmits your voice to your group.
         NSBluetoothAlwaysUsageDescription: Titi finds nearby phones over Bluetooth when there is no Wi‑Fi.
         NSLocalNetworkUsageDescription: Titi talks to phones on the same Wi‑Fi or hotspot.
-        NSBonjourServices: [_titi._udp]
         NSCameraUsageDescription: Scan a Titi invite QR code.
         NSLocationWhenInUseUsageDescription: Only to share your position or an SOS with your group.
         CFBundleURLTypes:
@@ -59,14 +74,19 @@ targets:
     entitlements:
       path: Titi/Titi.entitlements
       properties:
-        com.apple.developer.associated-domains: [applinks:titi.dragoscatalin.ro, applinks:titi.app]
+        # Multicast (LAN discovery) and Wi-Fi Aware need Apple approval: added back once granted.
+        com.apple.developer.associated-domains: [applinks:titi.dragoscatalin.ro]
         com.apple.developer.push-to-talk: true
-        com.apple.developer.networking.multicast: true
-        com.apple.developer.networking.wifi-aware: [titi]
+        # Xcode export for App Store rewrites this to production.
+        aps-environment: development
   TitiTests:
     type: bundle.unit-test
     platform: iOS
     sources: [TitiTests]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ro.titi.app.tests
+        GENERATE_INFOPLIST_FILE: YES
     dependencies:
       - target: Titi
       - package: TitiCore

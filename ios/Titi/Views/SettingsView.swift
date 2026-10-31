@@ -5,6 +5,8 @@ struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @Environment(EngineHost.self) private var host
     private let hues = [40, 15, 350, 290, 220, 170, 120, 80]
+    @State private var confirmWipe = false
+    @AppStorage("word_filter") private var wordFilter = true
 
     var body: some View {
         @Bindable var m = model
@@ -26,6 +28,7 @@ struct SettingsView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Radio").font(.subheadline.weight(.semibold)).foregroundStyle(Palette.amber)
                             Toggle("Volume buttons as PTT (with screen off via PushToTalk)", isOn: $m.settings.volumePtt).onChange(of: model.settings.volumePtt) { _, _ in model.save() }
+                            Toggle("Hide offensive words in messages", isOn: $wordFilter)
                             Text("Relay URL").font(.caption).foregroundStyle(Palette.muted)
                             TextField("wss://", text: $m.settings.relayUrl).font(.caption.monospaced()).padding(12).background(Palette.graphite, in: RoundedRectangle(cornerRadius: 12)).onSubmit { model.save() }
                         }
@@ -37,10 +40,32 @@ struct SettingsView: View {
                             Text("Device ID").font(.caption).foregroundStyle(Palette.muted)
                             Text(host.nodeId).font(.caption.monospaced())
                             Text("Voice and messages are end-to-end encrypted with the group key. Nothing leaves your phones unless you are online, and then the relay sees only encrypted frames.").font(.caption).foregroundStyle(Palette.muted).padding(.top, 8)
+                            Link(destination: Safety.supportPage) { Label("Help & support", systemImage: "questionmark.circle") }.font(.subheadline).padding(.top, 8)
+                            Link(destination: Safety.privacyPage) { Label("Privacy policy", systemImage: "hand.raised") }.font(.subheadline)
+                            Link(destination: Safety.mail(subject: "Titi iOS")) { Label(Safety.supportEmail, systemImage: "envelope") }.font(.subheadline)
+                        }
+                    }
+                    if !host.blocked.isEmpty {
+                        Card {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Blocked").font(.subheadline.weight(.semibold)).foregroundStyle(Palette.amber)
+                                ForEach(Array(host.blocked).sorted(), id: \.self) { n in
+                                    HStack { Text(verbatim: host.displayName(n)); Spacer(); Button("Unblock") { host.setBlocked(n, false) } }.font(.subheadline)
+                                }
+                            }
+                        }
+                    }
+                    Card {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Button(role: .destructive) { confirmWipe = true } label: { Label("Delete identity & all data", systemImage: "trash") }
+                            Text("Removes your device key, every group and every message from this phone. Other members keep their own copies.").font(.caption).foregroundStyle(Palette.muted)
                         }
                     }
                 }.padding(20)
             }
+        }
+        .confirmationDialog("Delete your identity, groups and messages from this phone?", isPresented: $confirmWipe, titleVisibility: .visible) {
+            Button("Delete everything", role: .destructive) { model.wipeAll() }
         }
     }
 }

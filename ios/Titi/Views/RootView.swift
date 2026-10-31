@@ -15,6 +15,7 @@ struct RootView: View {
                     .environment(host)
                     .overlay(alignment: .top) { InviteBanner(host: host) }
                     .overlay(alignment: .bottom) { ToastView(host: host) }
+                    .onChange(of: host.activeGroup, initial: true) { _, _ in model.activeGroupChanged() }
             } else {
                 ProgressView().task { model.boot() }
             }

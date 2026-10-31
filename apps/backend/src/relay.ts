@@ -17,6 +17,7 @@ import {
   type Signal,
 } from "@titi/protocol";
 import { randomBytes } from "node:crypto";
+import type { PushSender } from "./apns.ts";
 import type { Config } from "./config.ts";
 import { log } from "./log.ts";
 
@@ -50,6 +51,19 @@ interface Parked {
   expiresAt: number;
 }
 
+/** iOS Push to Talk registration (ADR-0011): survives the socket, dies with the channel or after 12 h. */
+interface PushReg {
+  token: string;
+  sandbox: boolean;
+  rooms: Set<string>;
+  expiresAt: number;
+  lastPushAt: number;
+}
+
+const PUSH_TTL_MS = 12 * 60 * 60_000;
+/** One wake per talker turn: voice frames arrive at 50/s, the phone needs one push to wake. */
+const PUSH_DEBOUNCE_MS = 10_000;
+
 export const ErrorCode = {
   BadFrame: 1,
   NotInRoom: 2,
@@ -63,11 +77,13 @@ export class Relay {
   private rooms = new Map<string, Room>();
   private members = new Map<number, Member>();
   private parked = new Map<string, Parked>(); // resume token hex → parked member
+  private pushRegs = new Map<string, PushReg>(); // node hex → registration
   private nextId = 1;
 
   constructor(
     private readonly cfg: Config,
     private readonly now: () => number = Date.now,
+    private readonly push: PushSender | null = null,
   ) {}
 
   /** Register a new connection. Returns a connection id used for subsequent calls. */
@@ -125,12 +141,13 @@ export class Relay {
   sweep() {
     const t = this.now();
     for (const [k, p] of this.parked) if (p.expiresAt <= t) this.parked.delete(k);
+    for (const [k, r] of this.pushRegs) if (r.expiresAt <= t) this.pushRegs.delete(k);
   }
 
   stats() {
     let members = 0;
     for (const r of this.rooms.values()) members += r.members.size;
-    return { rooms: this.rooms.size, members, connections: this.members.size, parked: this.parked.size };
+    return { rooms: this.rooms.size, members, connections: this.members.size, parked: this.parked.size, push: this.pushRegs.size };
   }
 
   // ---- signals ---------------------------------------------------------
@@ -183,6 +200,22 @@ export class Relay {
       case "ping":
         this.sendSignal(m, { case: "pong", value: { tsMs: k.value.tsMs, serverMs: BigInt(this.now()) } });
         return;
+      case "pushRegister": {
+        if (!m.nodeHex) return this.sendError(m, ErrorCode.NotInRoom, "join first");
+        const v = k.value;
+        if (v.token.length === 0) { this.pushRegs.delete(m.nodeHex); return; }
+        if (v.token.length > 100 || v.groupHashes.length > 32 || v.groupHashes.some((h) => h.length !== 4)) {
+          return this.sendError(m, ErrorCode.BadFrame, "bad push_register");
+        }
+        this.pushRegs.set(m.nodeHex, {
+          token: Buffer.from(v.token).toString("hex"),
+          sandbox: v.sandbox,
+          rooms: new Set(v.groupHashes.map(nodeIdHex)),
+          expiresAt: this.now() + PUSH_TTL_MS,
+          lastPushAt: 0,
+        });
+        return;
+      }
       case "webrtc": {
         // pass-through to a specific peer in the same room (web LAN bootstrap)
         if (m.rooms.size === 0) return this.sendError(m, ErrorCode.NotInRoom, "not in room");
@@ -290,6 +323,27 @@ export class Relay {
     for (const r of m.rooms.values()) {
       if (r.rendezvous && voiceLike) continue;
       for (const p of r.members.values()) if (!sent.has(p.id)) { sent.add(p.id); p.sink.send(raw); }
+    }
+    if (h.ftype === FrameType.VoiceRouted || h.ftype === FrameType.VoiceFlood) this.wakeSuspended(m, sent);
+  }
+
+  /** Push-to-talk wake for registered iPhones that share a room with the talker but are not connected. */
+  private wakeSuspended(talker: Member, delivered: Set<number>) {
+    if (!this.push || this.pushRegs.size === 0) return;
+    const t = this.now();
+    const online = new Set<string>();
+    for (const id of delivered) { const p = this.members.get(id); if (p) online.add(p.nodeHex); }
+    for (const [node, reg] of this.pushRegs) {
+      if (node === talker.nodeHex || online.has(node) || reg.expiresAt <= t || t - reg.lastPushAt < PUSH_DEBOUNCE_MS) continue;
+      let shares = false;
+      for (const r of talker.rooms.values()) if (!r.rendezvous && reg.rooms.has(r.hash)) { shares = true; break; }
+      if (!shares) continue;
+      reg.lastPushAt = t;
+      void this.push.send(reg.token, reg.sandbox, talker.node.displayName || "Titi").then((status) => {
+        // 400 BadDeviceToken / 410 Unregistered: the channel is gone
+        if (status === 400 || status === 410) this.pushRegs.delete(node);
+      });
+      log.info("push.ptt", { node: node.slice(0, 6) });
     }
   }
 

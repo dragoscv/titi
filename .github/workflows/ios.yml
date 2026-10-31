@@ -2,7 +2,7 @@ name: ios
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
     paths: ["ios/**", "core/**", "scripts/ios-build-core.sh", ".github/workflows/ios.yml"]
   pull_request:
     paths: ["ios/**", "core/**"]
@@ -20,20 +20,31 @@ jobs:
       - run: swift test --package-path ios/TitiCore --filter TitiFrameTests
 
   app:
-    # Full app build. Signing is skipped until the Apple Developer account
-    # exists (ADR-0006); then set DEVELOPMENT_TEAM and switch to archive.
+    # Unsigned simulator build + tests. Signed device/TestFlight builds run on the
+    # devcloud Mac (scripts/ios-release.ps1) with the team's App Store Connect key.
     runs-on: macos-26
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: core, key: ios }
       - run: brew install xcodegen
+      - run: xcodebuild -version
       - run: bash scripts/ios-build-core.sh
       - run: cd ios && xcodegen generate
-      - run: >
-          cd ios && xcodebuild -project Titi.xcodeproj -scheme Titi
-          -destination 'generic/platform=iOS Simulator' -configuration Debug
-          CODE_SIGNING_ALLOWED=NO build
-      - run: >
-          cd ios && xcodebuild -project Titi.xcodeproj -scheme Titi
-          -destination 'platform=iOS Simulator,name=iPhone 17' test
-          CODE_SIGNING_ALLOWED=NO
+      - name: build (simulator, unsigned)
+        run: |
+          cd ios
+          xcodebuild -project Titi.xcodeproj -scheme Titi -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug CODE_SIGNING_ALLOWED=NO build > build.log 2>&1 \
+            || { grep -E "error:|warning: .*concurren" build.log | sort -u | head -150; tail -40 build.log; exit 1; }
+          grep -c "warning:" build.log || true
+      - name: test on the first available iPhone simulator
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for k in sorted(d, reverse=True) if "iOS" in k for x in d[k] if x["name"].startswith("iPhone")))')
+          echo "simulator $UDID"
+          cd ios
+          xcodebuild -project Titi.xcodeproj -scheme Titi -destination "id=$UDID" test CODE_SIGNING_ALLOWED=NO > test.log 2>&1 \
+            || { grep -E "error:|failed|XCTAssert" test.log | sort -u | head -100; tail -60 test.log; exit 1; }
+          grep -E "Executed|passed" test.log | tail -5
