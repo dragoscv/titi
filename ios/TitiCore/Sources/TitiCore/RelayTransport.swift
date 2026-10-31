@@ -39,7 +39,8 @@ public final class RelayTransport: NSObject, Transport, URLSessionWebSocketDeleg
     }
 
     public func setRooms(_ want: [(hash: [UInt8], rendezvous: Bool)]) {
-        let m = Dictionary(uniqueKeysWithValues: want.map { ($0.hash.hex, $0.rendezvous) })
+        // the same hash can be asked twice (a group room that is also a pending join room)
+        let m = Dictionary(want.map { ($0.hash.hex, $0.rendezvous) }, uniquingKeysWith: { a, b in a && b })
         guard m != rooms else { return }
         for k in rooms.keys where m[k] == nil { sendLeave(k) }
         rooms = m

@@ -133,6 +133,7 @@ struct InviteSheet: View {
     private func qr(_ s: String) -> UIImage? {
         let f = CIFilter.qrCodeGenerator(); f.message = Data(s.utf8); f.correctionLevel = "M"
         guard let out = f.outputImage else { return nil }
-        return UIImage(ciImage: out.transformed(by: CGAffineTransform(scaleX: 8, y: 8)))
+        let big = out.transformed(by: CGAffineTransform(scaleX: 8, y: 8))
+        return CIContext().createCGImage(big, from: big.extent).map { UIImage(cgImage: $0) }
     }
 }

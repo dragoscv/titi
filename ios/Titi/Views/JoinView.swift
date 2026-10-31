@@ -21,7 +21,7 @@ struct JoinView: View {
             if scanning {
                 QrScanner { text in
                     scanning = false
-                    if text.hasPrefix("titi://") || text.contains("/j/") { host.joinByLink(text.hasPrefix("http") ? "titi://j/" + text.components(separatedBy: "/j/")[1] : text); searching = true } else { code = text }
+                    if text.hasPrefix("titi://") || text.contains("/j/") { host.joinByLink(text); searching = true } else { code = text }
                 }
                 Button("Cancel") { scanning = false }.buttonStyle(OutlineButton()).padding(20)
             } else {
@@ -53,24 +53,29 @@ struct QrScanner: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> Controller { let c = Controller(); c.onResult = onResult; return c }
     func updateUIViewController(_ c: Controller, context: Context) {}
 
-    final class Controller: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
+    final class Controller: UIViewController, @preconcurrency AVCaptureMetadataOutputObjectsDelegate {
         var onResult: ((String) -> Void)?
-        private let session = AVCaptureSession()
+        private let box = SessionBox()
         private var done = false
         override func viewDidLoad() {
             super.viewDidLoad()
             view.backgroundColor = .black
+            let session = box.session
             guard let dev = AVCaptureDevice.default(for: .video), let input = try? AVCaptureDeviceInput(device: dev) else { return }
             session.addInput(input)
             let out = AVCaptureMetadataOutput(); session.addOutput(out)
             out.setMetadataObjectsDelegate(self, queue: .main); out.metadataObjectTypes = [.qr]
             let layer = AVCaptureVideoPreviewLayer(session: session); layer.videoGravity = .resizeAspectFill; layer.frame = view.bounds; view.layer.addSublayer(layer)
-            DispatchQueue.global().async { self.session.startRunning() }
+            let b = box
+            DispatchQueue.global(qos: .userInitiated).async { b.session.startRunning() }
         }
-        override func viewDidDisappear(_ a: Bool) { super.viewDidDisappear(a); session.stopRunning() }
+        override func viewDidDisappear(_ a: Bool) { super.viewDidDisappear(a); box.session.stopRunning() }
         func metadataOutput(_ o: AVCaptureMetadataOutput, didOutput objs: [AVMetadataObject], from c: AVCaptureConnection) {
             guard !done, let s = (objs.first as? AVMetadataMachineReadableCodeObject)?.stringValue else { return }
             done = true; onResult?(s)
         }
     }
+
+    /// AVCaptureSession is thread-safe for start/stop; the box lets it cross to a background queue.
+    final class SessionBox: @unchecked Sendable { let session = AVCaptureSession() }
 }
