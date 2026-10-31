@@ -44,16 +44,18 @@ ensure_xcodegen() {
   rm -rf "$TOOLS/tmp" "$zip"
 }
 
-# A keychain the SSH session can unlock (the login keychain is locked over ssh -> errSecInternalComponent).
+# The shared vmui-mac build keychain (apple-publishing runbook: one per Mac, used by every repo). Over ssh the
+# login keychain is locked -> errSecInternalComponent; a fresh per-repo keychain fails the same way because the
+# identity Xcode creates in it has no partition list. Reuse the one that already holds the team identities.
 build_keychain() {
-  local kc="$HOME/Library/Keychains/titi-build.keychain-db" pwf="$HOME/.config/titi/build-keychain.pw"
+  local kc="$HOME/Library/Keychains/codai-build.keychain-db" pwf="$HOME/.config/codai/build-keychain.pw"
   mkdir -p "$(dirname "$pwf")"
-  if [ ! -f "$pwf" ]; then (umask 077; openssl rand -hex 24 > "$pwf"); fi
+  if [ ! -s "$pwf" ]; then (umask 077; openssl rand -hex 24 > "$pwf"); fi
   local pw; pw="$(cat "$pwf")"
   [ -f "$kc" ] || security create-keychain -p "$pw" "$kc"
   security unlock-keychain -p "$pw" "$kc"
-  security set-keychain-settings -t 3600 -u "$kc"
-  security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"' | grep -v titi-build)
+  security set-keychain-settings -lut 21600 "$kc"
+  security list-keychains -d user -s "$kc" "$HOME/Library/Keychains/login.keychain-db"
   security default-keychain -d user -s "$kc"
   security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$pw" "$kc" >/dev/null 2>&1 || true
 }
