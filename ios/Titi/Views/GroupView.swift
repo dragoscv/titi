@@ -30,8 +30,18 @@ struct GroupView: View {
                         ForEach(g.members) { m in
                             VStack(spacing: 6) {
                                 Avatar(name: m.name, hue: m.hue, size: 56, talking: g.talkerNode == m.node)
+                                    .opacity(host.blocked.contains(m.node) ? 0.35 : 1)
                                 Text(m.node == host.nodeId ? "You" : m.name).font(.caption).lineLimit(1)
                                 if let p = host.peers[m.node], m.node != host.nodeId { Text(p.hops > 1 ? "\(p.hops) hops" : p.link.label.lowercased()).font(.caption2.monospaced()).foregroundStyle(Palette.muted) }
+                            }
+                            .contextMenu {
+                                if m.node != host.nodeId {
+                                    let isBlocked = host.blocked.contains(m.node)
+                                    Button(role: isBlocked ? nil : .destructive) { host.setBlocked(m.node, !isBlocked) } label: {
+                                        isBlocked ? Label("Unblock \(m.name)", systemImage: "hand.raised.slash") : Label("Block \(m.name)", systemImage: "hand.raised")
+                                    }
+                                    Button { Safety.report(group: g.name, gid: g.id, node: m.node, name: m.name, msg: nil, text: nil) } label: { Label("Report \(m.name)", systemImage: "exclamationmark.bubble") }
+                                }
                             }
                         }
                     }.padding(.horizontal, 20)

@@ -26,7 +26,8 @@ struct ChatView: View {
 
     private let quick = quickReactions()
     private var group: GroupState? { host.groups.first { $0.id == gid } }
-    private var items: [FfiChatItem] { host.chats[gid] ?? [] }
+    /// Messages from members this device blocked are hidden (App Review 1.2).
+    private var items: [FfiChatItem] { (host.chats[gid] ?? []).filter { !host.blocked.contains($0.from.hex) } }
     private var otherGroups: [GroupState] { host.groups.filter { $0.id != gid } }
 
     var body: some View {
@@ -248,6 +249,10 @@ struct ChatView: View {
         if !otherGroups.isEmpty { Button { forwardTarget = item } label: { Label("Forward", systemImage: "arrowshape.turn.up.right") } }
         if case let .text(t)? = item.body { Button { UIPasteboard.general.string = t } label: { Label("Copy", systemImage: "doc.on.doc") } }
         if mine { Button(role: .destructive) { deleteTarget = item } label: { Label("Delete for everyone", systemImage: "trash") } }
+        if !mine {
+            Button { Safety.report(group: group?.name ?? "", gid: gid, node: item.from.hex, name: senderName(item), msg: item.id, text: previewText(item)) } label: { Label("Report", systemImage: "exclamationmark.bubble") }
+            Button(role: .destructive) { host.setBlocked(item.from.hex, true) } label: { Label("Block \(senderName(item))", systemImage: "hand.raised") }
+        }
     }
 
     // MARK: composer
@@ -426,7 +431,7 @@ struct ChatView: View {
 
     /// Bolds and tints every `@name` the message actually mentions.
     private func styled(_ t: String, _ item: FfiChatItem) -> AttributedString {
-        var a = AttributedString(t)
+        var a = AttributedString(isMine(item) ? t : Safety.filtered(t))
         var tokens = item.mentions.map { "@" + host.displayName($0.hex) }
         if item.mentionAll { tokens.append("@all") }
         for tok in tokens where tok.count > 1 {

@@ -7,6 +7,7 @@ ROOT=$(pwd)
 OUT="$ROOT/ios/TitiCore"
 GEN="$OUT/Sources/TitiCore/Generated"
 ART="$OUT/Artifacts"
+TGT="${CARGO_TARGET_DIR:-$ROOT/core/target}"
 
 # One deployment target for every object in the archive (= project.yml). rustc reads
 # IPHONEOS_DEPLOYMENT_TARGET for the link; the cc crate turns CFLAGS_<target> into the
@@ -26,7 +27,7 @@ cargo build -p titi-ffi --release --target aarch64-apple-ios-sim
 # bindings from the host dylib (macOS deployment target untouched)
 env -u IPHONEOS_DEPLOYMENT_TARGET cargo build -p titi-ffi --release
 mkdir -p "$GEN"
-cargo run -p titi-ffi --features cli --bin uniffi-bindgen -- generate --library target/release/libtiti_ffi.dylib --language swift --out-dir "$GEN"
+cargo run -p titi-ffi --features cli --bin uniffi-bindgen -- generate --library "$TGT/release/libtiti_ffi.dylib" --language swift --out-dir "$GEN"
 popd >/dev/null
 
 # uniffi emits titi_ffi.swift + titi_ffiFFI.h + titi_ffiFFI.modulemap; the
@@ -37,9 +38,9 @@ mv "$GEN/titi_ffiFFI.modulemap" "$ART/headers/module.modulemap"
 
 rm -rf "$ART/titi_ffiFFI.xcframework"
 xcodebuild -create-xcframework \
-  -library core/target/aarch64-apple-ios/release/libtiti_ffi.a -headers "$ART/headers" \
-  -library core/target/aarch64-apple-ios-sim/release/libtiti_ffi.a -headers "$ART/headers" \
+  -library "$TGT/aarch64-apple-ios/release/libtiti_ffi.a" -headers "$ART/headers" \
+  -library "$TGT/aarch64-apple-ios-sim/release/libtiti_ffi.a" -headers "$ART/headers" \
   -output "$ART/titi_ffiFFI.xcframework"
 # Evidence the deployment target took: LC_BUILD_VERSION minos of the opus objects.
-otool -l core/target/aarch64-apple-ios/release/libtiti_ffi.a 2>/dev/null | awk '/minos/ {print "minos", $2}' | sort | uniq -c
+otool -l "$TGT/aarch64-apple-ios/release/libtiti_ffi.a" 2>/dev/null | awk '/minos/ {print "minos", $2}' | sort | uniq -c
 echo "xcframework at $ART/titi_ffiFFI.xcframework"
