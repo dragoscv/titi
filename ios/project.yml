@@ -39,8 +39,11 @@ targets:
     platform: iOS
     sources:
       - path: Titi
+      - path: Shared
     dependencies:
       - package: TitiCore
+      - target: TitiWidgets
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ro.titi.app
@@ -68,6 +71,9 @@ targets:
         NSLocalNetworkUsageDescription: Titi talks to phones on the same Wi‑Fi or hotspot.
         NSCameraUsageDescription: Scan a Titi invite QR code.
         NSLocationWhenInUseUsageDescription: Only to share your position or an SOS with your group.
+        NFCReaderUsageDescription: Write a Titi invite to an NFC tag so friends can tap to join.
+        # SOS Live Activity (drawn by the TitiWidgets extension, iOS 18+).
+        NSSupportsLiveActivities: true
         CFBundleURLTypes:
           - CFBundleURLSchemes: [titi]
             CFBundleURLName: ro.titi.join
@@ -77,8 +83,39 @@ targets:
         # Multicast (LAN discovery) and Wi-Fi Aware need Apple approval: added back once granted.
         com.apple.developer.associated-domains: [applinks:titi.dragoscatalin.ro]
         com.apple.developer.push-to-talk: true
+        # SOS banners from other members break through Focus.
+        com.apple.developer.usernotifications.time-sensitive: true
+        # NFCNDEFReaderSession tag writing (invite link). Apple lists TAG as the only accepted value; "NDEF" fails export.
+        com.apple.developer.nfc.readersession.formats: [TAG]
         # Xcode export for App Store rewrites this to production.
         aps-environment: development
+  TitiWidgets:
+    # Control Center "Talk" control + SOS Live Activity. iOS 18 so ControlWidget needs no availability gates;
+    # on iOS 17 the app runs without it.
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: TitiWidgets
+      - path: Shared
+      # Generated brand colours (brand/scripts/tokens.mjs writes this path) and the en+ro string catalog.
+      - path: Titi/BrandTokens.swift
+      - path: Titi/Resources/Localizable.xcstrings
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ro.titi.app.widgets
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+    info:
+      path: TitiWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Titi
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, ro]
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
   TitiTests:
     type: bundle.unit-test
     platform: iOS

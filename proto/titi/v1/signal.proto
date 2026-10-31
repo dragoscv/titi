@@ -18,6 +18,7 @@ message Signal {
     Pong pong = 7;
     WebRtcSignal webrtc = 8;
     Error error = 9;
+    PushRegister push_register = 10;
   }
 }
 
@@ -68,4 +69,14 @@ message WebRtcSignal {
 message Error {
   uint32 code = 1;
   string message = 2;
+}
+
+// iOS Push to Talk: the ephemeral APNs token of the system PTT channel. While the
+// iPhone is suspended (socket closed) the relay wakes it with an `apns-push-type:
+// pushtotalk` push carrying only the talker's display name when voice arrives in one
+// of `group_hashes`. Empty token = unregister. Held in memory only, never logged.
+message PushRegister {
+  bytes token = 1;
+  repeated bytes group_hashes = 2;  // 4 bytes each
+  bool sandbox = 3;                 // development-signed build -> api.sandbox.push.apple.com
 }

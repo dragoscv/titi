@@ -25,6 +25,9 @@ if [ -z "${DEVELOPER_DIR:-}" ] && [ -d "$HOME/Applications/Xcode.app" ]; then
   export DEVELOPER_DIR="$HOME/Applications/Xcode.app/Contents/Developer"
 fi
 [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
+# cmake (libopus build) lives in ~/.local/bin on the devcloud Mac (no Homebrew there)
+export PATH="$HOME/.local/bin:$PATH"
+command -v cmake >/dev/null || { echo "cmake missing: install it to ~/.local/bin (see ios/scripts/build.sh)" >&2; exit 3; }
 
 log() { printf '== %s\n' "$*"; }
 

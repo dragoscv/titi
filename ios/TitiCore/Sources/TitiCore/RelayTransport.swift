@@ -25,6 +25,8 @@ public final class RelayTransport: NSObject, Transport, URLSessionWebSocketDeleg
     private var attempt = 0
     private var enabled = false
     private var linkIsUp = false
+    /// PushToTalk ephemeral APNs token (+ sandbox flag) re-sent after every (re)join.
+    private var push: (token: [UInt8], sandbox: Bool)?
 
     public init(url: @escaping () -> URL, nodeId: @escaping () -> [UInt8], displayName: @escaping () -> String, hue: @escaping () -> Int) {
         self.url = url; self.nodeId = nodeId; self.displayName = displayName; self.hue = hue
@@ -45,6 +47,22 @@ public final class RelayTransport: NSObject, Transport, URLSessionWebSocketDeleg
         for k in rooms.keys where m[k] == nil { sendLeave(k) }
         rooms = m
         sendJoins()
+        sendPush()
+    }
+
+    /// Registers (or with nil, removes) this phone's Push to Talk token for every non-rendezvous room.
+    public func setPushToken(_ token: [UInt8]?, sandbox: Bool) {
+        push = token.map { ($0, sandbox) }
+        if token == nil { var r = PB(); r.bytes(1, []); var sig = PB(); sig.message(10, r); sendSignal(sig.out) } else { sendPush() }
+    }
+
+    private func sendPush() {
+        guard let p = push, task != nil else { return }
+        var r = PB(); r.bytes(1, p.token)
+        for (k, rdv) in rooms where !rdv { if let h = [UInt8](hex: k) { r.bytes(2, h) } }
+        r.varint(3, p.sandbox ? 1 : 0)
+        var sig = PB(); sig.message(10, r)
+        sendSignal(sig.out)
     }
 
     public func send(peer: String?, bytes: [UInt8]) {
@@ -62,7 +80,7 @@ public final class RelayTransport: NSObject, Transport, URLSessionWebSocketDeleg
     }
 
     public func urlSession(_ s: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol p: String?) {
-        attempt = 0; joined.removeAll(); sendJoins()
+        attempt = 0; joined.removeAll(); sendJoins(); sendPush()
     }
     public func urlSession(_ s: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith c: URLSessionWebSocketTask.CloseCode, reason: Data?) { onClosed() }
     public func urlSession(_ s: URLSession, task: URLSessionTask, didCompleteWithError e: Error?) { if e != nil { onClosed() } }

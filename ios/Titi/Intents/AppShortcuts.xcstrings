@@ -1,0 +1,146 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "Talk on ${applicationName}": {
+      "localizations": {
+        "en": {
+          "stringSet": {
+            "state": "translated",
+            "values": [
+              "Talk on ${applicationName}"
+            ]
+          }
+        },
+        "ro": {
+          "stringSet": {
+            "state": "translated",
+            "values": [
+              "Vorbește pe ${applicationName}"
+            ]
+          }
+        }
+      }
+    },
+    "Start talking on ${applicationName}": {
+      "localizations": {
+        "en": {
+          "stringSet": {
+            "state": "translated",
+            "values": [
+              "Start talking on ${applicationName}"
+            ]
+          }
+        },
+        "ro": {
+          "stringSet": {
+            "state": "translated",
+            "values": [
+              "Începe să vorbești pe ${applicationName}"
+            ]
+          }
+        }
+      }
+    },
+    "Stop talking on ${applicationName}": {
+      "localizations": {
+        "en": {
+          "stringSet": {
+            "state": "translated",
+            "values": [
+              "Stop talking on ${applicationName}"
+            ]
+          }
+        },
+        "ro": {
+          "stringSet": {
+            "state": "translated",
+            "values": [
+              "Nu mai vorbi pe ${applicationName}"
+            ]
+          }
+        }
+      }
+    },
+    "Switch ${applicationName} to ${group}": {
+      "localizations": {
+        "en": {
+          "stringSet": {
+            "state": "translated",
+            "values": [
+              "Switch ${applicationName} to ${group}"
+            ]
+          }
+        },
+        "ro": {
+          "stringSet": {
+            "state": "translated",
+            "values": [
+              "Treci ${applicationName} pe ${group}"
+            ]
+          }
+        }
+      }
+    },
+    "Switch group in ${applicationName}": {
+      "localizations": {
+        "en": {
+          "stringSet": {
+            "state": "translated",
+            "values": [
+              "Switch group in ${applicationName}"
+            ]
+          }
+        },
+        "ro": {
+          "stringSet": {
+            "state": "translated",
+            "values": [
+              "Schimbă grupul în ${applicationName}"
+            ]
+          }
+        }
+      }
+    },
+    "Send an SOS with ${applicationName}": {
+      "localizations": {
+        "en": {
+          "stringSet": {
+            "state": "translated",
+            "values": [
+              "Send an SOS with ${applicationName}"
+            ]
+          }
+        },
+        "ro": {
+          "stringSet": {
+            "state": "translated",
+            "values": [
+              "Trimite un SOS cu ${applicationName}"
+            ]
+          }
+        }
+      }
+    },
+    "${applicationName} SOS": {
+      "localizations": {
+        "en": {
+          "stringSet": {
+            "state": "translated",
+            "values": [
+              "${applicationName} SOS"
+            ]
+          }
+        },
+        "ro": {
+          "stringSet": {
+            "state": "translated",
+            "values": [
+              "SOS ${applicationName}"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}
