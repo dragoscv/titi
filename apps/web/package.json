@@ -12,7 +12,7 @@
     "lint": "oxlint --type-aware -c ../../.oxlintrc.json src"
   },
   "dependencies": {
-    "@serwist/turbopack": "9.5.12",
+    "@serwist/turbopack": "9.5.13",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
