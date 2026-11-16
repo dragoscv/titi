@@ -82,6 +82,7 @@ jobs:
             android/tv/build/outputs/bundle/release/*.aab
             android/app/build/outputs/apk/foss/release/*.apk
             android/app/build/outputs/mapping/gmsRelease/mapping.txt
+          retention-days: 7
       - name: Play internal track
         # set repo variable PLAY_UPLOAD=true once the Play service account secret exists
         if: vars.PLAY_UPLOAD == 'true'
@@ -112,7 +113,7 @@ jobs:
       - run: pnpm --filter @titi/desktop exec tauri build --bundles nsis
       - run: pwsh -NoProfile -File scripts/size-budgets.ps1
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with: { name: desktop, path: apps/desktop/src-tauri/target/release/bundle/nsis/*-setup.exe }
+        with: { name: desktop, path: apps/desktop/src-tauri/target/release/bundle/nsis/*-setup.exe, retention-days: 7 }
 
   github-release:
     needs: [android, desktop]
