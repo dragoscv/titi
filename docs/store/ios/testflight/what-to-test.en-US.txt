@@ -1,0 +1,10 @@
+First iPhone build of Titi.
+
+Please try:
+- Create a group, invite an Android or iPhone friend with the three words, the QR code or the link.
+- Hold Talk to speak. Lock the phone and talk from the Push to Talk pill on the Lock Screen.
+- Chat: reply, react, edit and delete (long-press a message).
+- Long-press a member to block or report them.
+- Join the demo group from the link in the App Review notes: the "Titi Demo" member replies, reacts and repeats your voice.
+
+iPhone 0.1 talks over Bluetooth and the internet; same-Wi-Fi discovery comes in a later build.

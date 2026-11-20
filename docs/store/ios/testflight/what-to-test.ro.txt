@@ -1,0 +1,10 @@
+Prima versiune Titi pentru iPhone.
+
+Te rog încearcă:
+- Creează un grup și invită un prieten cu Android sau iPhone cu cele trei cuvinte, codul QR sau linkul.
+- Ține apăsat Vorbește ca să vorbești. Blochează telefonul și vorbește din butonul Push to Talk de pe ecranul de blocare.
+- Chat: răspunde, reacționează, editează și șterge (ține apăsat pe un mesaj).
+- Ține apăsat pe un membru ca să-l blochezi sau să-l raportezi.
+- Intră în grupul demo din linkul din notele pentru App Review: membrul „Titi Demo” răspunde, reacționează și îți repetă vocea.
+
+Pe iPhone, versiunea 0.1 merge prin Bluetooth și internet; descoperirea pe același Wi‑Fi vine într-o versiune următoare.

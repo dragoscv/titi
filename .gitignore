@@ -77,3 +77,6 @@ lcov.info
 e2e/test-results/
 e2e/playwright-report/
 blob-report/
+
+# local tool state / scratch (autosync drift cleanup 2026-11-20)
+docs/store/ios/demo-link.txt
